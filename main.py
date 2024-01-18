@@ -64,6 +64,8 @@ def download_id(ext_id, repo, old_version=None):
 
 def get_database(path):
     database = {}
+    if not os.path.isfile(path):
+        open(path, "w+").write("")
     for line in open(path, "r"):
         try: 
             entry = json.loads(line)
