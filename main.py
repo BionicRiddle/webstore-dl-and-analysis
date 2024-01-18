@@ -218,7 +218,7 @@ open("run-log.txt", "a+").write( str(now) +  ", Using sitemap: " + str(sitemap_f
 # print("/DEBUG")
 #
 
-pool = ThreadPool(8)
+pool = ThreadPool(int(os.getenv("THREADS", 1)))
 pool.map(handle_sitemap_line, new_sitemap_lines)
 pool.wait_completion()
 
