@@ -10,10 +10,20 @@ import re, os, shutil
 from tqdm import tqdm
 import operator
 
-now = datetime.now()
-start_time = now.strftime("%Y-%m-%d_%H:%M:%S")
+# get environment variables
+PRETTY_OUTPUT = os.getenv('PRETTY_OUTPUT', True)
+RUN_ALL_VERSIONS = os.getenv('RUN_ALL_VERSIONS', False)
+SKIP_TO = os.getenv('SKIP_TO', 0)
 
-PRETTY_OUTPUT = True
+DATE_FORMAT = os.getenv('DATE_FORMAT')
+if os.getenv('WSL_DISTRO_NAME'):
+    # Running on WSL
+    DATE_FORMAT = DATE_FORMAT or "%Y-%m-%d_%H-%M-%S"
+else:
+    DATE_FORMAT = DATE_FORMAT or "%Y-%m-%d_%H:%M:%S"
+
+now = datetime.now()
+start_time = now.strftime(DATE_FORMAT)
 
 def get_tmp_path(version, extension_path, dirpath=""):
     print("-- Creating tmp path")
@@ -52,8 +62,13 @@ def analyze_data(path):
     # hits are the results
     hits = []
     for dirpath, dirnames, filenames in os.walk(path):
+        unknown_ext = open("unknown-ext.txt", "a+")
         for filename in filenames:
-            if filename.endswith('.js') or filename.endswith('.html') or filename.endswith(".json"):
+            try:
+                extension = filename.split(".")[-1]
+            except:
+                extension = "NONE"
+            if extension in ["js", "html", "json", "ts"]:
 
                 data = ""
                 with open(dirpath + os.sep + filename, encoding='utf-8', errors='ignore') as dataFile:
@@ -85,24 +100,32 @@ def analyze_data(path):
                         chunk = data[max(0,pos-100):pos+100]
 
                         hits.append( [word + "\t" + chunk, dirpath + "/" + filename] )
+            else:
+                # ignore common files ectension "css png jpg"
+                if extension in ["css", "png", "jpg", "ico", "gif", "svg", "ttf", "woff", "woff2", "eot", "html", "txt", "md", "DS_Store"]:
+                    continue
+                # log in file unknown-ext.txt
+                unknown_ext.write(extension + "\t| " + dirpath + os.sep + filename + "\n")
+        unknown_ext.close()
 
     return hits
 
 
 
-def analyze(extensions_path):
+def analyze(extensions_path, single_extension=None):
     extensions = os.listdir(extensions_path)
 
-    # skipTo can by used to skip the first n extensions
-    skipTo = 0
+    # skipTo can by used to skip the first n extensions, does nothing if running a single extension is specified
+    skipTo = SKIP_TO
     i = 0
     for extension in tqdm(extensions):
         # Test single extension
-        # if extension != "pgojoninlmacfjfhphhhfmajhpnjlljm":
-        #     continue
-        i = i + 1
-        if i < skipTo:
+        if single_extension and extension != single_extension:
             continue
+        else:
+            i = i + 1
+            if i < skipTo:
+                continue
 
         print("\n\n\nAnalyzing ", extension)
 
@@ -122,13 +145,10 @@ def analyze(extensions_path):
 
 
             # ONLY RUN LATEST VERSION
-            #print(versions)
-            # print("Warning! Only running latest version!")
-            # print(versions)
-            # versions = [versions[-1]]
-            #print(versions)
-            ###
-
+            if (not RUN_ALL_VERSIONS):
+                print("Warning! Only running latest version!")
+                versions = [versions[-1]]
+    
             for version in versions:
                 if not version.startswith('.'):
                     dirpath, path = get_tmp_path(version, extension_path)
@@ -160,5 +180,19 @@ def analyze(extensions_path):
 if __name__ == "__main__":
     print('------------ Extensions to Analyze: {} ------------')
 
+    ## if -? or -h or --help
+    if len(sys.argv) > 1 and sys.argv[1] in ['-?', '-h', '--help']:
+        print("Usage: python3 keywords_search.py [path_to_extensions]")
+        print("Example: python3 keywords_search.py extensions/")
+        exit(0)
+
+    extension = None
+    ## if extension id is given as argument
+    if len(sys.argv) > 1:
+        print("Running single extension: ", sys.argv[1])
+        extension = sys.argv[1]
+
+
+
     extensions_path = 'extensions/'
-    analyze(extensions_path)
+    analyze(extensions_path, extension)
