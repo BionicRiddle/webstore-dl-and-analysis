@@ -13,6 +13,7 @@ import operator
 now = datetime.now()
 start_time = now.strftime("%Y-%m-%d_%H:%M:%S")
 
+PRETTY_OUTPUT = True
 
 def get_tmp_path(version, extension_path, dirpath=""):
     print("-- Creating tmp path")
@@ -136,7 +137,10 @@ def analyze(extensions_path):
                         # Do the analysis!
                         hits = analyze_data(path)
                         if hits:
-                            open("hits_"+str(start_time)+".txt", "a+").write( json.dumps({"ext_id": extension, "hits": hits}) + "\n" )
+                            if (PRETTY_OUTPUT):
+                                open("hits_"+str(start_time)+".txt", "a+").write( json.dumps({"ext_id": extension, "hits": hits}, indent=4) + "\n" )
+                            else:
+                                open("hits_"+str(start_time)+".txt", "a+").write( json.dumps({"ext_id": extension, "hits": hits}) + "\n" )
                             print(extension, hits)
 
                     except Exception as e:
