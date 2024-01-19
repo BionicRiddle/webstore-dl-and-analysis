@@ -170,6 +170,7 @@ failed-dls.txt
 fails.txt
 run-log.txt
 version_database.txt
+unknown-ext.txt
 
 # Ignore hit files
 hits_*.txt
