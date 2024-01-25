@@ -9,6 +9,7 @@ import json
 import re, os, shutil
 from tqdm import tqdm
 import operator
+import re
 
 # get environment variables
 PRETTY_OUTPUT = os.getenv('PRETTY_OUTPUT', True)
@@ -54,7 +55,14 @@ def get_tmp_path(version, extension_path, dirpath=""):
 
 
 def analyze_data(path):
+    print("Analyzing data: ")
+
+    #HTML
+    hitStruct = []
+
     print("-- analyze_data(",path,")")
+
+    hitsStruct = []
 
     (regexs, keywords) = ([], ["http"]) 
     
@@ -68,7 +76,7 @@ def analyze_data(path):
                 extension = filename.split(".")[-1]
             except:
                 extension = "NONE"
-            if extension in ["js", "html", "json", "ts"]:
+            if extension in ["js", "html", "json", "ts", "es"]:
 
                 data = ""
                 with open(dirpath + os.sep + filename, encoding='utf-8', errors='ignore') as dataFile:
@@ -78,6 +86,8 @@ def analyze_data(path):
                 # TODO: Analyze :)
                 ## Here you can look at the file content (data) for what you want.
                 ## Use strings, REGEX, ML, ...
+                
+
 
                 if regexs:
                     for regex in regexs:
@@ -91,15 +101,60 @@ def analyze_data(path):
                             hits.append( [word + "\t" + chunk, dirpath + "/" + filename] )
 
                     continue
+                noMoreHits = False
 
                 for word in keywords:
-                    if word.lower() in data.lower():
-                        print("---- Hit! Found ", word, " in ", dirpath+"/"+filename)
+                    while noMoreHits == False:
+                        if word.lower() in data.lower():
 
-                        pos = data.lower().find(word.lower())
-                        chunk = data[max(0,pos-100):pos+100]
+                            #Hits
+                            
+                            if filename == "signInListener.8e11fb78.js":
+                                print("hello")
 
-                        hits.append( [word + "\t" + chunk, dirpath + "/" + filename] )
+                            print("---- Hit! Found ", word, " in ", dirpath+"/"+filename)
+
+                            pos = data.lower().find(word.lower())
+                            #chunk = data[max(0,pos-100):pos+100]
+
+                            old_splitted_data = (data[pos:pos+100].replace("'", '"')).split('"')[0]
+                            splitted_data = data[pos:pos+100]
+
+                            print("--------------------------------------------------------")
+                            delimiters = ["'", ")", "(", '"', "[", "]", "\\"]
+    
+                            for delimiter in delimiters:
+                                splitted_data = " ".join(splitted_data.split(delimiter))
+                            
+                            result = splitted_data.split()       
+        
+                            print("Result: " + str(result))
+                            print("Result[0] " + str(result[0]))
+                            #print("Length: " + str(len(result)))
+                            print("\n")
+
+                            #print(data[pos:pos+100].split('"')[0])
+                            url_pattern = "^https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$"
+                            #print(splitted_data)
+                            #print("Is it a url?")
+                            print("Pattern find: " + str(re.findall(url_pattern, result[0])))
+                            # print("End of url test")
+                            #print(len(str(re.findall(url_pattern, splitted_data))))
+                            #if len(str(re.findall(url_pattern, data[pos:pos+100].split('"')[0]))) < 5:
+                                #chunk = data[pos:pos+100].split('"')[0]
+                            #else:
+                            chunk = str(re.findall(url_pattern, result[0]))
+                            #print("Chunk: " + chunk)
+
+                            hits.append( [word + ':  ' + chunk, dirpath + "/" + filename] )
+                            print("Want to split on: " + str(result[0]))
+                            #data = (data.split(result[0]))[0]
+                            data = data.replace(result[0], '')
+                            print("Continue: ")
+                            print("--------------------------------------------------------")
+                            continue
+                        else:
+                            noMoreHits = True
             else:
                 # ignore common files ectension "css png jpg"
                 if extension in ["css", "png", "jpg", "ico", "gif", "svg", "ttf", "woff", "woff2", "eot", "html", "txt", "md", "DS_Store"]:
@@ -149,6 +204,7 @@ def analyze(extensions_path, single_extension=None):
                 print("Warning! Only running latest version!")
                 versions = [versions[-1]]
     
+            """"""
             for version in versions:
                 if not version.startswith('.'):
                     dirpath, path = get_tmp_path(version, extension_path)
@@ -159,8 +215,10 @@ def analyze(extensions_path, single_extension=None):
                         if hits:
                             if (PRETTY_OUTPUT):
                                 open("hits_"+str(start_time)+".txt", "a+").write( json.dumps({"ext_id": extension, "hits": hits}, indent=4) + "\n" )
+                                #print()
                             else:
                                 open("hits_"+str(start_time)+".txt", "a+").write( json.dumps({"ext_id": extension, "hits": hits}) + "\n" )
+                                #print()
                             print(extension, hits)
 
                     except Exception as e:
