@@ -51,7 +51,8 @@ class SubprocessHandler:
         self.node_process.stderr.close()
         self.node_process.wait()
 
-input_dir = "/mnt/c/Users/riddle/Desktop/NODE TEST/IHECDAOKIELDCFABKPEALOCMDKKGDPEC_0_6_0_0/"
+# path like /www/EXTENSION_DIR
+input_dir = "./"
 
 # Define the command-line arguments for the Node.js script
 node_script_args = ['node', 'app.js']
