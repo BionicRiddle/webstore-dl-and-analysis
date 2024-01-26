@@ -118,7 +118,7 @@ def analyze_data(path):
                 extension = filename.split(".")[-1]
             except:
                 extension = "NONE"
-            if extension in ["js", "html", "json", "ts"]:
+            if extension in ["js", "html", "json", "ts", "es"]:
 
                 data = ""
                 with open(dirpath + os.sep + filename, encoding='utf-8', errors='ignore') as dataFile:
