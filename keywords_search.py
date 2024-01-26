@@ -1,6 +1,7 @@
 import sys
 import time
 from datetime import datetime
+from collections import defaultdict
 import base64
 import zipfile
 import tempfile
@@ -27,14 +28,14 @@ now = datetime.now()
 start_time = now.strftime(DATE_FORMAT)
 
 def get_tmp_path(version, extension_path, dirpath=""):
-    print("-- Creating tmp path")
+    #print("-- Creating tmp path")
     extension_path = extension_path + "/" + version
-    print(version, extension_path)
+    #print(version, extension_path)
     if extension_path.endswith('.crx'):
         # Create temp dir (usually in /tmp)
 
         dirpath = tempfile.mkdtemp()
-        print("-- Tmp path: ", dirpath)
+        #print("-- Tmp path: ", dirpath)
         # Move crx to temp, and add .zip
         shutil.copyfile(extension_path, dirpath + '/extension.zip')
         version_path = dirpath + '/extension.zip'
@@ -51,16 +52,57 @@ def get_tmp_path(version, extension_path, dirpath=""):
 
 
 
+def getUrls(data):
+    pattern = 'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+' 
+    #pattern = "^https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$"
+
+    test = re.findall(pattern, data.lower())  
+    uniqueHits = {''}
+    #print('Starting url fetch')
+
+    if len(test) > 0:
+        #print("Original:")
+        for link in test:
+            uniqueHits.add(link)
+            #print(str(link))
+
+        print("")
+        print("Set:")
+        for set in uniqueHits:
+            print(str(set))
+        return uniqueHits
+    else:
+        return ''
+
+def getActions(data):
+    print("Action stuff:")
+
+    actionUrlMap = defaultdict(list)
+
+    pattern = ['fetch', 'post', 'get', 'href', 'xhttp']
+
+    regex = re.compile(r'\b(' + '|'.join(pattern) + r')\b')
+
+    actions = [(m.start(0), m.end(0)) for m in regex.finditer(data.lower())]
+
+    index = 0
+    for action in actions:
+        print("Action: Pos"+ str(action))
+        print("Action surroundings: " + str(data[action[0]:action[1]+40]))
+        actionUrlMap[data[action[0]:action[1]]].append(getUrls(data[action[0]:action[1]+40]))
+        #actionUrlMap['0'].append("http example")
+        print("Result: ", actionUrlMap)
+        print("-------------------------")
 
 
 
 def analyze_data(path):
-    print("Analyzing data: ")
+    #print("Analyzing data: ")
 
     #HTML
     hitStruct = []
 
-    print("-- analyze_data(",path,")")
+    #print("-- analyze_data(",path,")")
 
     hitsStruct = []
 
@@ -82,12 +124,9 @@ def analyze_data(path):
                 with open(dirpath + os.sep + filename, encoding='utf-8', errors='ignore') as dataFile:
                     data = " ".join(dataFile.read().split())
 
-
                 # TODO: Analyze :)
                 ## Here you can look at the file content (data) for what you want.
                 ## Use strings, REGEX, ML, ...
-                
-
 
                 if regexs:
                     for regex in regexs:
@@ -101,60 +140,38 @@ def analyze_data(path):
                             hits.append( [word + "\t" + chunk, dirpath + "/" + filename] )
 
                     continue
-                noMoreHits = False
 
                 for word in keywords:
-                    while noMoreHits == False:
-                        if word.lower() in data.lower():
+                    if word.lower() in data.lower():
 
-                            #Hits
-                            
-                            if filename == "signInListener.8e11fb78.js":
-                                print("hello")
+                        print("---- Hit! Found ", word, " in ", dirpath+"/"+filename)
 
-                            print("---- Hit! Found ", word, " in ", dirpath+"/"+filename)
+                        #Old
+                        #pos = data.lower().find(word)
+                        #splitted_data = data[pos:pos+100]
 
-                            pos = data.lower().find(word.lower())
-                            #chunk = data[max(0,pos-100):pos+100]
+                        #Bug: Thinks https://... is a url, look into later
+                        #Otherwise seems to be working just fine.
 
-                            old_splitted_data = (data[pos:pos+100].replace("'", '"')).split('"')[0]
-                            splitted_data = data[pos:pos+100]
+                        getActions(data)
+                        
+                        """
+                        chunk = getUrls(data)
 
-                            print("--------------------------------------------------------")
-                            delimiters = ["'", ")", "(", '"', "[", "]", "\\"]
-    
-                            for delimiter in delimiters:
-                                splitted_data = " ".join(splitted_data.split(delimiter))
-                            
-                            result = splitted_data.split()       
-        
-                            print("Result: " + str(result))
-                            print("Result[0] " + str(result[0]))
-                            #print("Length: " + str(len(result)))
-                            print("\n")
-
-                            #print(data[pos:pos+100].split('"')[0])
-                            url_pattern = "^https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$"
-                            #print(splitted_data)
-                            #print("Is it a url?")
-                            print("Pattern find: " + str(re.findall(url_pattern, result[0])))
-                            # print("End of url test")
-                            #print(len(str(re.findall(url_pattern, splitted_data))))
-                            #if len(str(re.findall(url_pattern, data[pos:pos+100].split('"')[0]))) < 5:
-                                #chunk = data[pos:pos+100].split('"')[0]
-                            #else:
-                            chunk = str(re.findall(url_pattern, result[0]))
-                            #print("Chunk: " + chunk)
-
-                            hits.append( [word + ':  ' + chunk, dirpath + "/" + filename] )
-                            print("Want to split on: " + str(result[0]))
-                            #data = (data.split(result[0]))[0]
-                            data = data.replace(result[0], '')
-                            print("Continue: ")
-                            print("--------------------------------------------------------")
-                            continue
+                        if len(chunk) > 0:
+                            #Url's were found
+                            print("Found urls")
                         else:
-                            noMoreHits = True
+                            #Url's were not found
+                            print("No url's found")
+                            chunk = "No urls found"
+                        """
+
+                        #print(chunk)
+            
+                        hits.append( [word + ':  ' + chunk, dirpath + "/" + filename] )
+
+                        print("--------------------------------------------------------\n")
             else:
                 # ignore common files ectension "css png jpg"
                 if extension in ["css", "png", "jpg", "ico", "gif", "svg", "ttf", "woff", "woff2", "eot", "html", "txt", "md", "DS_Store"]:
@@ -181,27 +198,29 @@ def analyze(extensions_path, single_extension=None):
             i = i + 1
             if i < skipTo:
                 continue
-
-        print("\n\n\nAnalyzing ", extension)
+        
+        #print("\n\n\nAnalyzing ", extension)
 
         extension_path = extensions_path + extension
-        print("-- Path to extension: ", extension_path)
+        #print("-- Path to extension: ", extension_path)
 
 
         if os.path.isdir(extension_path):
             versions = sorted([d for d in os.listdir(extension_path) if d[-4:] == ".crx"])
 
             if not versions:
-                print("[+] Warning. No CRX files in dir: {}".format(extension_path))
+                #print("[+] Warning. No CRX files in dir: {}".format(extension_path))
                 continue
                     
             if len(versions) > 1:
-                print("More than one version!!! {}".format(extension))
+                #print("More than one version!!! {}".format(extension))
+                print()
 
 
             # ONLY RUN LATEST VERSION
             if (not RUN_ALL_VERSIONS):
-                print("Warning! Only running latest version!")
+                #print("Warning! Only running latest version!")
+                print()
                 versions = [versions[-1]]
     
             """"""
@@ -219,7 +238,9 @@ def analyze(extensions_path, single_extension=None):
                             else:
                                 open("hits_"+str(start_time)+".txt", "a+").write( json.dumps({"ext_id": extension, "hits": hits}) + "\n" )
                                 #print()
-                            print(extension, hits)
+
+                            #Uncomment later   
+                            #print(extension, hits)
 
                     except Exception as e:
                         print("Error on ", extension, ": ", str(e))
