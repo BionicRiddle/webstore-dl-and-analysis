@@ -72,26 +72,33 @@ def getUrls(data):
             print(str(set))
         return uniqueHits
     else:
-        return ''
+        print("Data: " + data.lower())
+        return 'No url(s) found'
 
-def getActions(data):
+def getActions(data, extension_path):
     print("Action stuff:")
 
     actionUrlMap = defaultdict(list)
 
     pattern = ['fetch', 'post', 'get', 'href', 'xhttp']
+    pattern1 = ['Fetch', 'Post', 'Get', 'Href', 'Xhttp']
 
     regex = re.compile(r'\b(' + '|'.join(pattern) + r')\b')
 
     actions = [(m.start(0), m.end(0)) for m in regex.finditer(data.lower())]
+    
+    #print("Actions: " + str(actions[0]))'
+    print("extension_path: " + extension_path)
 
-    index = 0
+    print("Full actions: " + str(actions))
     for action in actions:
-        print("Action: Pos"+ str(action))
-        print("Action surroundings: " + str(data[action[0]:action[1]+40]))
-        actionUrlMap[data[action[0]:action[1]]].append(getUrls(data[action[0]:action[1]+40]))
+        #print("Action: Pos"+ str(action))
+        print("Action: " + data[action[0]:action[1]] + " Extension Path: " + extension_path)
+        print("Action surroundings: " + str(data[action[0]-10:action[1]+40]))
+        #print(str(getUrls(data[action[0]:action[1]+50])))
+        #actionUrlMap[data[action[0]:action[1]]].append(getUrls(data[action[0]:action[1]+40]))
         #actionUrlMap['0'].append("http example")
-        print("Result: ", actionUrlMap)
+        #print("Result: ", str(actionUrlMap))
         print("-------------------------")
 
 
@@ -153,7 +160,7 @@ def analyze_data(path):
                         #Bug: Thinks https://... is a url, look into later
                         #Otherwise seems to be working just fine.
 
-                        getActions(data)
+                        getActions(data, dirpath+"/"+filename)
                         
                         """
                         chunk = getUrls(data)
@@ -169,7 +176,7 @@ def analyze_data(path):
 
                         #print(chunk)
             
-                        hits.append( [word + ':  ' + chunk, dirpath + "/" + filename] )
+                        #hits.append( [word + ':  ' + chunk, dirpath + "/" + filename] )
 
                         print("--------------------------------------------------------\n")
             else:
