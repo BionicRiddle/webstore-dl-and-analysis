@@ -54,8 +54,12 @@ class SubprocessHandler:
 # path like /www/EXTENSION_DIR
 input_dir = "./"
 
+# Environment variables for the Node.js script
+NPDE_PATH = os.environ.get("NPDE_PATH", "node")
+NODE_APP_PATH = os.environ.get("NODE_APP_PATH", './app.js')
+
 # Define the command-line arguments for the Node.js script
-node_script_args = ['node', 'app.js']
+node_script_args = [NPDE_PATH, NODE_APP_PATH]
 
 # Create an instance of the SubprocessHandler with the specified arguments
 subprocess_handler = SubprocessHandler(node_script_args)
