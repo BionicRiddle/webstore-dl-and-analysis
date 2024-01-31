@@ -27,13 +27,15 @@ class WorkerThread(threading.Thread):
         self.queue = queue
         self.thread_id = thread_id
         self.stop_event = threading.Event()
+        self.count = 0
 
     def run(self):
         while not self.stop_event.is_set():
             # Get the work from the queue and expand the tuple
             extension = self.queue.get()
             #analyze(extension)
-            print('Thread %d: Done with %s' % (self.thread_id, extension))
+            self.count += 1
+            print('Thread %d: %d' % (self.thread_id, self.count))
             self.queue.task_done()
 
     def stop(self):
@@ -102,7 +104,7 @@ NUM_THREADS: 1
     
     # I hate this too
     print(
-"""------------ Extension analizer V 1.0 ------------
+"""------------ Extension analyzer V 1.0 ------------
 
 Authors: Samuel Bach, Albin Karlsson 2024
 Chalmers University of Technology, Gothenburg, Sweden
@@ -132,15 +134,26 @@ Chalmers University of Technology, Gothenburg, Sweden
     for extensions_path in extensions_paths:
         # for each dir in extensions_path
         for dir in os.listdir(extensions_path):
-            # for each file in dir
-            for file in os.listdir(extensions_path + dir):
-                # if file is a crx
-                if file.endswith('.crx'):
-                    # add to extensions
-                    extensions.append(extensions_path + dir + '/' + file)
+            versions = sorted([d for d in os.listdir(extensions_path + dir) if d[-4:] == ".crx"])
+            if not versions:
+                print("[+] Error (get_tmp_path) in {}: {}".format(file, 'OK') ) # TODO: Check if output format is important
+                continue
 
+            if RUN_ALL_VERSIONS:
+                for version in versions:
+                    extensions.append(extensions_path + dir + '/' + version)
+            else:
+                extensions.append(extensions_path + dir + '/' + versions[-1])
+
+
+
+    max = 10
+    i = 0
     # Analyze extensions by sending them to threads, when done, send next extension
     for extension in extensions:
+        if i > max:
+            break
+        i += 1
         queue.put(extension)
 
     # Wait for all threads to finish
