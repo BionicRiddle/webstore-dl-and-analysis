@@ -17,6 +17,8 @@ PRETTY_OUTPUT = os.getenv('PRETTY_OUTPUT', True)
 RUN_ALL_VERSIONS = os.getenv('RUN_ALL_VERSIONS', False)
 SKIP_TO = os.getenv('SKIP_TO', 0)
 
+commonUrls = defaultdict(int)
+
 DATE_FORMAT = os.getenv('DATE_FORMAT')
 if os.getenv('WSL_DISTRO_NAME'):
     # Running on WSL
@@ -50,15 +52,29 @@ def get_tmp_path(version, extension_path, dirpath=""):
             return (dirpath, path)
     return None
 
+def getUrl(data, patterns):
+    pattern = re.compile(r'\b(' + '|'.join(patterns) + r')\b')
+    test = re.findall(pattern, data.lower())
+
+    if len(test) > 0:
+        return test
+    else:
+        return 'No url(s) found'
+
+def getUrls(data, patterns):
+    #Try different patterns (Maybe 3 or so)
+    # - Investigate False positives vs False Negatives
+    # - Fix so it detects when link simply starts with "www" and not "http" or "https"
 
 
-def getUrls(data):
-    pattern = 'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+' 
-    #pattern = "^https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$"
+    pattern = re.compile(r'\b(' + '|'.join(patterns) + r')\b')
+    test = re.findall(pattern, data.lower())
 
-    test = re.findall(pattern, data.lower())  
-    uniqueHits = {''}
-    #print('Starting url fetch')
+
+    uniqueHits = set()
+    #print("")
+    #print('Starting url fetch:')
+    #print("Pre-processed result: " + str(test))
 
     if len(test) > 0:
         #print("Original:")
@@ -66,52 +82,54 @@ def getUrls(data):
             uniqueHits.add(link)
             #print(str(link))
 
-        print("")
+        #print("")
         print("Set:")
-        for set in uniqueHits:
-            print(str(set))
+        for unique in uniqueHits:
+            print(str(unique))
+
         return uniqueHits
     else:
-        print("Data: " + data.lower())
+        #print("Data: " + data.lower())
         return 'No url(s) found'
 
-def getActions(data, extension_path):
+def getActions(data, extension_path, urlPattern):
+    #Fix bugs (Check return types from getUrl, see if it messes up the function)
+    # - Bug is that it reads strings as actions, should not do that
+
     print("Action stuff:")
 
     actionUrlMap = defaultdict(list)
 
     pattern = ['fetch', 'post', 'get', 'href', 'xhttp']
-    pattern1 = ['Fetch', 'Post', 'Get', 'Href', 'Xhttp']
 
     regex = re.compile(r'\b(' + '|'.join(pattern) + r')\b')
 
     actions = [(m.start(0), m.end(0)) for m in regex.finditer(data.lower())]
     
     #print("Actions: " + str(actions[0]))'
-    print("extension_path: " + extension_path)
+    #print("extension_path: " + extension_path)
 
-    print("Full actions: " + str(actions))
+    #print("Full actions: " + str(actions))
     for action in actions:
-        #print("Action: Pos"+ str(action))
-        print("Action: " + data[action[0]:action[1]] + " Extension Path: " + extension_path)
-        print("Action surroundings: " + str(data[action[0]-10:action[1]+40]))
-        #print(str(getUrls(data[action[0]:action[1]+50])))
-        #actionUrlMap[data[action[0]:action[1]]].append(getUrls(data[action[0]:action[1]+40]))
-        #actionUrlMap['0'].append("http example")
-        #print("Result: ", str(actionUrlMap))
+        print("Action: " + data[action[0]:action[1]] + ": " "Extension Path: " + extension_path)
+        print("Action surroundings: " + str(data[action[0]:action[1]+40]))
+
+        #Danger with getUrls is that, if multiple url's exist in the extracted substring it will return both
+        #Instead we use simmilar function, getUrl
+        print("Url result: " + str(getUrl(data[action[0]:action[1]+40], urlPattern)))
         print("-------------------------")
 
 
 
 def analyze_data(path):
-    #print("Analyzing data: ")
+    print("Analyzing data: ")
 
     #HTML
-    hitStruct = []
+    #commonUrls = defaultdict(int)
 
     #print("-- analyze_data(",path,")")
 
-    hitsStruct = []
+
 
     (regexs, keywords) = ([], ["http"]) 
     
@@ -153,30 +171,40 @@ def analyze_data(path):
 
                         print("---- Hit! Found ", word, " in ", dirpath+"/"+filename)
 
-                        #Old
-                        #pos = data.lower().find(word)
-                        #splitted_data = data[pos:pos+100]
-
-                        #Bug: Thinks https://... is a url, look into later
+                        #Bug: Thinks https://... is a url, look into later - E.x, https://a is considered a link (pattern 1)
+                        #Bug: Misses sites whic start with "www" (as far as is known) - Seems to be fixed by combining pattern2 with pattern1
                         #Otherwise seems to be working just fine.
 
-                        getActions(data, dirpath+"/"+filename)
+                        #getActions(data, dirpath+"/"+filename)
                         
-                        """
-                        chunk = getUrls(data)
+                        #Starting with https or http
+                        httpPattern = 'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+' 
 
-                        if len(chunk) > 0:
-                            #Url's were found
-                            print("Found urls")
-                        else:
-                            #Url's were not found
-                            print("No url's found")
-                            chunk = "No urls found"
-                        """
+                        #Not starting with http or https (e.x, website.com, www.website.com, pizzabakery.net etc)
+                        #Not detecting anything it seems, potentially due to not being any "www.example.com" only links present, only ones starting with https / http, need to test
+                        wwwPattern = "^[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$"
 
-                        #print(chunk)
-            
+                        #What an absolute monstrocity - Not really working
+                        #pattern3 = "[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
+
+                        patterns = [httpPattern, wwwPattern]
+
+                        getActions(data, dirpath + "/" + filename, patterns)
+
+                        """
+                        chunk = getUrls(data, patterns)
+
+                        print("\n")
+
+                        #Testing
+                        print("Chunk: " + str(chunk))
+
+                        if chunk != 'No url(s) found':
+                            for url in chunk:
+                                commonUrls[url] += 1
+                            
                         #hits.append( [word + ':  ' + chunk, dirpath + "/" + filename] )
+                        """
 
                         print("--------------------------------------------------------\n")
             else:
@@ -186,6 +214,7 @@ def analyze_data(path):
                 # log in file unknown-ext.txt
                 unknown_ext.write(extension + "\t| " + dirpath + os.sep + filename + "\n")
         unknown_ext.close()
+
 
     return hits
 
@@ -261,6 +290,20 @@ def analyze(extensions_path, single_extension=None):
         else:
             print("[+] Error. No such file or dir: {}".format(extension))
 
+def displayData():
+    #Set how many links you want displayed:
+    """
+    index_display = 5
+
+    print("Most common urls: ")
+    for url in sorted(commonUrls.items(), key=lambda x: x[1], reverse=True):
+        if index_display > 0:
+            print(url)
+            index_display -= 1
+        else:
+            continue
+    """
+
 
 
 if __name__ == "__main__":
@@ -282,3 +325,5 @@ if __name__ == "__main__":
 
     extensions_path = 'extensions/'
     analyze(extensions_path, extension)
+    displayData()
+    
