@@ -31,12 +31,15 @@ class WorkerThread(threading.Thread):
 
     def run(self):
         while not self.stop_event.is_set():
-            # Get the work from the queue and expand the tuple
+            # Get the work from the queue, if empty, terminate
+            if self.queue.empty():
+                break
             extension = self.queue.get()
             #analyze(extension)
             self.count += 1
             print('Thread %d: %d' % (self.thread_id, self.count))
             self.queue.task_done()
+        print('Thread %d terminated' % self.thread_id)
 
     def stop(self):
         self.stop_event.set()
@@ -145,8 +148,6 @@ Chalmers University of Technology, Gothenburg, Sweden
             else:
                 extensions.append(extensions_path + dir + '/' + versions[-1])
 
-
-
     max = 10
     i = 0
     # Analyze extensions by sending them to threads, when done, send next extension
@@ -159,12 +160,15 @@ Chalmers University of Technology, Gothenburg, Sweden
     # Wait for all threads to finish
     print('Waiting for threads to finish...')
 
-    # If terminated or done, signal threads to terminate
+    # wait for all threads to finish or if the main thread is terminated, if main thread is terminated, terminate all threads
     try:
-        queue.join()
+        while not queue.empty():
+            pass
     except KeyboardInterrupt:
         print('Terminating threads...')
         for t in threads:
             t.stop()
-        print('Done')
+        for t in threads:
+            t.join()
+        print('Threads terminated')
         exit(0)
