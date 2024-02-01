@@ -23,27 +23,49 @@ DATE_FORMAT         = os.getenv('DATE_FORMAT'       , "%Y-%m-%d_%H:%M:%S")
 NUM_THREADS         = os.getenv('NUM_THREADS'       , 1)
 
 # File locks
-unknown_lock = threading.Lock()
+unknown_file_ext_lock = threading.Lock()
 failed_lock = threading.Lock()
 failed_run_lock = threading.Lock()
+
+FILE_EXTENSIONS_SKIP = ["JPG", "PNG", "ICO", "GIF", "SVG", "TTF", "WOFF", "WOFF2", "EOT", "MD", "DS_STORE"]
+FILE_EXTENSIONS_TEXT = ["JS", "CSS", "HTML", "JSON", "TXT", "XML", "YML", "TS", "CFG", "CONF"]
 
 # Create queue for threads
 thread_queue = queue.Queue()
 
-def failed_extension(crx_path):
-    with failed_lock:
-        # TODO: write to file
-        print('Failed to read extension %s' % crx_path)
+def analyze_extension(extension):
+    manifest = read_manifest(self, extension)
+    #simulate_work(extension) # TODO: Remove
+    
+    manifest_version = manifest['manifest_version']
 
+    # of no permissions skip
+    if 'permissions' not in manifest:
+        return
+    
+    # if no host permissions skip
+    if 'host_permissions' not in manifest:
+        return
+
+
+def failed_extension(crx_path, reason=""):
+    with failed_lock:
+        with open('failed.txt', 'a') as f:
+            f.write(crx_path + '\t' + reason + '\n')
+
+# TODO: Dynamic analysis stuff
 def failed_run(crx_path):
     with failed_run_lock:
         #TODO: write to file
         print('Failed to run extension %s' % crx_path)
 
-def unknown_extension(crx_path):
-    with unknown_lock:
-        #TODO: write to file
-        print('Unknown extension %s' % crx_path)
+def unknown_file_extension(crx_paths):
+    with unknown_file_ext_lock:
+        with open('unknown-ext.txt', 'a') as f:
+            for crx_path in crx_paths:
+                ext = crx_path.split('.')[-1] if '.' in crx_path else 'NO_EXT'
+                out = '%s\t%s' % (ext, crx_path)
+                f.write(out + '\n')
 
 def simulate_work(extension):
     time.sleep(random.uniform(0.1, 1))
@@ -91,9 +113,7 @@ class WorkerThread(threading.Thread):
             except queue.Empty as e:
                 print(e)
                 break
-            manifest = read_manifest(self, extension)
-            print(manifest)
-            #simulate_work(extension)
+            analyze_extension(extension)
             self.counter += 1
             self.queue.task_done()
         print('Thread %d terminated' % self.thread_id)
