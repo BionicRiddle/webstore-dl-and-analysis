@@ -11,13 +11,12 @@ import re, os, shutil
 from tqdm import tqdm
 import operator
 import re
+import json
 
 # get environment variables
 PRETTY_OUTPUT = os.getenv('PRETTY_OUTPUT', True)
 RUN_ALL_VERSIONS = os.getenv('RUN_ALL_VERSIONS', False)
 SKIP_TO = os.getenv('SKIP_TO', 0)
-
-commonUrls = defaultdict(int)
 
 DATE_FORMAT = os.getenv('DATE_FORMAT')
 if os.getenv('WSL_DISTRO_NAME'):
@@ -72,6 +71,8 @@ def getUrls(data, patterns):
 
 
     uniqueHits = set()
+
+
     #print("")
     #print('Starting url fetch:')
     #print("Pre-processed result: " + str(test))
@@ -111,23 +112,39 @@ def getActions(data, extension_path, urlPattern):
 
     #print("Full actions: " + str(actions))
     for action in actions:
-        print("Action: " + data[action[0]:action[1]] + ": " "Extension Path: " + extension_path)
-        print("Action surroundings: " + str(data[action[0]:action[1]+40]))
+        #print("Action: " + data[action[0]:action[1]] + ": " "Extension Path: " + extension_path)
+        #print("Action surroundings: " + str(data[action[0]:action[1]+40]))
 
         #Danger with getUrls is that, if multiple url's exist in the extracted substring it will return both
         #Instead we use simmilar function, getUrl
-        print("Url result: " + str(getUrl(data[action[0]:action[1]+40], urlPattern)))
-        print("-------------------------")
+        #print("Url result: " + str(getUrl(data[action[0]:action[1]+40], urlPattern)))
+        if str(getUrl(data[action[0]:action[1]+40], urlPattern)) != 'No url(s) found':
+            actionUrlMap[data[action[0]:action[1]]] = getUrl(data[action[0]:action[1]+50], urlPattern)
+        
+        #print("-------------------------")
+    
+    for entry in actionUrlMap:
+        print("Action url: " + str(entry) + str(actionUrlMap[entry]))
+
+    print("Action url map: " + str(actionUrlMap))
+    return actionUrlMap
 
 
 
 def analyze_data(path):
-    print("Analyzing data: ")
 
-    #HTML
-    #commonUrls = defaultdict(int)
+    #print("Analyzing data: ")
+
+    #Keeps track of how many times the urls are encountered
+    commonUrls = defaultdict(int)
+
+    #Keeps track of all urls and the extension they belonged to
+    #Urls = defaultdict(str)
+    urlList = defaultdict(list)
 
     #print("-- analyze_data(",path,")")
+    actionUrlExtensionList = defaultdict(list)
+    actionsList = defaultdict(list)
 
 
 
@@ -189,9 +206,14 @@ def analyze_data(path):
 
                         patterns = [httpPattern, wwwPattern]
 
-                        getActions(data, dirpath + "/" + filename, patterns)
+                        #Actions and urls
+                        actions = getActions(data, dirpath + "/" + filename, patterns)
 
-                        """
+                        #print("Returned actions: ")
+                        #for action in actions:
+                            #print("Action b: " + str(action) + str(actions[action]))
+
+                        
                         chunk = getUrls(data, patterns)
 
                         print("\n")
@@ -202,9 +224,48 @@ def analyze_data(path):
                         if chunk != 'No url(s) found':
                             for url in chunk:
                                 commonUrls[url] += 1
+                                urlList[url].append(dirpath + "/" + filename)
+                        
+
+                        for action in actions:
+                            print("Action: " + str(action) + " Appending: " + str(actions[action]))
+                            if len(action) > 0 and actions[action] != 'No url(s) found':
+                                tmpDict = actions[action], dirpath + "/" + filename
+                                actionsList[action].append(tmpDict)
+                            #actionUrlExtensionList[str(actions[action])].append(dirpath + "/" + filename)
+    
+
+                            #actionsList[action].append(str(actions[action]))
+                            #actionsList[action].append(actionUrlExtensionList[str(actions[action])])
+                            #actionsList[action].append(actionUrlExtensionList[str(actions[action])])
+
+                            #actionsList[action].append(actions[action])
+
+                        print("New stuff")
+                        for entry in actionUrlExtensionList:
+                            print("Entry: " + str(entry) + ": " + str(actionUrlExtensionList[entry]))
+
+                        print("What have I done")
+                        for entry in actionsList:
+                            print(str(entry))
+
+
+                        #if len(actionsList) > 0:
+                            #print("The action list:")
+                            #print(str(actionsList))
+                        
+                        dict(urlList)
+                        #dict(actionsList)
+
+                        #for action in actionsList:
+                            #actionsList[action].append(dirpath + "/" + filename)
+                            #print(action + ": " + str(actionsList[action]))
+                        
+                        #print("ActionList:")
+                        #print(str(actionsList))
                             
                         #hits.append( [word + ':  ' + chunk, dirpath + "/" + filename] )
-                        """
+                        
 
                         print("--------------------------------------------------------\n")
             else:
@@ -215,12 +276,24 @@ def analyze_data(path):
                 unknown_ext.write(extension + "\t| " + dirpath + os.sep + filename + "\n")
         unknown_ext.close()
 
-
-    return hits
+    print("Return actions: " + str(actions))
+    return hits, commonUrls, actionsList, dirpath + "/" + filename, urlList
 
 
 
 def analyze(extensions_path, single_extension=None):
+    print("Analyze function Start:")
+
+    #Keeps track of urls, associated action and the file/extension they reside in
+    #UrlList = defaultdict(list)
+    commonUrls = defaultdict(int)
+
+    #Keeps track of actions and their associated url
+    actionsList = defaultdict(list)
+
+    #Keeps track of url's and the extension & file they belong to
+    urlList = defaultdict(list)
+
     extensions = os.listdir(extensions_path)
 
     # skipTo can by used to skip the first n extensions, does nothing if running a single extension is specified
@@ -266,7 +339,45 @@ def analyze(extensions_path, single_extension=None):
 
                     try:
                         # Do the analysis!
-                        hits = analyze_data(path)
+
+                        #[0] = Hits
+                        #[1] = Urls encountered
+                        #[2] = actions
+                        #[3] = extension
+                        #[4] = Url list with extensions they reside in
+                        result = analyze_data(path)
+                        hits =               result[0] #Hits (?) vad den får ut I guess
+                        urls =               result[1] #E.x, {"www.yelp.com" : 1, "www.pizza.com", 2}
+                        actions =            result[2]
+                        extension_analyzed = result[3] #E.x... tomt
+                        urlAndExtensions =   result[4] #
+
+                        
+                        for url in urls:
+                            if url in commonUrls:
+                                commonUrls[url] += 1
+                            else:
+                                commonUrls[url] = 1
+
+                        for url in urlAndExtensions:
+                            urlList[url].append(urlAndExtensions[url])
+
+                        print("Returned actions: ")
+                        #print(str(actionsList))
+                        for action in actions:
+                            #actionsList[action].append(actions[action])
+                            print("Action: " + str(action))
+                            print("actions[action]: " + str(actions[action][0]))
+                            actionsList[action].append(actions[action])
+                        
+                        #print("ActionList123")
+                        #for action in actionsList:
+                            #print("Action: " + str(action))
+                            #for yourMom in actionsList[action]:
+                                #print("Your mom: " + str(yourMom))
+                            #print("____________")
+                        #print(actionsList)
+
                         if hits:
                             if (PRETTY_OUTPUT):
                                 open("hits_"+str(start_time)+".txt", "a+").write( json.dumps({"ext_id": extension, "hits": hits}, indent=4) + "\n" )
@@ -289,19 +400,93 @@ def analyze(extensions_path, single_extension=None):
 
         else:
             print("[+] Error. No such file or dir: {}".format(extension))
+    
+    print("Analyze all data:")
+    displayData(commonUrls, actionsList, urlList)
 
-def displayData():
+def displayData(commonUrls, actionsList, urlList):
+    #Create file to save the data
+    #f = open("Results " + str(datetime.now()) + ".txt", "w")
+
     #Set how many links you want displayed:
-    """
-    index_display = 5
+    index_display = 10
 
+    print("-----Common Urls-----")
+    print(str(commonUrls))
+    print("\n")
+
+    print("-----Action List-----")
+    print(str(actionsList))
+    print("\n")
+
+    print("-----Url List-----")
+    print(str(urlList))
+    print("\n")
+
+    json_commonUrls = json.dumps(commonUrls, indent=4)
+    json_actionsList = json.dumps(actionsList, indent=4)
+    json_urlList = json.dumps(urlList, indent=4)
+
+    with open("sample.json", "w") as outfile:
+        outfile.write(json_commonUrls)
+        outfile.write(json_actionsList)
+        outfile.write(json_urlList)
+
+    """
     print("Most common urls: ")
-    for url in sorted(commonUrls.items(), key=lambda x: x[1], reverse=True):
+    f.write("Most common urls:\n")
+    f.write("__________________\n")
+    print("_____________________________")
+    #Commonurl: {"www.google.com" : {'ExtensionName', 1}}
+    
+    #Displays most common urls in order:
+    for url in sorted(commonUrls.items(), key=lambda x:x[1], reverse=True):
         if index_display > 0:
-            print(url)
+            print(str(url))
+            f.write(str(url)+"\n")
+
             index_display -= 1
         else:
             continue
+    index_display = 10
+    f.write("__________________\n")
+
+    print("\n")
+    print("Urls and extensions")
+    f.write("Urls and extensions:\n")
+    f.write("\n")
+    print("\n")
+    for url in urlList:
+        if index_display > 0:
+            print(url + ": " + str(urlList[url]))
+            f.write(url + ": " + str(urlList[url])+"\n")
+            f.write("\n")
+            index_display -= 1
+            print('\n')
+        else:
+            continue
+    
+    f.write("__________________\n")
+    print("\n")
+    print("Action stuff:")
+    f.write("Actions:\n")
+    f.write("\n")
+    print("\n")
+    for action in actionsList:
+        f.write(action)
+        print(action)
+        print("\n")
+        f.write("\n")
+        for link in actionsList[action]:
+            #print("link: " + str(link))
+            for entry in link:
+                print("Entry:" + str(entry))
+                f.write(str(entry))
+                f.write("\n")
+
+        print("--------------")
+        #f.write(action + ": " + str(actionsList[action])+"\n")
+        f.write("\n")
     """
 
 
@@ -325,5 +510,5 @@ if __name__ == "__main__":
 
     extensions_path = 'extensions/'
     analyze(extensions_path, extension)
-    displayData()
+    #displayData()
     
