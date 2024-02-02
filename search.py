@@ -13,8 +13,7 @@ import re
 import threading
 import queue
 import random
-from colorama import Fore, Back, Style
-import zipfile
+from analyze import analyze_extension
 
 # Environment variables
 PRETTY_OUTPUT       = os.getenv('PRETTY_OUTPUT'     , False)
@@ -22,78 +21,14 @@ RUN_ALL_VERSIONS    = os.getenv('RUN_ALL_VERSIONS'  , False)
 DATE_FORMAT         = os.getenv('DATE_FORMAT'       , "%Y-%m-%d_%H:%M:%S")
 NUM_THREADS         = os.getenv('NUM_THREADS'       , 1)
 
-# File locks
-unknown_file_ext_lock = threading.Lock()
-failed_lock = threading.Lock()
-failed_run_lock = threading.Lock()
-
-FILE_EXTENSIONS_SKIP = ["JPG", "PNG", "ICO", "GIF", "SVG", "TTF", "WOFF", "WOFF2", "EOT", "MD", "DS_STORE"]
-FILE_EXTENSIONS_TEXT = ["JS", "CSS", "HTML", "JSON", "TXT", "XML", "YML", "TS", "CFG", "CONF"]
-
 # Create queue for threads
 thread_queue = queue.Queue()
-
-def analyze_extension(extension):
-    manifest = read_manifest(self, extension)
-    #simulate_work(extension) # TODO: Remove
-    
-    manifest_version = manifest['manifest_version']
-
-    # of no permissions skip
-    if 'permissions' not in manifest:
-        return
-    
-    # if no host permissions skip
-    if 'host_permissions' not in manifest:
-        return
-
-
-def failed_extension(crx_path, reason=""):
-    with failed_lock:
-        with open('failed.txt', 'a') as f:
-            f.write(crx_path + '\t' + reason + '\n')
-
-# TODO: Dynamic analysis stuff
-def failed_run(crx_path):
-    with failed_run_lock:
-        #TODO: write to file
-        print('Failed to run extension %s' % crx_path)
-
-def unknown_file_extension(crx_paths):
-    with unknown_file_ext_lock:
-        with open('unknown-ext.txt', 'a') as f:
-            for crx_path in crx_paths:
-                ext = crx_path.split('.')[-1] if '.' in crx_path else 'NO_EXT'
-                out = '%s\t%s' % (ext, crx_path)
-                f.write(out + '\n')
 
 def simulate_work(extension):
     time.sleep(random.uniform(0.1, 1))
     print(Style.DIM + 'Analyzed extension %s' % extension)
     print(Style.RESET_ALL, end='')
 
-def read_manifest(self, crx_path):
-    # using zipfile, read data manifest.json
-    # return json
-    with zipfile.ZipFile(crx_path, 'r') as zip_ref:
-        try:
-            manifest = json.loads(zip_ref.read('manifest.json'))
-        except:
-            failed_extension(crx_path)
-            return
-        return manifest
-
-def extract_extension(self, crx_path):
-    # using zipfile, extract to tmp dir
-    # return path to tmp dir
-    with zipfile.ZipFile(crx_path, 'r') as zip_ref:
-        tmp_path = tempfile.mkdtemp()
-        try:
-            zip_ref.extractall(tmp_path)
-        except:
-            failed_extension(crx_path)
-            return
-        return tmp_path
 
 # Worker Thread
 class WorkerThread(threading.Thread):
@@ -104,6 +39,7 @@ class WorkerThread(threading.Thread):
         self.thread_id = thread_id
         self.stop_event = threading.Event()
         self.counter = 0
+        self.current_temp = ""
 
     def run(self):
         while not self.stop_event.is_set():
@@ -114,6 +50,7 @@ class WorkerThread(threading.Thread):
                 print(e)
                 break
             analyze_extension(extension)
+            #simulate_work(extension)
             self.counter += 1
             self.queue.task_done()
         print('Thread %d terminated' % self.thread_id)
@@ -201,7 +138,7 @@ Chalmers University of Technology, Gothenburg, Sweden
     extensions_paths = []
 
     if extension is None:
-        extensions_paths = [args[-1]] if len(args) > 1 else ['ext/'] # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        extensions_paths = [args[-1]] if len(args) > 1 else ['ext/']
         for extensions_path in extensions_paths:
             if not os.path.isdir(extensions_path):
                 print('Invalid path to extensions')
@@ -216,7 +153,7 @@ Chalmers University of Technology, Gothenburg, Sweden
         t.start()
         threads.append(t)
 
-    def exit(int):
+    def exit(int, exception=None):
         counters = []
         for t in threads:
             t.stop()
@@ -225,6 +162,8 @@ Chalmers University of Technology, Gothenburg, Sweden
             counters.append(t.get_counter())
         print('Threads terminated')
         print(sum(counters), 'extensions analyzed')
+        if exception is not None and int != 0:
+            raise exception
         sys.exit(int)
 
     try:
@@ -232,7 +171,7 @@ Chalmers University of Technology, Gothenburg, Sweden
         count_extensions = 0
         if extension is not None:
             thread_queue.put(extension)
-            count_extensions += 1
+            count_extensions = 1
         else:
             for extensions_path in extensions_paths:
                 # for each dir in extensions_path
@@ -256,7 +195,6 @@ Chalmers University of Technology, Gothenburg, Sweden
         print('Waiting for threads to finish...')
 
         # wait for all threads to finish or if the main thread is terminated, if main thread is terminated, terminate all threads
-
         thread_queue.join()
 
         # terminate all threads
