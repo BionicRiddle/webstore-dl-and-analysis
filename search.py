@@ -14,6 +14,7 @@ import threading
 import queue
 import random
 from colorama import Fore, Back, Style
+import zipfile
 
 # Environment variables
 PRETTY_OUTPUT       = os.getenv('PRETTY_OUTPUT'     , False)
@@ -21,13 +22,78 @@ RUN_ALL_VERSIONS    = os.getenv('RUN_ALL_VERSIONS'  , False)
 DATE_FORMAT         = os.getenv('DATE_FORMAT'       , "%Y-%m-%d_%H:%M:%S")
 NUM_THREADS         = os.getenv('NUM_THREADS'       , 1)
 
+# File locks
+unknown_file_ext_lock = threading.Lock()
+failed_lock = threading.Lock()
+failed_run_lock = threading.Lock()
+
+FILE_EXTENSIONS_SKIP = ["JPG", "PNG", "ICO", "GIF", "SVG", "TTF", "WOFF", "WOFF2", "EOT", "MD", "DS_STORE"]
+FILE_EXTENSIONS_TEXT = ["JS", "CSS", "HTML", "JSON", "TXT", "XML", "YML", "TS", "CFG", "CONF"]
+
 # Create queue for threads
 thread_queue = queue.Queue()
+
+def analyze_extension(extension):
+    manifest = read_manifest(self, extension)
+    #simulate_work(extension) # TODO: Remove
+    
+    manifest_version = manifest['manifest_version']
+
+    # of no permissions skip
+    if 'permissions' not in manifest:
+        return
+    
+    # if no host permissions skip
+    if 'host_permissions' not in manifest:
+        return
+
+
+def failed_extension(crx_path, reason=""):
+    with failed_lock:
+        with open('failed.txt', 'a') as f:
+            f.write(crx_path + '\t' + reason + '\n')
+
+# TODO: Dynamic analysis stuff
+def failed_run(crx_path):
+    with failed_run_lock:
+        #TODO: write to file
+        print('Failed to run extension %s' % crx_path)
+
+def unknown_file_extension(crx_paths):
+    with unknown_file_ext_lock:
+        with open('unknown-ext.txt', 'a') as f:
+            for crx_path in crx_paths:
+                ext = crx_path.split('.')[-1] if '.' in crx_path else 'NO_EXT'
+                out = '%s\t%s' % (ext, crx_path)
+                f.write(out + '\n')
 
 def simulate_work(extension):
     time.sleep(random.uniform(0.1, 1))
     print(Style.DIM + 'Analyzed extension %s' % extension)
     print(Style.RESET_ALL, end='')
+
+def read_manifest(self, crx_path):
+    # using zipfile, read data manifest.json
+    # return json
+    with zipfile.ZipFile(crx_path, 'r') as zip_ref:
+        try:
+            manifest = json.loads(zip_ref.read('manifest.json'))
+        except:
+            failed_extension(crx_path)
+            return
+        return manifest
+
+def extract_extension(self, crx_path):
+    # using zipfile, extract to tmp dir
+    # return path to tmp dir
+    with zipfile.ZipFile(crx_path, 'r') as zip_ref:
+        tmp_path = tempfile.mkdtemp()
+        try:
+            zip_ref.extractall(tmp_path)
+        except:
+            failed_extension(crx_path)
+            return
+        return tmp_path
 
 # Worker Thread
 class WorkerThread(threading.Thread):
@@ -47,11 +113,13 @@ class WorkerThread(threading.Thread):
             except queue.Empty as e:
                 print(e)
                 break
-            #analyze(extension)
-            simulate_work(extension)
+            analyze_extension(extension)
             self.counter += 1
             self.queue.task_done()
         print('Thread %d terminated' % self.thread_id)
+
+    def get_thread_id(self):
+        return self.thread_id
 
     def get_counter(self):
         return self.counter        
@@ -91,8 +159,6 @@ if __name__ == "__main__":
                     extension = args[args.index(arg)+1]
                     args.remove(arg)
                     args.remove(extension)
-                    print('Not implemented yet')
-                    exit(1)
                 if arg in ['-h', '--help']:
                     # I hate this
                     print('''
@@ -132,11 +198,16 @@ Chalmers University of Technology, Gothenburg, Sweden
     )
 
     # Get path to extensions
-    extensions_paths = [args[-1]] if len(args) > 1 else ['ext/'] # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    for extensions_path in extensions_paths:
-        if not os.path.isdir(extensions_path):
-            print('Invalid path to extensions')
-            exit(1)
+    extensions_paths = []
+
+    if extension is None:
+        extensions_paths = [args[-1]] if len(args) > 1 else ['ext/'] # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        for extensions_path in extensions_paths:
+            if not os.path.isdir(extensions_path):
+                print('Invalid path to extensions')
+                sys.exit(1)
+    else:
+        NUM_THREADS = 1
 
     # Spawn and start threads
     threads = []
@@ -159,25 +230,27 @@ Chalmers University of Technology, Gothenburg, Sweden
     try:
         # Scan and add extensions to thread_queue
         count_extensions = 0
-        extensions = []
-        for extensions_path in extensions_paths:
-            # for each dir in extensions_path
-            for dir in os.listdir(extensions_path):
-                versions = sorted([d for d in os.listdir(extensions_path + dir) if d[-4:] == ".crx"])
-                if not versions:
-                    # Empty dir
-                    print("[+] Error (get_tmp_path) in {}: {}".format(dir, 'OK') ) # TODO: Check if output format is important
-                    continue
+        if extension is not None:
+            thread_queue.put(extension)
+            count_extensions += 1
+        else:
+            for extensions_path in extensions_paths:
+                # for each dir in extensions_path
+                for dir in os.listdir(extensions_path):
+                    versions = sorted([d for d in os.listdir(extensions_path + dir) if d[-4:] == ".crx"])
+                    if not versions:
+                        # Empty dir
+                        print("[+] Error (get_tmp_path) in {}: {}".format(dir, 'OK') ) # TODO: Check if output format is important
+                        continue
 
-                if RUN_ALL_VERSIONS:
-                    for version in versions:
-                        thread_queue.put(extensions_path + dir + '/' + version)
+                    if RUN_ALL_VERSIONS:
+                        for version in versions:
+                            thread_queue.put(extensions_path + dir + '/' + version)
+                            count_extensions += 1
+                    else:
+                        thread_queue.put(extensions_path + dir + '/' + versions[-1])
                         count_extensions += 1
-                else:
-                    thread_queue.put(extensions_path + dir + '/' + versions[-1])
-                    count_extensions += 1
-
-        print('Found %d extensions' % count_extensions)
+            print('Found %d extensions' % count_extensions)
 
         # Wait for all threads to finish
         print('Waiting for threads to finish...')
@@ -192,7 +265,7 @@ Chalmers University of Technology, Gothenburg, Sweden
     except KeyboardInterrupt:
         print()
         print('Keyboard interrupt detected - terminating threads')
-        exit(0)
+
     exit(0)
 
     
