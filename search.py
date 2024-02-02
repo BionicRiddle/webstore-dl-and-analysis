@@ -14,6 +14,8 @@ import threading
 import queue
 import random
 from analyze import analyze_extension
+from colorama import Fore, Back, Style
+
 
 # Environment variables
 PRETTY_OUTPUT       = os.getenv('PRETTY_OUTPUT'     , False)
@@ -26,9 +28,7 @@ thread_queue = queue.Queue()
 
 def simulate_work(extension):
     time.sleep(random.uniform(0.1, 1))
-    print(Style.DIM + 'Analyzed extension %s' % extension)
-    print(Style.RESET_ALL, end='')
-
+    print(Style.DIM + ('Analyzed extension %s' % extension) + Style.RESET_ALL)
 
 # Worker Thread
 class WorkerThread(threading.Thread):
@@ -47,13 +47,12 @@ class WorkerThread(threading.Thread):
             try:
                 extension = self.queue.get(timeout=5)
             except queue.Empty as e:
-                print(e)
                 break
-            analyze_extension(extension)
-            #simulate_work(extension)
+            #analyze_extension(extension)
+            simulate_work(extension)
             self.counter += 1
             self.queue.task_done()
-        print('Thread %d terminated' % self.thread_id)
+        print(Fore.YELLOW + 'Thread %d terminated' % self.thread_id + Style.RESET_ALL)
 
     def get_thread_id(self):
         return self.thread_id
@@ -117,11 +116,17 @@ DATE_FORMAT: %Y-%m-%d_%H:%M:%S
 NUM_THREADS: 1
                     ''')
                     exit(0)
-        NUM_THREADS = int(NUM_THREADS)
+                try:
+                    NUM_THREADS = int(NUM_THREADS)
+                except:
+                    raise Exception("Invalid number of threads: " + NUM_THREADS)
+
+        for arg in args:
+            if arg[0] == '-':
+                raise Exception("Invalid argument: " + arg)
 
     except Exception as e:
-        print('Invalid arguments')
-        print(e)
+        print(Fore.RED + str(e) + Style.RESET_ALL)
         exit(1)
     
     # I hate this too
@@ -141,7 +146,7 @@ Chalmers University of Technology, Gothenburg, Sweden
         extensions_paths = [args[-1]] if len(args) > 1 else ['ext/']
         for extensions_path in extensions_paths:
             if not os.path.isdir(extensions_path):
-                print('Invalid path to extensions')
+                print(Fore.RED + 'Invalid path to extensions' + Style.RESET_ALL)
                 sys.exit(1)
     else:
         NUM_THREADS = 1
@@ -159,8 +164,12 @@ Chalmers University of Technology, Gothenburg, Sweden
             t.stop()
         for t in threads:
             t.join()
-            counters.append(t.get_counter())
+            try:
+                counters.append(t.get_counter())
+            except:
+                print(Fore.RED + ('Could not get counter from crashed thread %d' % t.get_thread_id() ) + Style.RESET_ALL)
         print('Threads terminated')
+        print()
         print(sum(counters), 'extensions analyzed')
         if exception is not None and int != 0:
             raise exception
