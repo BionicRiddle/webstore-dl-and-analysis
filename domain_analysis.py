@@ -3,27 +3,32 @@ import dns.resolver
 import sys
 import requests
 import time
+import json
+from time import sleep
 
 DOMAIN_API3 = "https://api.domainsdb.info/v1/domains/search?domain="
 DOMAIN_API2 = "https://www.godaddy.com/en-uk/domainsearch/find?domainToCheck="
 
 # OTE
-DOMAIN_API = "https://api.ote-godaddy.com/v1/domains/available?domain="
-API_KEY = "3mM44UdBYKmCkF_4dCRZpxNenyJ9HnayATmDt"
-API_SECRET = "FPvVjnyUCs2xtemxtHpu19"
+# DOMAIN_API = "https://api.ote-godaddy.com/v1/domains/available?domain="
+# API_KEY = "3mM44UdBYKmCkF_4dCRZpxNenyJ9HnayATmDt"
+# API_SECRET = "FPvVjnyUCs2xtemxtHpu19"
 
 # OTE
-#DOMAIN_API = "https://api.godaddy.com/v1/domains/available?domain="
-#API_KEY = "3mM44UdBYKmCkF_4dCRZpxNenyJ9HnayATmDt"
-#API_SECRET = "FPvVjnyUCs2xtemxtHpu19"
+DOMAIN_API = "https://api.godaddy.com/v1/domains/available?domain="
+API_KEY = "h1JgSaN2VmpJ_TTiof91Kw8iqsSz67S8kRq"
+API_SECRET = "W9MoHC9NakTKG4ZdQJkLV1"
 
+delay = 0.0
 
 def domain_api(domain):
     url = DOMAIN_API + domain
+    global delay
 
     headers = {
         "Authorization": "sso-key " + API_KEY + ":" + API_SECRET
     }
+    sleep(1 + delay)
 
     time_start = time.time()
     response = requests.get(url, headers=headers)
@@ -31,13 +36,28 @@ def domain_api(domain):
     #print(Fore.YELLOW + 'API call took %f seconds' % (time_end - time_start) + Style.RESET_ALL)
     json = response.json()
     #print(json)
-    
-    if "code" in json and json['code'] == 'UNSUPPORTED_TLD':
+
+    if (response.status_code == 429):
+        print(Fore.RED + 'Rate limit exceeded' + Style.RESET_ALL)
+        delay += 0.2
+        return
+
+    if (response.status_code == 422):
         tld = domain.split('.')[-1].upper()
         print(Fore.RED + 'Domain TLD ".%s" is not supported (%s)' % (tld, domain) + Style.RESET_ALL)
         return
+
+    if (response.status_code != 200):
+        print(Fore.RED + 'Error code: %s' % response.status_code + Style.RESET_ALL)
+        print(json)
+        delay = delay/2
+        return
+
     if "available" in json and json['available'] == True:
         print(Fore.GREEN + 'Domain %s is available' % domain + Style.RESET_ALL)
+        # append to fiel hit.txt
+        with open("hit.txt", "a") as file:
+            file.write(domain + "\n")
     elif "available" in json and json['available'] == False:
         #print(Fore.RED + 'Domain %s is not available' % domain + Style.RESET_ALL)
         pass
@@ -47,7 +67,8 @@ def domain_api(domain):
 def domain_analysis(domian) -> bool:
     # If domain is full URL, extract domain
     if domian.startswith('http'):
-        domian = domian.split('/')[2]
+        domian = '.'.join(domian.split('/')[2].split('.')[-2:])
+
     #print(Fore.YELLOW + 'Analyzing domain: %s' % domian + Style.RESET_ALL)
     
     domain_api(domian)
@@ -91,15 +112,19 @@ class DummyObject:
 
 if __name__ == "__main__":
 
-    if len(sys.argv) < 2:
-        print(Fore.RED + 'Usage: python3 domain_analysis.py <domain>' + Style.RESET_ALL)
-        sys.exit(1)
-    domian = sys.argv[1]
+    url_file = "urlList"
 
-    # create dummy object
-    dummy = DummyObject()
+    # read file and parse json
+    with open(url_file, 'r') as file:
+        data = file.read().replace('\n', '')
+        
+        json = json.loads(data)
 
-    domain_analysis(domian)
+        for key in json:
+            # create dummy object
+            dummy = DummyObject()
+
+            domain_analysis(key)
 
 
     
