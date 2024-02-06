@@ -337,9 +337,11 @@ def analyze(extensions_path, single_extension=None):
                     try:
                         shutil.rmtree(dirpath)
                     except:
+                        pass
                         #print("Error could not delete tmp dir")
 
         else:
+            pass
             #print("[+] Error. No such file or dir: {}".format(extension))
     
     #print("Analyze all data:")
