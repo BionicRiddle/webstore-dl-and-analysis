@@ -45,7 +45,7 @@ def get_tmp_path(version, extension_path, dirpath=""):
             zip_ref.extractall(dirpath + '/' + version)
             zip_ref.close()
         except Exception as e:
-            print("[+] Error (get_tmp_path) in {}: {}".format(extension_path, 'OK') )
+            #print("[+] Error (get_tmp_path) in {}: {}".format(extension_path, 'OK') )
         finally:
             path = dirpath + '/' + version
             return (dirpath, path)
@@ -111,7 +111,7 @@ def getActions(data, extension_path, urlPattern):
     return actionUrlMap
 
 def analyze_data(path):
-    print("Analyzing data: ")
+    #print("Analyzing data: ")
 
     #Keeps track of how many times the urls are encountered
     commonUrls = defaultdict(int)
@@ -151,7 +151,7 @@ def analyze_data(path):
                     for regex in regexs:
                         matches = re.findall(regex, data.lower())
                         for word in matches:
-                            print("---- Hit! Found ", word, " in ", dirpath+"/"+filename)
+                            #print("---- Hit! Found ", word, " in ", dirpath+"/"+filename)
 
                             pos = data.lower().find(word.lower())
                             chunk = data[max(0,pos-100):pos+100]
@@ -163,7 +163,7 @@ def analyze_data(path):
                 for word in keywords:
                     if word.lower() in data.lower():
 
-                        print("---- Hit! Found ", word, " in ", dirpath+"/"+filename)
+                        #print("---- Hit! Found ", word, " in ", dirpath+"/"+filename)
 
                         # Bug: Thinks https://... is a url, look into later - E.x, https://a is considered a link (pattern 1)
                         # Bug: Misses sites whic start with "www" (as far as is known) - Seems to be fixed by combining pattern2 with pattern1
@@ -207,7 +207,7 @@ def analyze_data(path):
                         #hits.append( [word + ':  ' + chunk, dirpath + "/" + filename] )
                         
 
-                        print("--------------------------------------------------------\n")
+                        #print("--------------------------------------------------------\n")
             else:
                 # ignore common files ectension "css png jpg"
                 if extension in ["css", "png", "jpg", "ico", "gif", "svg", "ttf", "woff", "woff2", "eot", "html", "txt", "md", "DS_Store"]:
@@ -216,13 +216,13 @@ def analyze_data(path):
                 unknown_ext.write(extension + "\t| " + dirpath + os.sep + filename + "\n")
         unknown_ext.close()
 
-    print("Return actions: " + str(actions))
+    #print("Return actions: " + str(actions))
     return hits, commonUrls, actionsList, dirpath + "/" + filename, urlList
 
 
 
 def analyze(extensions_path, single_extension=None):
-    print("Analyze function Start:")
+    #print("Analyze function Start:")
 
     #Keeps track of urls, associated action and the file/extension they reside in
     #UrlList = defaultdict(list)
@@ -269,7 +269,7 @@ def analyze(extensions_path, single_extension=None):
             # ONLY RUN LATEST VERSION
             if (not RUN_ALL_VERSIONS):
                 #print("Warning! Only running latest version!")
-                print()
+                #print()
                 versions = [versions[-1]]
     
             """"""
@@ -302,12 +302,12 @@ def analyze(extensions_path, single_extension=None):
                         for url in urlAndExtensions:
                             urlList[url].append(urlAndExtensions[url])
 
-                        print("Returned actions: ")
+                        #print("Returned actions: ")
                         #print(str(actionsList))
                         for action in actions:
                             #actionsList[action].append(actions[action])
-                            print("Action: " + str(action))
-                            print("actions[action]: " + str(actions[action][0]))
+                            #print("Action: " + str(action))
+                            #print("actions[action]: " + str(actions[action][0]))
                             actionsList[action].append(actions[action])
                         
                         #print("ActionList123")
@@ -330,18 +330,18 @@ def analyze(extensions_path, single_extension=None):
                             #print(extension, hits)
 
                     except Exception as e:
-                        print("Error on ", extension, ": ", str(e))
+                        #print("Error on ", extension, ": ", str(e))
                         input("(Paused on error) Enter to continue...")
 
                     try:
                         shutil.rmtree(dirpath)
                     except:
-                        print("Error could not delete tmp dir")
+                        #print("Error could not delete tmp dir")
 
         else:
-            print("[+] Error. No such file or dir: {}".format(extension))
+            #print("[+] Error. No such file or dir: {}".format(extension))
     
-    print("Analyze all data:")
+    #print("Analyze all data:")
     displayData(commonUrls, actionsList, urlList)
 
 def displayData(commonUrls, actionsList, urlList):
