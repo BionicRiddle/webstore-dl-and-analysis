@@ -61,85 +61,62 @@ def getUrl(data, patterns):
         return 'No url(s) found'
 
 def getUrls(data, patterns):
-    #Try different patterns (Maybe 3 or so)
+    # - Try different patterns (Maybe 3 or so)
     # - Investigate False positives vs False Negatives
     # - Fix so it detects when link simply starts with "www" and not "http" or "https"
 
-
+    #Combination of different patterns, compiled together
     pattern = re.compile(r'\b(' + '|'.join(patterns) + r')\b')
-    test = re.findall(pattern, data.lower())
 
+    #Look for all matches to the pattern in the specified file
+    matches = re.findall(pattern, data.lower())
 
-    uniqueHits = set()
+    #Avoid dupliactes
+    urls = set()
 
-
-    #print("")
-    #print('Starting url fetch:')
-    #print("Pre-processed result: " + str(test))
-
-    if len(test) > 0:
-        #print("Original:")
-        for link in test:
-            uniqueHits.add(link)
-            #print(str(link))
-
-        #print("")
-        print("Set:")
-        for unique in uniqueHits:
-            print(str(unique))
-
-        return uniqueHits
+    #Check if any actual matches were found
+    if len(matches) > 0:
+        for link in matches:
+            urls.add(link)
+        return urls
     else:
-        #print("Data: " + data.lower())
+        #No url's were found
         return 'No url(s) found'
 
 def getActions(data, extension_path, urlPattern):
     #Fix bugs (Check return types from getUrl, see if it messes up the function)
     # - Bug is that it reads strings as actions, should not do that
 
-    print("Action stuff:")
-
+    #Mapping actions (see pattern dict below) to a url and the extension file it resides in
     actionUrlMap = defaultdict(list)
 
+    #Actions of interest - To be expanded
     pattern = ['fetch', 'post', 'get', 'href', 'xhttp']
 
+    #Compile the pattern(s) (fetch, post, etc are technically individual patterns - need to combine them)
     regex = re.compile(r'\b(' + '|'.join(pattern) + r')\b')
 
+    #Looks up the index of each match of a pattern
     actions = [(m.start(0), m.end(0)) for m in regex.finditer(data.lower())]
     
-    #print("Actions: " + str(actions[0]))'
-    #print("extension_path: " + extension_path)
-
-    #print("Full actions: " + str(actions))
+    #Loop through each action
     for action in actions:
-        #print("Action: " + data[action[0]:action[1]] + ": " "Extension Path: " + extension_path)
-        #print("Action surroundings: " + str(data[action[0]:action[1]+40]))
-
-        #Danger with getUrls is that, if multiple url's exist in the extracted substring it will return both
-        #Instead we use simmilar function, getUrl
-        #print("Url result: " + str(getUrl(data[action[0]:action[1]+40], urlPattern)))
+        #Action runs from indexes action[0] -> action[1]
+        #Check ahead of the action to see if a url can be found after it, using the getUrl() function
         if str(getUrl(data[action[0]:action[1]+40], urlPattern)) != 'No url(s) found':
-            actionUrlMap[data[action[0]:action[1]]] = getUrl(data[action[0]:action[1]+50], urlPattern)
-        
-        #print("-------------------------")
-    
-    for entry in actionUrlMap:
-        print("Action url: " + str(entry) + str(actionUrlMap[entry]))
 
-    print("Action url map: " + str(actionUrlMap))
+            #If a url is found, store it in association with the action
+            actionUrlMap[data[action[0]:action[1]]] = getUrl(data[action[0]:action[1]+50], urlPattern)
+
     return actionUrlMap
 
-
-
 def analyze_data(path):
-
-    #print("Analyzing data: ")
+    print("Analyzing data: ")
 
     #Keeps track of how many times the urls are encountered
     commonUrls = defaultdict(int)
 
-    #Keeps track of all urls and the extension they belonged to
-    #Urls = defaultdict(str)
+    #Keeps track of all urls and the extension(s) and file(s) they're found in
     urlList = defaultdict(list)
 
     #print("-- analyze_data(",path,")")
@@ -188,82 +165,45 @@ def analyze_data(path):
 
                         print("---- Hit! Found ", word, " in ", dirpath+"/"+filename)
 
-                        #Bug: Thinks https://... is a url, look into later - E.x, https://a is considered a link (pattern 1)
-                        #Bug: Misses sites whic start with "www" (as far as is known) - Seems to be fixed by combining pattern2 with pattern1
-                        #Otherwise seems to be working just fine.
-
-                        #getActions(data, dirpath+"/"+filename)
+                        # Bug: Thinks https://... is a url, look into later - E.x, https://a is considered a link (pattern 1)
+                        # Bug: Misses sites whic start with "www" (as far as is known) - Seems to be fixed by combining pattern2 with pattern1
+                        # Otherwise seems to be working just fine.
                         
-                        #Starting with https or http
+                        # Starting with https or http
                         httpPattern = 'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+' 
 
-                        #Not starting with http or https (e.x, website.com, www.website.com, pizzabakery.net etc)
-                        #Not detecting anything it seems, potentially due to not being any "www.example.com" only links present, only ones starting with https / http, need to test
+                        # Not starting with http or https (e.x, website.com, www.website.com, pizzabakery.net etc)
+                        # Not detecting anything it seems, potentially due to not being any "www.example.com" only links present, only ones starting with https / http, need to test
                         wwwPattern = "^[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$"
 
-                        #What an absolute monstrocity - Not really working
-                        #pattern3 = "[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
 
                         patterns = [httpPattern, wwwPattern]
 
-                        #Actions and urls
+                        # Actions and any associated url's
                         actions = getActions(data, dirpath + "/" + filename, patterns)
 
-                        #print("Returned actions: ")
-                        #for action in actions:
-                            #print("Action b: " + str(action) + str(actions[action]))
-
-                        
+                        # Retrieves all url's from the current file (data)
+                        # Chunk is old name, perhaps rewrite
                         chunk = getUrls(data, patterns)
 
-                        print("\n")
-
-                        #Testing
-                        print("Chunk: " + str(chunk))
-
-                        if chunk != 'No url(s) found':
+                        # Ensure any actual url's were found
+                        if chunk != 'No url(s) found'
+                            # Loop through each url found
                             for url in chunk:
+                                # Simply demonstrates the amount of times a url is encountered, not other information is stored
                                 commonUrls[url] += 1
+
+                                # Provides information about where the url is found (extension(s) and filenames(s))
                                 urlList[url].append(dirpath + "/" + filename)
                         
-
                         for action in actions:
-                            print("Action: " + str(action) + " Appending: " + str(actions[action]))
                             if len(action) > 0 and actions[action] != 'No url(s) found':
                                 tmpDict = actions[action], dirpath + "/" + filename
                                 actionsList[action].append(tmpDict)
-                            #actionUrlExtensionList[str(actions[action])].append(dirpath + "/" + filename)
-    
-
-                            #actionsList[action].append(str(actions[action]))
-                            #actionsList[action].append(actionUrlExtensionList[str(actions[action])])
-                            #actionsList[action].append(actionUrlExtensionList[str(actions[action])])
-
-                            #actionsList[action].append(actions[action])
-
-                        print("New stuff")
-                        for entry in actionUrlExtensionList:
-                            print("Entry: " + str(entry) + ": " + str(actionUrlExtensionList[entry]))
-
-                        print("What have I done")
-                        for entry in actionsList:
-                            print(str(entry))
-
-
-                        #if len(actionsList) > 0:
-                            #print("The action list:")
-                            #print(str(actionsList))
                         
                         dict(urlList)
-                        #dict(actionsList)
 
-                        #for action in actionsList:
-                            #actionsList[action].append(dirpath + "/" + filename)
-                            #print(action + ": " + str(actionsList[action]))
-                        
-                        #print("ActionList:")
-                        #print(str(actionsList))
-                            
+                        ### Legacy, maybe remove, will look into further on
                         #hits.append( [word + ':  ' + chunk, dirpath + "/" + filename] )
                         
 
@@ -517,5 +457,4 @@ if __name__ == "__main__":
 
     extensions_path = 'extensions/'
     analyze(extensions_path, extension)
-    #displayData()
     
