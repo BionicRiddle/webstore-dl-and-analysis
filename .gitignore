@@ -174,3 +174,10 @@ unknown-ext.txt
 
 # Ignore hit files
 hits_*.txt
+hit.txt
+hits.txt
+
+urlList
+commonUrls
+actionsLists
+ext/
