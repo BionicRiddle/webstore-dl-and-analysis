@@ -187,7 +187,7 @@ def analyze_data(path):
                         chunk = getUrls(data, patterns)
 
                         # Ensure any actual url's were found
-                        if chunk != 'No url(s) found'
+                        if chunk != 'No url(s) found':
                             # Loop through each url found
                             for url in chunk:
                                 # Simply demonstrates the amount of times a url is encountered, not other information is stored
