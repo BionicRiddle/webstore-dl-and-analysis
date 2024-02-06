@@ -7,11 +7,12 @@ import random
 #from keywords_search import keyword_analysis_file
 import os
 import time
+import shutil
 
 # Extension class
 
 class Extension:
-    def __init__(self, crx_path):
+    def __init__(self, crx_path: str) -> None:
         self.crx_path = crx_path
         self.manifest = read_manifest(crx_path)
         self.extracted_path = ""
@@ -19,37 +20,44 @@ class Extension:
         self.dynamic_analysis = {}
         self.domain_analysis = {}
 
-    def set_extracted_path(self, extracted_path):
+    def clean_up(self) -> None:
+        if self.extracted_path:
+            shutil.rmtree(self.extracted_path)
+            print(Fore.YELLOW + 'Cleaned up %s' % self.extracted_path + Style.RESET_ALL)
+        else:
+            raise Exception("No extracted path to clean up")
+
+    def set_extracted_path(self, extracted_path: str) -> None:
         self.extracted_path = extracted_path
     
-    def set_static_analysis(self, static_analysis):
+    def set_static_analysis(self, static_analysis) -> None:
         self.static_analysis = static_analysis
     
-    def set_dynamic_analysis(self, dynamic_analysis):
+    def set_dynamic_analysis(self, dynamic_analysis) -> None:
         self.dynamic_analysis = dynamic_analysis
 
-    def set_domain_analysis(self, domain_analysis):
+    def set_domain_analysis(self, domain_analysis) -> None:
         self.domain_analysis = domain_analysis
     
-    def get_crx_path(self):
+    def get_crx_path(self) -> str:
         return self.crx_path
     
-    def get_manifest(self):
+    def get_manifest(self) -> dict:
         return self.manifest
     
-    def get_extracted_path(self):
+    def get_extracted_path(self) -> str:
         return self.extracted_path
     
-    def get_static_analysis(self):
+    def get_static_analysis(self) -> dict:
         return self.static_analysis
     
-    def get_dynamic_analysis(self):
+    def get_dynamic_analysis(self) -> dict:
         return self.dynamic_analysis
     
-    def get_domain_analysis(self):
+    def get_domain_analysis(self) -> dict:
         return self.domain_analysis
     
-    def __str__(self):
+    def __str__(self) -> str:
         return self.crx_path
 
 # File locks
@@ -60,18 +68,18 @@ failed_run_lock = threading.Lock()
 FILE_EXTENSIONS_SKIP = ["JPG", "PNG", "ICO", "GIF", "SVG", "TTF", "WOFF", "WOFF2", "EOT", "MD", "DS_STORE"]
 FILE_EXTENSIONS_TEXT = ["JS", "CSS", "HTML", "JSON", "TXT", "XML", "YML", "TS", "CFG", "CONF"]
 
-def failed_extension(crx_path, reason=""):
+def failed_extension(crx_path: str, reason: str = "") -> None:
     with failed_lock:
         with open('failed.txt', 'a') as f:
             f.write(crx_path + '\t' + reason + '\n')
 
 # TODO: Dynamic analysis stuff
-def failed_run(crx_path):
+def failed_run(crx_path: str) -> None:
     with failed_run_lock:
         #TODO: write to file
         print('Failed to run extension %s' % crx_path)
 
-def unknown_file_extension(crx_paths):
+def unknown_file_extension(crx_paths: list) -> None:
     with unknown_file_ext_lock:
         with open('unknown-ext.txt', 'a') as f:
             for crx_path in crx_paths:
@@ -79,7 +87,8 @@ def unknown_file_extension(crx_paths):
                 out = '%s\t%s' % (ext, crx_path)
                 f.write(out + '\n')
 
-def extract_extension(self, crx_path):
+
+def extract_extension(crx_path: str) -> str:
     # using zipfile, extract to tmp dir
     # return path to tmp dir
     with zipfile.ZipFile(crx_path, 'r') as zip_ref:
@@ -91,7 +100,7 @@ def extract_extension(self, crx_path):
             return
         return tmp_path
 
-def read_manifest(crx_path):
+def read_manifest(crx_path: str) -> dict:
     # using zipfile, read data manifest.json
     # return json
     with zipfile.ZipFile(crx_path, 'r') as zip_ref:
@@ -105,7 +114,7 @@ def read_manifest(crx_path):
 ## ------------------------------
 
 # Main function
-def analyze_extension(extension_path):
+def analyze_extension(extension_path: str) -> None:
     # create obj Extension
     extension = Extension(extension_path)
 
@@ -146,6 +155,7 @@ def analyze_extension(extension_path):
     # write results to file
 
     # cleanup
+    extension.clean_up()
 
     # do domain analysis
 

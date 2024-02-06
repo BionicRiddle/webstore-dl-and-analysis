@@ -48,8 +48,8 @@ class WorkerThread(threading.Thread):
                 extension = self.queue.get(timeout=5)
             except queue.Empty as e:
                 break
-            #analyze_extension(extension)
-            simulate_work(extension)
+            analyze_extension(extension)
+            #simulate_work(extension)
             self.counter += 1
             self.queue.task_done()
         print(Fore.YELLOW + 'Thread %d terminated' % self.thread_id + Style.RESET_ALL)
