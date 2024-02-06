@@ -45,6 +45,7 @@ def get_tmp_path(version, extension_path, dirpath=""):
             zip_ref.extractall(dirpath + '/' + version)
             zip_ref.close()
         except Exception as e:
+            pass
             #print("[+] Error (get_tmp_path) in {}: {}".format(extension_path, 'OK') )
         finally:
             path = dirpath + '/' + version
