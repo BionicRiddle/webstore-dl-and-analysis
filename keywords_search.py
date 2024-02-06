@@ -411,26 +411,33 @@ def displayData(commonUrls, actionsList, urlList):
     #Set how many links you want displayed:
     index_display = 10
 
-    print("-----Common Urls-----")
-    print(str(commonUrls))
-    print("\n")
+    #print("-----Common Urls-----")
+    #print(str(commonUrls))
+    #print("\n")
 
-    print("-----Action List-----")
-    print(str(actionsList))
-    print("\n")
+    #print("-----Action List-----")
+    #print(str(actionsList))
+    #print("\n")
 
-    print("-----Url List-----")
-    print(str(urlList))
-    print("\n")
+    #print("-----Url List-----")
+    #print(str(urlList))
+    #print("\n")
 
     json_commonUrls = json.dumps(commonUrls, indent=4)
     json_actionsList = json.dumps(actionsList, indent=4)
     json_urlList = json.dumps(urlList, indent=4)
 
-    with open("sample.json", "w") as outfile:
-        outfile.write(json_commonUrls)
-        outfile.write(json_actionsList)
-        outfile.write(json_urlList)
+    #with open("sample.json", "w") as outfile:
+
+    f1 = open("commonUrls", "w")
+    f2 = open("actionsLists", "w")
+    f3 = open("urlList", "w")
+
+    f1.write(json_commonUrls)
+    f2.write(json_actionsList)
+    f3.write(json_urlList)
+
+
 
     """
     print("Most common urls: ")
