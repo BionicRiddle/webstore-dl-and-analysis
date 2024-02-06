@@ -16,6 +16,11 @@ class Extension:
         self.crx_path = crx_path
         self.manifest = read_manifest(crx_path)
         self.extracted_path = ""
+        self.keyword_analysis = {
+            list_of_urls: [],
+            list_of_actions: [],
+            list_of_common_urls: []
+        }
         self.static_analysis = {}
         self.dynamic_analysis = {}
         self.domain_analysis = {}
@@ -56,6 +61,8 @@ class Extension:
     
     def get_domain_analysis(self) -> dict:
         return self.domain_analysis
+
+    def get_extracted_files(self) -> list:
     
     def __str__(self) -> str:
         return self.crx_path
@@ -134,6 +141,7 @@ def analyze_extension(extension_path: str) -> None:
     # Extract file
     extension.set_extracted_path(extract_extension(extension_path))
 
+    # --- Keyword search ---
     # keyword search, find all FILE_EXTENSIONS_TEXT in extracted files
     # if found, do keyword_analysis()
     if extension.get_extracted_path() is None:
@@ -148,16 +156,20 @@ def analyze_extension(extension_path: str) -> None:
                     return
                     keyword_analysis_file(os.path.join(root, file))
 
-    # static analysis
+    # --- Static analysis ---
 
-    # dynamic analysis
+    # --- Dynamic analysis ---
 
-    # write results to file
+    # --- Write to file ---
+    # write keyword search stuff to file
+    # write static analysis stuff to file
+    # write dynamic analysis stuff to file
 
-    # cleanup
+    # --- Clean up ---
     extension.clean_up()
 
     # do domain analysis
+    
 
 
 if __name__ == "__main__":
