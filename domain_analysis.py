@@ -5,73 +5,60 @@ import requests
 import time
 import json
 from time import sleep
+import tldextract
 
 DOMAIN_API3 = "https://api.domainsdb.info/v1/domains/search?domain="
 DOMAIN_API2 = "https://www.godaddy.com/en-uk/domainsearch/find?domainToCheck="
 
-# OTE
-# DOMAIN_API = "https://api.ote-godaddy.com/v1/domains/available?domain="
-# API_KEY = "3mM44UdBYKmCkF_4dCRZpxNenyJ9HnayATmDt"
-# API_SECRET = "FPvVjnyUCs2xtemxtHpu19"
+def godaddy_is_available(domain, max_retries=10):
+    DOMAIN_API = "https://api.godaddy.com/v1/domains/available?domain="
+    API_KEY = "h1JgSaN2VmpJ_TTiof91Kw8iqsSz67S8kRq"
+    API_SECRET = "W9MoHC9NakTKG4ZdQJkLV1"
+    
+    request_url = DOMAIN_API + domain
 
-# OTE
-DOMAIN_API = "https://api.godaddy.com/v1/domains/available?domain="
-API_KEY = "h1JgSaN2VmpJ_TTiof91Kw8iqsSz67S8kRq"
-API_SECRET = "W9MoHC9NakTKG4ZdQJkLV1"
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(request_url, headers = {
+                    "Authorization": "sso-key " + API_KEY + ":" + API_SECRET
+                })
+            
+            if response.status_code == 200:
+                try:
+                    json_response = response.json()
 
-delay = 0.0
+                    if "available" in json:
+                        return json['available']
+                    else:
+                        return "MISSING_AVAILABLE"
+                except ValueError:
+                    return "ERROR_IN_RESPONSE"
+            elif response.status_code == 429:
+                print(f"Rate limit exceeded. Retrying in 1 second (Attempt {attempt + 1}/{max_retries})")
+                time.sleep(1)
+            elif response.status_code == 422:
+                return "TLD_NOT_SUPPORTED"
+            else:
+                print(f"Unexpected code {response.status_code}. Retrying (Attempt {attempt + 1}/{max_retries})")
+                time.sleep(1)
+        except requests.RequestException as e:
+            print(f"Request failed with exception: {e}. Retrying (Attempt {attempt + 1}/{max_retries})")
+            time.sleep(1)
 
-def domain_api(domain):
-    url = DOMAIN_API + domain
-    global delay
+    raise Exception(f"Failed to get response after {max_retries} attempts")
 
-    headers = {
-        "Authorization": "sso-key " + API_KEY + ":" + API_SECRET
-    }
-    sleep(1 + delay)
 
-    time_start = time.time()
-    response = requests.get(url, headers=headers)
-    time_end = time.time()
-    #print(Fore.YELLOW + 'API call took %f seconds' % (time_end - time_start) + Style.RESET_ALL)
-    json = response.json()
-    #print(json)
-
-    if (response.status_code == 429):
-        print(Fore.RED + 'Rate limit exceeded' + Style.RESET_ALL)
-        delay += 0.2
-        return
-
-    if (response.status_code == 422):
-        tld = domain.split('.')[-1].upper()
-        print(Fore.RED + 'Domain TLD ".%s" is not supported (%s)' % (tld, domain) + Style.RESET_ALL)
-        return
-
-    if (response.status_code != 200):
-        print(Fore.RED + 'Error code: %s' % response.status_code + Style.RESET_ALL)
-        print(json)
-        delay = delay/2
-        return
-
-    if "available" in json and json['available'] == True:
-        print(Fore.GREEN + 'Domain %s is available' % domain + Style.RESET_ALL)
-        # append to fiel hit.txt
-        with open("hit.txt", "a") as file:
-            file.write(domain + "\n")
-    elif "available" in json and json['available'] == False:
-        #print(Fore.RED + 'Domain %s is not available' % domain + Style.RESET_ALL)
-        pass
-    else:
-        print(Fore.RED + 'Unknown response from API' + Style.RESET_ALL)
-
-def domain_analysis(domian) -> bool:
+def domain_analysis(url) -> bool:
     # If domain is full URL, extract domain
-    if domian.startswith('http'):
-        domian = '.'.join(domian.split('/')[2].split('.')[-2:])
+    domain = tldextract.extract(url)
 
     #print(Fore.YELLOW + 'Analyzing domain: %s' % domian + Style.RESET_ALL)
+
+    if (domain.suffix == ""):
+        print(Fore.RED + 'No suffix found for domain: %s' % domain.domain + Style.RESET_ALL)
+        return False
     
-    domain_api(domian)
+    domain_api(domain.domain + "." + domain.suffix)
     return True
 
     zone = {

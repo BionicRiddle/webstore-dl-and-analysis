@@ -6,7 +6,7 @@ class SubprocessHandler:
     def __init__(self, args):
         # Environment variables for the Node.js script
         NODE_PATH = os.environ.get("NODE_PATH", "node")
-        NODE_APP_PATH = os.environ.get("NODE_APP_PATH", './app.js')
+        NODE_APP_PATH = os.environ.get("NODE_APP_PATH", './node/app.js')
 
         # Define the command-line arguments for the Node.js script
         node_script_args = [NODE_PATH, NODE_APP_PATH]

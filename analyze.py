@@ -17,9 +17,9 @@ class Extension:
         self.manifest = read_manifest(crx_path)
         self.extracted_path = ""
         self.keyword_analysis = {
-            list_of_urls: [],
-            list_of_actions: [],
-            list_of_common_urls: []
+            "list_of_urls": [],
+            "list_of_actions": [],
+            "list_of_common_urls": []
         }
         self.static_analysis = {}
         self.dynamic_analysis = {}
@@ -63,6 +63,7 @@ class Extension:
         return self.domain_analysis
 
     def get_extracted_files(self) -> list:
+        pass
     
     def __str__(self) -> str:
         return self.crx_path
@@ -157,6 +158,7 @@ def analyze_extension(extension_path: str) -> None:
                     keyword_analysis_file(os.path.join(root, file))
 
     # --- Static analysis ---
+
 
     # --- Dynamic analysis ---
 

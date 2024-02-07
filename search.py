@@ -15,20 +15,11 @@ import queue
 import random
 from analyze import analyze_extension
 from colorama import Fore, Back, Style
-
-
-# Environment variables
-PRETTY_OUTPUT       = os.getenv('PRETTY_OUTPUT'     , False)
-RUN_ALL_VERSIONS    = os.getenv('RUN_ALL_VERSIONS'  , False)
-DATE_FORMAT         = os.getenv('DATE_FORMAT'       , "%Y-%m-%d_%H:%M:%S")
-NUM_THREADS         = os.getenv('NUM_THREADS'       , 1)
+import builtins
+from helpers import *
 
 # Create queue for threads
 thread_queue = queue.Queue()
-
-def simulate_work(extension):
-    time.sleep(random.uniform(0.1, 1))
-    print(Style.DIM + ('Analyzed extension %s' % extension) + Style.RESET_ALL)
 
 # Worker Thread
 class WorkerThread(threading.Thread):
@@ -79,14 +70,15 @@ if __name__ == "__main__":
                     NUM_THREADS = args[args.index(arg)+1]
                     args.remove(arg)
                     args.remove(NUM_THREADS)
+                if arg in ['-s', '--stfu']:
+                    STFU_MODE = True
+                    args.remove(arg)
                 if arg in ['-a', '--all']:
                     RUN_ALL_VERSIONS = True
                     args.remove(arg)
-                    args.remove(RUN_ALL_VERSIONS)
                 if arg in ['-p', '--pretty']:
                     PRETTY_OUTPUT = True
                     args.remove(arg)
-                    args.remove(PRETTY_OUTPUT)
                 if arg in ['-d', '--date']:
                     DATE_FORMAT = args[args.index(arg)+1]
                     args.remove(arg)
@@ -108,6 +100,7 @@ Optional arguments:
 -p, --pretty output: pretty print the output
 -d, --date format: date format for output file
 -e, --extension: run only one extension
+-s, --stfu: silent mode
 
 Optional environment variables:
 PRETTY_OUTPUT: True/False
