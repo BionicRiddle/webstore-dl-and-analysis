@@ -148,8 +148,9 @@ Chalmers University of Technology, Gothenburg, Sweden
         globals.NUM_THREADS = 1
 
     # Stuff to do before starting threads
-    # Get supported TLDs from GoDaddy
+    # Get supported TLDs
     globals.GODADDY_TLDS = godaddy_get_supported_tlds()
+    globals.DOMAINSDB_TLDS = domainsdb_get_supported_tlds()
 
     # Spawn and start threads
     threads = []

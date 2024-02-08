@@ -39,3 +39,17 @@ def godaddy_get_supported_tlds():
         tlds.append(tld['name'].upper())
 
     return tlds
+
+def domainsdb_get_supported_tlds():
+
+    DOMAIN_API = "https://api.domainsdb.info/v1/info/tld/"
+
+    response = requests.get(DOMAIN_API)
+
+    json_response = response.json()
+
+    tlds = []
+    for tld in json_response["includes"]:
+        tlds.append(tld.upper())
+
+    return tlds

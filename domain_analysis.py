@@ -33,7 +33,7 @@ def godaddy_is_available(domain, max_retries=10):
                     json_response = response.json()
 
                     if "available" in json_response:
-                        return "AVAILABLE" if json_response['available'] == True else "UNAVAILABLE"
+                        return json_response['available']
                     else:
                         raise Exception("Missing available key in response")
                 except ValueError:
@@ -54,7 +54,6 @@ def godaddy_is_available(domain, max_retries=10):
 
 def domainsdb_is_available(domain, max_retries=10):
     print(Style.DIM + 'Checking domain %s with DomainsDB' % domain + Style.RESET_ALL)
-    return "UNAVAILABLE"
     DOMAIN_API = "https://api.domainsdb.info/v1/domains/search?domain="
     request_url = DOMAIN_API + domain
 
@@ -71,12 +70,12 @@ def domainsdb_is_available(domain, max_retries=10):
                         print(json_response)
                         raise Exception("Stuff broke")
                 except ValueError:
-                    return "ERROR_IN_RESPONSE"
+                    raise Exception("Error in response")
             elif response.status_code == 429:
                 print(f"DomainsDB Rate limit exceeded. Retrying in 1 second (Attempt {attempt + 1}/{max_retries})")
                 time.sleep(1)
             elif response.status_code == 404:
-                return "AVAILABLE"
+                return True
             else:
                 print(f"Unexpected code {response.status_code}. Retrying (Attempt {attempt + 1}/{max_retries})")
                 time.sleep(1)
@@ -89,83 +88,63 @@ def domainsdb_is_available(domain, max_retries=10):
 
 # denna borde kanske inte returnera bool
 def domain_analysis(url) -> bool:
-
     # If domain is full URL, extract domain
     domain_parts = tldextract.extract(url)
 
-    #print(Fore.YELLOW + 'Analyzing domain: %s' % domain_parts + Style.RESET_ALL)
-
     if (domain_parts.suffix == ""):
-        #print(Fore.RED + 'No suffix found for domain: %s' % domain_parts.domain + Style.RESET_ALL)
-        return False
+        raise Exception("No suffix found for domain: %s" % domain_parts.domain)
 
-    result = ""
     domain = domain_parts.domain + "." + domain_parts.suffix
-    if domain in globals.checked_domains:
-        #print(Fore.RED + 'Domain %s already checked' % domain + Style.RESET_ALL)
-        return False
-
-    with globals.checked_domains_lock:
-        globals.checked_domains.add(domain)
-    # try:
-    #     if domain_parts.suffix.upper() in globals.GODADDY_TLDS:
-    #         result = godaddy_is_available(domain)
-    #     else:
-    #         result = domainsdb_is_available(domain)
-
-    #     match (result):
-    #         case "MISSING_AVAILABLE":
-    #             raise Exception("Missing available in response")
-    #         case "ERROR_IN_RESPONSE":
-    #             raise Exception("Error in response")
-    #         case "TLD_NOT_SUPPORTED":
-    #             raise Exception("TLD not supported")
-    #         case "AVAILABLE":
-    #             # Domain is not available for purchase
-    #             return True
-    #         case "UNAVAILABLE":
-    #             pass
-    #         case _:
-    #             raise Exception("Unknown result")
-
-    # except Exception as e:
-    #     print(Fore.RED + str(e) + Style.RESET_ALL)
-    #     raise e
-
-    # # If we get here, we could not determine if the domain is available
-
-    # return False
-
-    # # TODO: Add DNS analysis
 
     zone = {
-        "A":        [],
-        "AAAA":     [],
-        "MX":       [],
-        "NS":       [],
-        "CNAME":    []
+        "NS",
+        "A",
+        "AAAA",
+        "MX",
+        "CNAME",
+        "TXT",
+        "SRV"
     }
 
     for record_type in zone:
         try:
-            answers = dns.resolver.resolve(domain, record_type)
-            for rdata in answers:
-                zone[record_type].append(rdata.to_text())
+            # timout 5 seconds
+            resolver = dns.resolver.Resolver()
+            dnss = [random.choice(globals.DNS_SERVERS)]
+            print("using dns server: " + dnss[0])
+            resolver.nameservers = dnss
+            resolver.timeout = 5
+            print("Querying for " + domain + " with type " + record_type)
+            answers = resolver.query(qname=domain, rdtype=record_type, source=dnss)
+            if len(answers) != 0:
+                print(answers[0])
+                # got some records
+                return False
         except Exception as e:
-            #print(Fore.RED + str(e) + Style.RESET_ALL)
+            print(Fore.RED + str(e) + Style.RESET_ALL)
             continue
     
-    #print(Fore.GREEN + 'Zone for %s' % domain + Style.RESET_ALL)
-    for record_type in zone:
-        #print(Fore.GREEN + record_type + Style.RESET_ALL)
-        for record in zone[record_type]:
-            return False
-    return True
+    result = ""
+    if domain in globals.checked_domains:
+        return False
 
+    with globals.checked_domains_lock:
+        globals.checked_domains.add(domain)
+    try:
+        if domain_parts.suffix.upper() in globals.GODADDY_TLDS:
+            result = godaddy_is_available(domain)
+        elif domain_parts.suffix.upper() in globals.DOMAINSDB_TLDS:
+            result = domainsdb_is_available(domain)
+        else:
+            raise Exception("TLD not supported")
 
+    except Exception as e:
+        print(Fore.RED + str(e) + Style.RESET_ALL)
+        raise e
 
+    # If we get here, we could not determine if the domain is available
 
-
+    return False
 
 
 if __name__ == "__main__":
@@ -181,7 +160,8 @@ if __name__ == "__main__":
             }
 
     # This is normally done in search.py before creating threads
-    GODADDY_TLDS = godaddy_get_supported_tlds()
+    globals.GODADDY_TLDS = godaddy_get_supported_tlds()
+    globals.DOMAINSDB_TLDS = domainsdb_get_supported_tlds()
 
     url_file = "urlList"
 

@@ -80,9 +80,15 @@ class Extension:
 unknown_file_ext_lock = threading.Lock()
 failed_lock = threading.Lock()
 failed_run_lock = threading.Lock()
+domain_found_lock = threading.Lock()
 
 FILE_EXTENSIONS_SKIP = ["JPG", "PNG", "ICO", "GIF", "SVG", "TTF", "WOFF", "WOFF2", "EOT", "MD", "DS_STORE"]
 FILE_EXTENSIONS_TEXT = ["JS", "CSS", "HTML", "JSON", "TXT", "XML", "YML", "TS", "CFG", "CONF"]
+
+def domain_found(domain: str) -> None:
+    with domain_found_lock:
+        with open('found_domains.txt', 'a') as f:
+            f.write(domain + '\n')
 
 def failed_extension(crx_path: str, reason: str = "") -> None:
     with failed_lock:
@@ -206,12 +212,9 @@ def analyze_extension(extension_path: str) -> None:
             try:
                 if (domain_analysis(url)):
                     print(Fore.GREEN + 'Domain %s is available' % url + Style.RESET_ALL)
-
-                    #write to file NOT THREAD SAFE
-                    with open('available_domains.txt', 'a') as f:
-                        f.write(url + '\n')
+                    domain_found(url)
             except Exception as e:
-                print(Fore.RED + str(e) + Style.RESET_ALL)
+                failed_extension(extension_path, str(e))
                 continue
 
         
