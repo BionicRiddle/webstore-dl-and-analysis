@@ -16,6 +16,7 @@ import random
 from analyze import analyze_extension
 from colorama import Fore, Back, Style
 import builtins
+import globals
 from helpers import *
 
 # Create queue for threads
@@ -67,22 +68,22 @@ if __name__ == "__main__":
         if len(args) > 1:
             for arg in args:
                 if arg in ['-t', '--threads']:
-                    NUM_THREADS = args[args.index(arg)+1]
+                    helpers.NUM_THREADS = args[args.index(arg)+1]
                     args.remove(arg)
-                    args.remove(NUM_THREADS)
+                    args.remove(globals.NUM_THREADS)
                 if arg in ['-s', '--stfu']:
-                    STFU_MODE = True
+                    helpers.STFU_MODE = True
                     args.remove(arg)
                 if arg in ['-a', '--all']:
-                    RUN_ALL_VERSIONS = True
+                    helpers.RUN_ALL_VERSIONS = True
                     args.remove(arg)
                 if arg in ['-p', '--pretty']:
-                    PRETTY_OUTPUT = True
+                    helpers.PRETTY_OUTPUT = True
                     args.remove(arg)
                 if arg in ['-d', '--date']:
-                    DATE_FORMAT = args[args.index(arg)+1]
+                    helpers.DATE_FORMAT = args[args.index(arg)+1]
                     args.remove(arg)
-                    args.remove(DATE_FORMAT)
+                    args.remove(globals.DATE_FORMAT)
                 if arg in ['-e', '--extension']:
                     extension = args[args.index(arg)+1]
                     args.remove(arg)
@@ -110,9 +111,9 @@ NUM_THREADS: 1
                     ''')
                     exit(0)
                 try:
-                    NUM_THREADS = int(NUM_THREADS)
+                    helpers.NUM_THREADS = int(globals.NUM_THREADS)
                 except:
-                    raise Exception("Invalid number of threads: " + NUM_THREADS)
+                    raise Exception("Invalid number of threads: " + globals.NUM_THREADS)
 
         for arg in args:
             if arg[0] == '-':
@@ -142,15 +143,16 @@ Chalmers University of Technology, Gothenburg, Sweden
                 print(Fore.RED + 'Invalid path to extensions' + Style.RESET_ALL)
                 sys.exit(1)
     else:
-        NUM_THREADS = 1
+        globals.NUM_THREADS = 1
 
     # Stuff to do before starting threads
     # Get supported TLDs from GoDaddy
-    GODADDY_TLDS = godaddy_get_supported_tlds()
+    globals.GODADDY_TLDS = godaddy_get_supported_tlds()
+
 
     # Spawn and start threads
     threads = []
-    for i in range(NUM_THREADS):
+    for i in range(globals.NUM_THREADS):
         t = WorkerThread(thread_queue, i)
         t.start()
         threads.append(t)
@@ -188,7 +190,7 @@ Chalmers University of Technology, Gothenburg, Sweden
                         print("[+] Error (get_tmp_path) in {}: {}".format(dir, 'OK') ) # TODO: Check if output format is important
                         continue
 
-                    if RUN_ALL_VERSIONS:
+                    if globals.RUN_ALL_VERSIONS:
                         for version in versions:
                             thread_queue.put(extensions_path + dir + '/' + version)
                             count_extensions += 1

@@ -220,7 +220,84 @@ def analyze_data(path):
     #print("Return actions: " + str(actions))
     return hits, commonUrls, actionsList, dirpath + "/" + filename, urlList
 
+## --------------- 2 ---------------
+def analyze_data2(path):
+    dirpath = "NULL"
+    filename = "NULL"
+    commonUrls = defaultdict(int)
+    urlList = defaultdict(list)
 
+    (regexs, keywords) = ([], ["http"]) 
+    
+    # hits are the results
+    hits = []
+    
+    #read file into data
+    with open(path, encoding='utf-8', errors='ignore') as data:
+        data = data.read().lower()
+
+        if regexs:
+            for regex in regexs:
+                matches = re.findall(regex, data)
+                for word in matches:
+                    #print("---- Hit! Found ", word, " in ", dirpath+"/"+filename)
+
+                    pos = data.find(word)
+                    chunk = data[max(0,pos-100):pos+100]
+
+                    hits.append(chunk)
+
+        for word in keywords:
+            if word in data:
+
+                #print("---- Hit! Found ", word, " in ", dirpath+"/"+filename)
+
+                # Bug: Thinks https://... is a url, look into later - E.x, https://a is considered a link (pattern 1)
+                # Bug: Misses sites whic start with "www" (as far as is known) - Seems to be fixed by combining pattern2 with pattern1
+                # Otherwise seems to be working just fine.
+                
+                # Starting with https or http
+                httpPattern = 'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+' 
+
+                # Not starting with http or https (e.x, website.com, www.website.com, pizzabakery.net etc)
+                # Not detecting anything it seems, potentially due to not being any "www.example.com" only links present, only ones starting with https / http, need to test
+                wwwPattern = "^[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$"
+
+
+                patterns = [httpPattern, wwwPattern]
+
+                # Actions and any associated url's
+                actions = getActions(data, dirpath + "/" + filename, patterns)
+
+                # Retrieves all url's from the current file (data)
+                # Chunk is old name, perhaps rewrite
+                chunk = getUrls(data, patterns)
+
+                # Ensure any actual url's were found
+                if chunk != 'No url(s) found':
+                    # Loop through each url found
+                    for url in chunk:
+                        # Simply demonstrates the amount of times a url is encountered, not other information is stored
+                        commonUrls[url] += 1
+                        # Provides information about where the url is found (extension(s) and filenames(s))
+                        urlList[url].append(dirpath + "/" + filename)
+                        hits.append(chunk)
+                
+                for action in actions:
+                    if len(action) > 0 and actions[action] != 'No url(s) found':
+                        tmpDict = actions[action], dirpath + "/" + filename
+                        hits.append(actions[action])
+                
+
+                ### Legacy, maybe remove, will look into further on
+                #hits.append( [word + ':  ' + chunk, dirpath + "/" + filename] )
+                
+
+                #print("--------------------------------------------------------\n")
+    #print("Return actions: " + str(actions))
+    return hits
+
+## --------------- 2 ---------------
 
 def analyze(extensions_path, single_extension=None):
     #print("Analyze function Start:")

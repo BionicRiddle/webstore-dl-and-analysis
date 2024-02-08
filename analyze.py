@@ -4,10 +4,13 @@ import json
 import tempfile
 import threading
 import random
-#from keywords_search import keyword_analysis_file
+from keywords_search import analyze_data2
+from domain_analysis import domain_analysis
 import os
 import time
 import shutil
+import globals
+from helpers import *
 
 # Extension class
 
@@ -28,7 +31,7 @@ class Extension:
     def clean_up(self) -> None:
         if self.extracted_path:
             shutil.rmtree(self.extracted_path)
-            print(Fore.YELLOW + 'Cleaned up %s' % self.extracted_path + Style.RESET_ALL)
+            #print(Fore.YELLOW + 'Cleaned up %s' % self.extracted_path + Style.RESET_ALL)
         else:
             raise Exception("No extracted path to clean up")
 
@@ -61,9 +64,6 @@ class Extension:
     
     def get_dynamic_analysis(self) -> dict:
         return self.dynamic_analysis
-    
-    def get_domain_analysis(self) -> dict:
-        return self.domain_analysis
 
     def get_extracted_files(self) -> list:
         pass
@@ -132,7 +132,7 @@ def analyze_extension(extension_path: str) -> None:
     manifest = extension.get_manifest()
 
     manifest_version = manifest['manifest_version']
-    print(Fore.GREEN + 'Manifest version: %s' % manifest_version)
+    #print(Fore.GREEN + 'Manifest version: %s' % manifest_version)
 
     # of no permissions skip
     if 'permissions' not in manifest:
@@ -155,10 +155,13 @@ def analyze_extension(extension_path: str) -> None:
         # do keyword analysis
         for root, dirs, files in os.walk(extension.get_extracted_path()):
             for file in files:
-                if file.split('.')[-1] in FILE_EXTENSIONS_TEXT:
-                    print('Analyzing file %s' % os.path.join(root, file))
-                    return
-                    keyword_analysis_file(os.path.join(root, file))
+                if file.split('.')[-1].upper() in FILE_EXTENSIONS_TEXT:
+                    urls = analyze_data2(os.path.join(root, file))
+                    extension.set_keyword_analysis({
+                        "list_of_urls":         urls,
+                        "list_of_actions":      [],
+                        "list_of_common_urls":  []
+                    })
 
     # --- Static analysis ---
 
@@ -175,15 +178,21 @@ def analyze_extension(extension_path: str) -> None:
 
     # do domain analysis
 
-    for url in extension.get_domain_analysis()['list_of_urls']:
-        if (domain_analysis(url)):
-            print(Fore.GREEN + 'Domain %s is available' % url)
+    urls = extension.get_keyword_analysis()['list_of_urls']
 
-            #write to file NOT THREAD SAFE
-            with open('available_domains.txt', 'a') as f:
-                f.write(url + '\n')
+    for s_url in list(urls):
+        for url in s_url:
+            if len(url) == 0:
+                return
 
-    
+            if (domain_analysis(url)):
+                print(Fore.GREEN + 'Domain %s is available' % url + Style.RESET_ALL)
+
+                #write to file NOT THREAD SAFE
+                with open('available_domains.txt', 'a') as f:
+                    f.write(url + '\n')
+
+        
 
 
 if __name__ == "__main__":

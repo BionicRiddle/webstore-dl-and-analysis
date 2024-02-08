@@ -6,6 +6,7 @@ import time
 import json
 from time import sleep
 import tldextract
+import globals
 from helpers import *
 
 GODADDY_TLDS = []
@@ -17,7 +18,10 @@ def godaddy_is_available(domain, max_retries=10):
     
     request_url = DOMAIN_API + domain
 
+    RATE_PER_MINUTE = 60
+
     for attempt in range(max_retries):
+        sleep(60 / RATE_PER_MINUTE / globals.NUM_THREADS)
         try:
             response = requests.get(request_url, headers = {
                     "Authorization": "sso-key " + API_KEY + ":" + API_SECRET
@@ -83,10 +87,11 @@ def domainsdb_is_available(domain, max_retries=10):
 
 # denna borde kanske inte returnera bool
 def domain_analysis(url) -> bool:
+
     # If domain is full URL, extract domain
     domain_parts = tldextract.extract(url)
 
-    #print(Fore.YELLOW + 'Analyzing domain: %s' % domian + Style.RESET_ALL)
+    #print(Fore.YELLOW + 'Analyzing domain: %s' % domain_parts + Style.RESET_ALL)
 
     if (domain_parts.suffix == ""):
         print(Fore.RED + 'No suffix found for domain: %s' % domain_parts.domain + Style.RESET_ALL)
@@ -95,14 +100,13 @@ def domain_analysis(url) -> bool:
     result = ""
     domain = domain_parts.domain + "." + domain_parts.suffix
     try:
-        if domain_parts.suffix.upper() in GODADDY_TLDS:
-            print(Fore.YELLOW + 'Checking domain %s with GoDaddy' % domain + Style.RESET_ALL)
+        if domain_parts.suffix.upper() in globals.GODADDY_TLDS:
+            print(Style.DIM + 'Checking domain %s with GoDaddy' % domain + Style.RESET_ALL)
             result = godaddy_is_available(domain)
         else:
-            print(Fore.YELLOW + 'Checking domain %s with DomainsDB' % domain + Style.RESET_ALL)
+            print(Style.DIM + 'Checking domain %s with DomainsDB' % domain + Style.RESET_ALL)
+            exit()
             result = domainsdb_is_available(domain)
-
-        print(result)
 
         match (result):
             case "MISSING_AVAILABLE":
