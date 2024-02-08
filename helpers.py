@@ -4,6 +4,7 @@ import random
 import time
 import builtins
 from colorama import Fore, Back, Style
+import requests
 
 # Environment variables
 PRETTY_OUTPUT       = os.getenv('PRETTY_OUTPUT'     , False)
@@ -24,3 +25,23 @@ def print(*args, **kwargs):
 def exit(*args, **kwargs):
     builtins.print(Fore.RED + "THIS SHOULD NOT BE CALLED" + Style.RESET_ALL)
     sys.exit(*args, **kwargs)
+
+GODADDY_TLDS = []
+def godaddy_get_supported_tlds():
+    
+    API_KEY = "h1JgSaN2VmpJ_TTiof91Kw8iqsSz67S8kRq"
+    API_SECRET = "W9MoHC9NakTKG4ZdQJkLV1"
+    DOMAIN_API = "https://api.godaddy.com/v1/domains/tlds"
+
+    response = requests.get(DOMAIN_API, headers = {
+        "Authorization": "sso-key " + API_KEY + ":" + API_SECRET
+    })
+
+    json_response = response.json()
+
+    tlds = []
+    for tld in json_response:
+        
+        tlds.append(tld['name'].upper())
+
+    return tlds

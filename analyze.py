@@ -34,15 +34,15 @@ class Extension:
 
     def set_extracted_path(self, extracted_path: str) -> None:
         self.extracted_path = extracted_path
+
+    def set_keyword_analysis(self, keyword_analysis) -> None:
+        self.keyword_analysis = keyword_analysis
     
     def set_static_analysis(self, static_analysis) -> None:
         self.static_analysis = static_analysis
     
     def set_dynamic_analysis(self, dynamic_analysis) -> None:
         self.dynamic_analysis = dynamic_analysis
-
-    def set_domain_analysis(self, domain_analysis) -> None:
-        self.domain_analysis = domain_analysis
     
     def get_crx_path(self) -> str:
         return self.crx_path
@@ -52,6 +52,9 @@ class Extension:
     
     def get_extracted_path(self) -> str:
         return self.extracted_path
+
+    def get_keyword_analysis(self) -> dict:
+        return self.keyword_analysis
     
     def get_static_analysis(self) -> dict:
         return self.static_analysis
@@ -171,6 +174,15 @@ def analyze_extension(extension_path: str) -> None:
     extension.clean_up()
 
     # do domain analysis
+
+    for url in extension.get_domain_analysis()['list_of_urls']:
+        if (domain_analysis(url)):
+            print(Fore.GREEN + 'Domain %s is available' % url)
+
+            #write to file NOT THREAD SAFE
+            with open('available_domains.txt', 'a') as f:
+                f.write(url + '\n')
+
     
 
 

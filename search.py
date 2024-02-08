@@ -144,6 +144,10 @@ Chalmers University of Technology, Gothenburg, Sweden
     else:
         NUM_THREADS = 1
 
+    # Stuff to do before starting threads
+    # Get supported TLDs from GoDaddy
+    GODADDY_TLDS = godaddy_get_supported_tlds()
+
     # Spawn and start threads
     threads = []
     for i in range(NUM_THREADS):
