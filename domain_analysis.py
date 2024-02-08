@@ -11,8 +11,6 @@ from helpers import *
 
 GODADDY_TLDS = []
 
-checked_domains = set()
-
 def godaddy_is_available(domain, max_retries=10):
     print(Style.DIM + 'Checking domain %s with GoDaddy' % domain + Style.RESET_ALL)
     DOMAIN_API = "https://api.godaddy.com/v1/domains/available?domain="
@@ -103,40 +101,42 @@ def domain_analysis(url) -> bool:
 
     result = ""
     domain = domain_parts.domain + "." + domain_parts.suffix
-    if domain in checked_domains:
+    if domain in globals.checked_domains:
         #print(Fore.RED + 'Domain %s already checked' % domain + Style.RESET_ALL)
         return False
-    checked_domains.add(domain)
-    try:
-        if domain_parts.suffix.upper() in globals.GODADDY_TLDS:
-            result = godaddy_is_available(domain)
-        else:
-            result = domainsdb_is_available(domain)
 
-        match (result):
-            case "MISSING_AVAILABLE":
-                raise Exception("Missing available in response")
-            case "ERROR_IN_RESPONSE":
-                raise Exception("Error in response")
-            case "TLD_NOT_SUPPORTED":
-                raise Exception("TLD not supported")
-            case "AVAILABLE":
-                # Domain is not available for purchase
-                return True
-            case "UNAVAILABLE":
-                pass
-            case _:
-                raise Exception("Unknown result")
+    with globals.checked_domains_lock:
+        globals.checked_domains.add(domain)
+    # try:
+    #     if domain_parts.suffix.upper() in globals.GODADDY_TLDS:
+    #         result = godaddy_is_available(domain)
+    #     else:
+    #         result = domainsdb_is_available(domain)
 
-    except Exception as e:
-        print(Fore.RED + str(e) + Style.RESET_ALL)
-        raise e
+    #     match (result):
+    #         case "MISSING_AVAILABLE":
+    #             raise Exception("Missing available in response")
+    #         case "ERROR_IN_RESPONSE":
+    #             raise Exception("Error in response")
+    #         case "TLD_NOT_SUPPORTED":
+    #             raise Exception("TLD not supported")
+    #         case "AVAILABLE":
+    #             # Domain is not available for purchase
+    #             return True
+    #         case "UNAVAILABLE":
+    #             pass
+    #         case _:
+    #             raise Exception("Unknown result")
 
-    # If we get here, we could not determine if the domain is available
+    # except Exception as e:
+    #     print(Fore.RED + str(e) + Style.RESET_ALL)
+    #     raise e
 
-    return False
+    # # If we get here, we could not determine if the domain is available
 
-    # TODO: Add DNS analysis
+    # return False
+
+    # # TODO: Add DNS analysis
 
     zone = {
         "A":        [],
@@ -148,18 +148,19 @@ def domain_analysis(url) -> bool:
 
     for record_type in zone:
         try:
-            answers = dns.resolver.resolve(domian, record_type)
+            answers = dns.resolver.resolve(domain, record_type)
             for rdata in answers:
                 zone[record_type].append(rdata.to_text())
         except Exception as e:
-            print(Fore.RED + str(e) + Style.RESET_ALL)
+            #print(Fore.RED + str(e) + Style.RESET_ALL)
             continue
     
-    print(Fore.GREEN + 'Zone for %s' % domian + Style.RESET_ALL)
+    #print(Fore.GREEN + 'Zone for %s' % domain + Style.RESET_ALL)
     for record_type in zone:
-        print(Fore.GREEN + record_type + Style.RESET_ALL)
+        #print(Fore.GREEN + record_type + Style.RESET_ALL)
         for record in zone[record_type]:
-            print('    ' + record)
+            return False
+    return True
 
 
 
