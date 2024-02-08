@@ -11,7 +11,10 @@ from helpers import *
 
 GODADDY_TLDS = []
 
+checked_domains = set()
+
 def godaddy_is_available(domain, max_retries=10):
+    print(Style.DIM + 'Checking domain %s with GoDaddy' % domain + Style.RESET_ALL)
     DOMAIN_API = "https://api.godaddy.com/v1/domains/available?domain="
     API_KEY = "h1JgSaN2VmpJ_TTiof91Kw8iqsSz67S8kRq"
     API_SECRET = "W9MoHC9NakTKG4ZdQJkLV1"
@@ -21,7 +24,7 @@ def godaddy_is_available(domain, max_retries=10):
     RATE_PER_MINUTE = 60
 
     for attempt in range(max_retries):
-        sleep(60 / RATE_PER_MINUTE / globals.NUM_THREADS)
+        sleep((60 / RATE_PER_MINUTE) * globals.NUM_THREADS)
         try:
             response = requests.get(request_url, headers = {
                     "Authorization": "sso-key " + API_KEY + ":" + API_SECRET
@@ -38,7 +41,7 @@ def godaddy_is_available(domain, max_retries=10):
                 except ValueError:
                     return "ERROR_IN_RESPONSE"
             elif response.status_code == 429:
-                print(f"Rate limit exceeded. Retrying in 1 second (Attempt {attempt + 1}/{max_retries})")
+                print(f"GoDaddy Rate limit exceeded. Retrying in 1 second (Attempt {attempt + 1}/{max_retries})")
                 time.sleep(1)
             elif response.status_code == 422:
                 return "TLD_NOT_SUPPORTED"
@@ -52,6 +55,7 @@ def godaddy_is_available(domain, max_retries=10):
     raise Exception(f"Failed to get response after {max_retries} attempts")
 
 def domainsdb_is_available(domain, max_retries=10):
+    print(Style.DIM + 'Checking domain %s with DomainsDB' % domain + Style.RESET_ALL)
     return "UNAVAILABLE"
     DOMAIN_API = "https://api.domainsdb.info/v1/domains/search?domain="
     request_url = DOMAIN_API + domain
@@ -71,7 +75,7 @@ def domainsdb_is_available(domain, max_retries=10):
                 except ValueError:
                     return "ERROR_IN_RESPONSE"
             elif response.status_code == 429:
-                print(f"Rate limit exceeded. Retrying in 1 second (Attempt {attempt + 1}/{max_retries})")
+                print(f"DomainsDB Rate limit exceeded. Retrying in 1 second (Attempt {attempt + 1}/{max_retries})")
                 time.sleep(1)
             elif response.status_code == 404:
                 return "AVAILABLE"
@@ -94,18 +98,19 @@ def domain_analysis(url) -> bool:
     #print(Fore.YELLOW + 'Analyzing domain: %s' % domain_parts + Style.RESET_ALL)
 
     if (domain_parts.suffix == ""):
-        print(Fore.RED + 'No suffix found for domain: %s' % domain_parts.domain + Style.RESET_ALL)
+        #print(Fore.RED + 'No suffix found for domain: %s' % domain_parts.domain + Style.RESET_ALL)
         return False
 
     result = ""
     domain = domain_parts.domain + "." + domain_parts.suffix
+    if domain in checked_domains:
+        #print(Fore.RED + 'Domain %s already checked' % domain + Style.RESET_ALL)
+        return False
+    checked_domains.add(domain)
     try:
         if domain_parts.suffix.upper() in globals.GODADDY_TLDS:
-            print(Style.DIM + 'Checking domain %s with GoDaddy' % domain + Style.RESET_ALL)
             result = godaddy_is_available(domain)
         else:
-            print(Style.DIM + 'Checking domain %s with DomainsDB' % domain + Style.RESET_ALL)
-            exit()
             result = domainsdb_is_available(domain)
 
         match (result):

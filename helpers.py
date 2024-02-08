@@ -17,6 +17,7 @@ def print(*args, **kwargs):
 #  exit with any args
 def exit(*args, **kwargs):
     builtins.print(Fore.RED + "THIS SHOULD NOT BE CALLED" + Style.RESET_ALL)
+    raise Exception("exit() should not be called")
     sys.exit(*args, **kwargs)
 
 def godaddy_get_supported_tlds():

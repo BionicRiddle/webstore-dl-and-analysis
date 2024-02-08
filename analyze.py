@@ -185,12 +185,16 @@ def analyze_extension(extension_path: str) -> None:
             if len(url) == 0:
                 return
 
-            if (domain_analysis(url)):
-                print(Fore.GREEN + 'Domain %s is available' % url + Style.RESET_ALL)
+            try:
+                if (domain_analysis(url)):
+                    print(Fore.GREEN + 'Domain %s is available' % url + Style.RESET_ALL)
 
-                #write to file NOT THREAD SAFE
-                with open('available_domains.txt', 'a') as f:
-                    f.write(url + '\n')
+                    #write to file NOT THREAD SAFE
+                    with open('available_domains.txt', 'a') as f:
+                        f.write(url + '\n')
+            except Exception as e:
+                print(Fore.RED + str(e) + Style.RESET_ALL)
+                continue
 
         
 

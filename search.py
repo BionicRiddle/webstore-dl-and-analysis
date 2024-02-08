@@ -68,7 +68,7 @@ if __name__ == "__main__":
         if len(args) > 1:
             for arg in args:
                 if arg in ['-t', '--threads']:
-                    helpers.NUM_THREADS = args[args.index(arg)+1]
+                    globals.NUM_THREADS = args[args.index(arg)+1]
                     args.remove(arg)
                     args.remove(globals.NUM_THREADS)
                 if arg in ['-s', '--stfu']:
@@ -111,7 +111,7 @@ NUM_THREADS: 1
                     ''')
                     exit(0)
                 try:
-                    helpers.NUM_THREADS = int(globals.NUM_THREADS)
+                    globals.NUM_THREADS = int(globals.NUM_THREADS)
                 except:
                     raise Exception("Invalid number of threads: " + globals.NUM_THREADS)
 
