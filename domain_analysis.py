@@ -35,14 +35,14 @@ def godaddy_is_available(domain, max_retries=10):
                     if "available" in json_response:
                         return "AVAILABLE" if json_response['available'] == True else "UNAVAILABLE"
                     else:
-                        return "MISSING_AVAILABLE"
+                        raise Exception("Missing available key in response")
                 except ValueError:
-                    return "ERROR_IN_RESPONSE"
+                    raise Exception("Error in response")
             elif response.status_code == 429:
                 print(f"GoDaddy Rate limit exceeded. Retrying in 1 second (Attempt {attempt + 1}/{max_retries})")
                 time.sleep(1)
             elif response.status_code == 422:
-                return "TLD_NOT_SUPPORTED"
+                raise Exception("TLD not supported")
             else:
                 print(f"Unexpected code {response.status_code}. Retrying (Attempt {attempt + 1}/{max_retries})")
                 time.sleep(1)

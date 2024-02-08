@@ -1,6 +1,7 @@
 import os
 import threading
 
+# Bara globala variabler
 
 # Environment variables
 PRETTY_OUTPUT       = os.getenv('PRETTY_OUTPUT'     , False)

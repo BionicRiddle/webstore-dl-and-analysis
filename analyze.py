@@ -16,17 +16,22 @@ from helpers import *
 
 class Extension:
     def __init__(self, crx_path: str) -> None:
-        self.crx_path = crx_path
-        self.manifest = read_manifest(crx_path)
-        self.extracted_path = ""
-        self.keyword_analysis = {
-            "list_of_urls": [],
-            "list_of_actions": [],
-            "list_of_common_urls": []
-        }
-        self.static_analysis = {}
-        self.dynamic_analysis = {}
-        self.domain_analysis = {}
+        try: 
+            self.crx_path = crx_path
+            self.manifest = read_manifest(crx_path)
+            
+            self.extracted_path = ""
+            self.keyword_analysis = {
+                "list_of_urls": [],
+                "list_of_actions": [],
+                "list_of_common_urls": []
+            }
+            self.static_analysis = {}
+            self.dynamic_analysis = {}
+            self.domain_analysis = {}
+        except Exception as e:
+            failed_extension(crx_path, str(e))
+            raise Exception("Failed to create Extension object")
 
     def clean_up(self) -> None:
         if self.extracted_path:
@@ -100,34 +105,47 @@ def unknown_file_extension(crx_paths: list) -> None:
 
 
 def extract_extension(crx_path: str) -> str:
-    # using zipfile, extract to tmp dir
-    # return path to tmp dir
-    with zipfile.ZipFile(crx_path, 'r') as zip_ref:
-        tmp_path = tempfile.mkdtemp()
-        try:
-            zip_ref.extractall(tmp_path)
-        except:
-            failed_extension(crx_path)
-            return
-        return tmp_path
+    try: 
+        # using zipfile, extract to tmp dir
+        # return path to tmp dir
+        with zipfile.ZipFile(crx_path, 'r') as zip_ref:
+            tmp_path = tempfile.mkdtemp()
+            try:
+                zip_ref.extractall(tmp_path)
+            except:
+                failed_extension(crx_path)
+                return
+            return tmp_path
+    except Exception as e:
+        failed_extension(crx_path, str(e))
+        raise Exception("Failed to extract extension")
 
 def read_manifest(crx_path: str) -> dict:
-    # using zipfile, read data manifest.json
-    # return json
-    with zipfile.ZipFile(crx_path, 'r') as zip_ref:
-        try:
+    try:
+        # using zipfile, read data manifest.json
+        # return json
+        with zipfile.ZipFile(crx_path, 'r') as zip_ref:
             manifest = json.loads(zip_ref.read('manifest.json'))
-        except:
-            failed_extension(crx_path)
-            return
-        return manifest
+            return manifest
+    except Exception as e:
+        failed_extension(crx_path , str(e))
+        raise Exception("Failed to read manifest")
+    
+            
 
 ## ------------------------------
 
-# Main function
+# This is the main function that is called from search.py
+# It is called with a path to a crx file
+# It shpuld not return anything, but write to files
+# It may throw exceptions indicating that the extension could not be analyzed
 def analyze_extension(extension_path: str) -> None:
     # create obj Extension
-    extension = Extension(extension_path)
+    try:
+        extension = Extension(extension_path)
+    except Exception as e:
+        failed_extension(extension_path, str(e))
+        return
 
     manifest = extension.get_manifest()
 

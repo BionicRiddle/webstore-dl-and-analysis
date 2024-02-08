@@ -6,6 +6,8 @@ from colorama import Fore, Back, Style
 import globals
 import requests
 
+## Bara funktioner
+
 def simulate_work(extension):
     time.sleep(random.uniform(0.1, 1))
     print(Style.DIM + ('Analyzed extension %s' % extension) + Style.RESET_ALL)
@@ -17,7 +19,7 @@ def print(*args, **kwargs):
 #  exit with any args
 def exit(*args, **kwargs):
     builtins.print(Fore.RED + "THIS SHOULD NOT BE CALLED" + Style.RESET_ALL)
-    raise Exception("exit() should not be called")
+    #raise Exception("exit() should not be called")
     sys.exit(*args, **kwargs)
 
 def godaddy_get_supported_tlds():
@@ -34,7 +36,6 @@ def godaddy_get_supported_tlds():
 
     tlds = []
     for tld in json_response:
-        
         tlds.append(tld['name'].upper())
 
     return tlds

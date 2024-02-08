@@ -2,7 +2,6 @@ import sys
 import time
 from datetime import datetime
 import base64
-import zipfile
 import tempfile
 import codecs
 import json
@@ -40,9 +39,12 @@ class WorkerThread(threading.Thread):
                 extension = self.queue.get(timeout=5)
             except queue.Empty as e:
                 break
-            analyze_extension(extension)
-            #simulate_work(extension)
-            self.counter += 1
+            try:
+                analyze_extension(extension)
+                #simulate_work(extension)
+                self.counter += 1
+            except Exception as e:
+                print(Fore.RED + 'Error in thread %d: %s' % (self.thread_id, str(e)) + Style.RESET_ALL)
             self.queue.task_done()
         print(Fore.YELLOW + 'Thread %d terminated' % self.thread_id + Style.RESET_ALL)
 
@@ -109,7 +111,7 @@ RUN_ALL_VERSIONS: True/False
 DATE_FORMAT: %Y-%m-%d_%H:%M:%S
 NUM_THREADS: 1
                     ''')
-                    exit(0)
+                    sys.exit(0)
                 try:
                     globals.NUM_THREADS = int(globals.NUM_THREADS)
                 except:
@@ -121,7 +123,7 @@ NUM_THREADS: 1
 
     except Exception as e:
         print(Fore.RED + str(e) + Style.RESET_ALL)
-        exit(1)
+        sys.exit(1)
     
     # I hate this too
     print(
@@ -148,7 +150,6 @@ Chalmers University of Technology, Gothenburg, Sweden
     # Stuff to do before starting threads
     # Get supported TLDs from GoDaddy
     globals.GODADDY_TLDS = godaddy_get_supported_tlds()
-
 
     # Spawn and start threads
     threads = []
@@ -205,7 +206,7 @@ Chalmers University of Technology, Gothenburg, Sweden
         # wait for all threads to finish or if the main thread is terminated, if main thread is terminated, terminate all threads
         thread_queue.join()
 
-        # terminate all threads
+        # terminate all threads TODO: Kasnke onödig
         for t in threads:
             t.stop()
     except KeyboardInterrupt:
