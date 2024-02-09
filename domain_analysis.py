@@ -103,7 +103,7 @@ def dns_query(domain):
             resolver = dns.resolver.Resolver()
 
             dns_ns = random.choice(globals.DNS_SERVERS)
-            resolver.nameservers = [dns_ns]
+            #resolver.nameservers = [dns_ns]
             resolver.timeout = 15
             resolver.lifetime = 15
 
