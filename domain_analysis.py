@@ -1,6 +1,7 @@
 from colorama import Fore, Back, Style
-import dns.resolver
 import sys
+import os
+import subprocess
 import requests
 import time
 import json
@@ -85,7 +86,8 @@ def domainsdb_is_available(domain, max_retries=10):
 
     raise Exception(f"Failed to get response after {max_retries} attempts")
 
-def dns_query(domain):
+def dns_query_naive(domain):
+    import dns.resolver
     zone = {
         "NS",
         "A",
@@ -125,6 +127,52 @@ def dns_query(domain):
             raise e
     return False
 
+# Will return True if we got a response and False if we get NXDOMAIN
+# Exeption if we could not determine
+def dns_query(domain):
+
+    zone = {
+        "NS",
+        "A",
+        "AAAA",
+        "MX",
+        "CNAME",
+        "TXT",
+        "SRV"
+    }
+
+    for record_type in zone:
+        try:
+            command = ['./zdns/zdns', record_type, '--verbosity', '1']
+            result = subprocess.run(command, input=domain, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+            # Check if the command was successful
+            if result.returncode == 0:
+                response = json.loads(result.stdout)
+
+                if "status" not in response:
+                    raise Exception("Go command failed: " + result.stdout)
+
+                if (response["status"] == "NOERROR"):
+                    # We got a response, no need to continue
+                    return True
+                
+                if (response["status"] == "NXDOMAIN"):
+                    # We can assume the domain is available
+                    return False
+                
+                if (response["status"] == "SERVFAIL"):
+                    # We got a SERVFAIL, try next record type
+                    continue
+            else:
+                # Print an error message if the command failed
+                print(result.stderr)
+                raise Exception("Command failed with return code:", result.returncode)
+            # print exit code
+        except Exception as e:
+            raise e
+    raise Exception("Could not determine if domain is available")
+
 # denna borde kanske inte returnera bool
 def domain_analysis(url) -> bool:
     # If domain is full URL, extract domain
@@ -146,6 +194,8 @@ def domain_analysis(url) -> bool:
     except Exception as e:
         raise e
 
+    # If we get here, we could not determine if the domain is available with DNS query
+
     result = ""
     if domain in globals.checked_domains:
         return False
@@ -164,9 +214,8 @@ def domain_analysis(url) -> bool:
         print(Fore.RED + str(e) + Style.RESET_ALL)
         raise e
 
-    # If we get here, we could not determine if the domain is available
-
-    return False
+    # If we get here, we could not determine if the domain is available with GoDaddy or DomainsDB
+    raise Exception("Could not determine if domain is available")
 
 
 if __name__ == "__main__":
@@ -182,8 +231,8 @@ if __name__ == "__main__":
             }
 
     # This is normally done in search.py before creating threads
-    globals.GODADDY_TLDS = godaddy_get_supported_tlds()
-    globals.DOMAINSDB_TLDS = domainsdb_get_supported_tlds()
+    #globals.GODADDY_TLDS = godaddy_get_supported_tlds()
+    #globals.DOMAINSDB_TLDS = domainsdb_get_supported_tlds()
 
     url_file = "urlList"
 
