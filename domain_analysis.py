@@ -85,17 +85,7 @@ def domainsdb_is_available(domain, max_retries=10):
 
     raise Exception(f"Failed to get response after {max_retries} attempts")
 
-
-# denna borde kanske inte returnera bool
-def domain_analysis(url) -> bool:
-    # If domain is full URL, extract domain
-    domain_parts = tldextract.extract(url)
-
-    if (domain_parts.suffix == ""):
-        raise Exception("No suffix found for domain: %s" % domain_parts.domain)
-
-    domain = domain_parts.domain + "." + domain_parts.suffix
-
+def dns_query(domain):
     zone = {
         "NS",
         "A",
@@ -109,21 +99,53 @@ def domain_analysis(url) -> bool:
     for record_type in zone:
         try:
             # timout 5 seconds
+
             resolver = dns.resolver.Resolver()
-            dnss = [random.choice(globals.DNS_SERVERS)]
-            print("using dns server: " + dnss[0])
-            resolver.nameservers = dnss
-            resolver.timeout = 5
-            print("Querying for " + domain + " with type " + record_type)
-            answers = resolver.query(qname=domain, rdtype=record_type, source=dnss)
+
+            dns_ns = random.choice(globals.DNS_SERVERS)
+            resolver.nameservers = [dns_ns]
+            resolver.timeout = 15
+            resolver.lifetime = 15
+
+            answers = resolver.resolve(qname=domain, rdtype=record_type)
+
             if len(answers) != 0:
-                print(answers[0])
                 # got some records
-                return False
-        except Exception as e:
-            print(Fore.RED + str(e) + Style.RESET_ALL)
+                return True
+            else:
+                raise Exception("This cant happen but it did so I'm throwing an exception with relevant information: " + record_type + " " + domain + " " + str(answers) + " " + dns_ns)
+        except dns.resolver.NoAnswer:
             continue
-    
+        except dns.resolver.Timeout:
+            print(Fore.RED + "Timeout on DNS server: " + dns_ns + Style.RESET_ALL)
+            #raise Exception("Bad DNS server: " + dns_ns)
+            # Instead of raising exception, continue to next DNS server because fuckit. The script will be slower but for now we don't care
+            continue
+        except Exception as e:
+            raise e
+    return False
+
+# denna borde kanske inte returnera bool
+def domain_analysis(url) -> bool:
+    # If domain is full URL, extract domain
+    domain_parts = tldextract.extract(url)
+
+    if (domain_parts.suffix == ""):
+        #raise Exception("No suffix found for domain: %s" % domain_parts.domain)
+        return False
+
+    domain = domain_parts.domain + "." + domain_parts.suffix
+
+    ## You can write like this but god will punish you and you will suffer in hell for all eternity
+    # return not dns_query(domain)
+
+    try:
+        if dns_query(domain):
+            # dns query returned something
+            return False
+    except Exception as e:
+        raise e
+
     result = ""
     if domain in globals.checked_domains:
         return False
