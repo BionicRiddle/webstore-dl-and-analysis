@@ -1,3 +1,4 @@
 [submodule "zdns"]
 	path = zdns
 	url = https://github.com/zmap/zdns.git
+	ignore = dirty
