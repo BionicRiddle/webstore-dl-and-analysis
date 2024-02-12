@@ -1,6 +1,9 @@
 # Use an official Python runtime as a parent image
 FROM python:3.11-slim
 
+# install go
+RUN apt-get update && apt-get install -y golang-go
+
 # Set the working directory to /app
 WORKDIR /app
 
