@@ -13,7 +13,7 @@ from helpers import *
 GODADDY_TLDS = []
 
 def godaddy_is_available(domain, max_retries=10):
-    print(Style.DIM + 'Checking domain %s with GoDaddy' % domain + Style.RESET_ALL)
+    #print(Style.DIM + 'Checking domain %s with GoDaddy' % domain + Style.RESET_ALL)
     DOMAIN_API = "https://api.godaddy.com/v1/domains/available?domain="
     API_KEY = "h1JgSaN2VmpJ_TTiof91Kw8iqsSz67S8kRq"
     API_SECRET = "W9MoHC9NakTKG4ZdQJkLV1"
@@ -54,7 +54,7 @@ def godaddy_is_available(domain, max_retries=10):
     raise Exception(f"Failed to get response after {max_retries} attempts")
 
 def domainsdb_is_available(domain, max_retries=10):
-    print(Style.DIM + 'Checking domain %s with DomainsDB' % domain + Style.RESET_ALL)
+    #print(Style.DIM + 'Checking domain %s with DomainsDB' % domain + Style.RESET_ALL)
     DOMAIN_API = "https://api.domainsdb.info/v1/domains/search?domain="
     request_url = DOMAIN_API + domain
 
@@ -127,51 +127,42 @@ def dns_query_naive(domain):
             raise e
     return False
 
-# Will return True if we got a response and False if we get NXDOMAIN
+# Will return True if we get NXDOMAIN, else False or raise Exeption.
 # Exeption if we could not determine
-def dns_query(domain):
+# GUD JAG ÄR TRÖTT
+def dns_nxdomain(domain):
 
-    zone = {
-        "NS",
-        "A",
-        "AAAA",
-        "MX",
-        "CNAME",
-        "TXT",
-        "SRV"
-    }
+    record_type = "NS"
 
-    for record_type in zone:
-        try:
-            command = ['./zdns/zdns', record_type, '--verbosity', '1']
-            result = subprocess.run(command, input=domain, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    try:
+        command = ['./zdns/zdns', record_type, '--verbosity', '1']
+        result = subprocess.run(command, input=domain, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-            # Check if the command was successful
-            if result.returncode == 0:
-                response = json.loads(result.stdout)
+        # Check if the command was successful
+        if result.returncode == 0:
+            response = json.loads(result.stdout)
 
-                if "status" not in response:
-                    raise Exception("Go command failed: " + result.stdout)
+            if "status" not in response:
+                raise Exception("Go command failed: " + result.stdout)
 
-                if (response["status"] == "NOERROR"):
-                    # We got a response, no need to continue
-                    return True
-                
-                if (response["status"] == "NXDOMAIN"):
-                    # We can assume the domain is available
-                    return False
-                
-                if (response["status"] == "SERVFAIL"):
-                    # We got a SERVFAIL, try next record type
-                    continue
-            else:
-                # Print an error message if the command failed
-                print(result.stderr)
-                raise Exception("Command failed with return code:", result.returncode)
-            # print exit code
-        except Exception as e:
-            raise e
-    raise Exception("Could not determine if domain is available")
+            if (response["status"] == "NOERROR"):
+                # We got a response, no need to continue
+                return False
+            
+            if (response["status"] == "NXDOMAIN"):
+                # We can assume the domain is available
+                return True
+            
+            if (response["status"] == "SERVFAIL"):
+                # We got a SERVFAIL, could not determine if domain is available
+                return False
+        else:
+            # Print an error message if the command failed
+            print(result.stderr)
+            raise Exception("Command failed with return code:", result.returncode)
+        # print exit code
+    except Exception as e:
+        raise e
 
 # denna borde kanske inte returnera bool
 def domain_analysis(url) -> bool:
@@ -180,15 +171,15 @@ def domain_analysis(url) -> bool:
 
     if (domain_parts.suffix == ""):
         #raise Exception("No suffix found for domain: %s" % domain_parts.domain)
-        return False
+        return False    
 
     domain = domain_parts.domain + "." + domain_parts.suffix
 
     ## You can write like this but god will punish you and you will suffer in hell for all eternity
-    # return not dns_query(domain)
+    # return not dns_nxdomain(domain)
 
     try:
-        if dns_query(domain):
+        if dns_nxdomain(domain):
             # dns query returned something
             return False
     except Exception as e:
@@ -231,8 +222,8 @@ if __name__ == "__main__":
             }
 
     # This is normally done in search.py before creating threads
-    #globals.GODADDY_TLDS = godaddy_get_supported_tlds()
-    #globals.DOMAINSDB_TLDS = domainsdb_get_supported_tlds()
+    globals.GODADDY_TLDS = godaddy_get_supported_tlds()
+    globals.DOMAINSDB_TLDS = domainsdb_get_supported_tlds()
 
     url_file = "urlList"
 
