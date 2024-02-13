@@ -1,11 +1,14 @@
 # Use an official Python runtime as a parent image
 FROM python:3.11-slim
 
-# install go
-RUN apt-get update && apt-get install -y golang-go
-
 # Set the working directory to /app
 WORKDIR /app
+
+COPY ./zdns /app/zdns
+
+# Install Go and build zdns
+RUN apt-get update && \
+    apt-get install -y golang-go
 
 # Copy the current directory contents into the container at /app
 COPY requirements.txt /app/requirements.txt

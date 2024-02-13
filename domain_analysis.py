@@ -137,7 +137,6 @@ def dns_nxdomain(domain):
     try:
         command = ['./zdns/zdns', record_type, '--verbosity', '1']
         result = subprocess.run(command, input=domain, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-
         # Check if the command was successful
         if result.returncode == 0:
             response = json.loads(result.stdout)
@@ -164,7 +163,7 @@ def dns_nxdomain(domain):
     except Exception as e:
         raise e
 
-# denna borde kanske inte returnera bool
+# If domain is available, return True
 def domain_analysis(url) -> bool:
     # If domain is full URL, extract domain
     domain_parts = tldextract.extract(url)
@@ -175,29 +174,28 @@ def domain_analysis(url) -> bool:
 
     domain = domain_parts.domain + "." + domain_parts.suffix
 
+    if domain in globals.checked_domains:
+        return False
+
     ## You can write like this but god will punish you and you will suffer in hell for all eternity
     # return not dns_nxdomain(domain)
 
     try:
         if dns_nxdomain(domain):
             # dns query returned something
-            return False
+            return True
     except Exception as e:
         raise e
 
     # If we get here, we could not determine if the domain is available with DNS query
 
-    result = ""
-    if domain in globals.checked_domains:
-        return False
-
     with globals.checked_domains_lock:
         globals.checked_domains.add(domain)
     try:
         if domain_parts.suffix.upper() in globals.GODADDY_TLDS:
-            result = godaddy_is_available(domain)
+           return godaddy_is_available(domain)
         elif domain_parts.suffix.upper() in globals.DOMAINSDB_TLDS:
-            result = domainsdb_is_available(domain)
+            return domainsdb_is_available(domain)
         else:
             raise Exception("TLD not supported")
 
@@ -206,7 +204,7 @@ def domain_analysis(url) -> bool:
         raise e
 
     # If we get here, we could not determine if the domain is available with GoDaddy or DomainsDB
-    raise Exception("Could not determine if domain is available")
+    raise Exception("Could not determine if domain is available: " + domain)
 
 
 if __name__ == "__main__":
@@ -229,13 +227,16 @@ if __name__ == "__main__":
 
     # read file and parse json
     with open(url_file, 'r') as file:
-        data = file.read().replace('\n', '')
         
-        json_data = json.loads(data)
+        # split each line
+        lines = file.read().split('\n')
+    
 
-        for key in json_data:
+        for key in lines:
             # create dummy object
             dummy = DummyObject()
-            domain_analysis(key)
+            a = domain_analysis(key)
+            print(a)
+
 
 
