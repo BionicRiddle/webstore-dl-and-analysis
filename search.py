@@ -75,16 +75,16 @@ if __name__ == "__main__":
                     args.remove(arg)
                     args.remove(globals.NUM_THREADS)
                 if arg in ['-s', '--stfu']:
-                    helpers.STFU_MODE = True
+                    globals.STFU_MODE = True
                     args.remove(arg)
                 if arg in ['-a', '--all']:
-                    helpers.RUN_ALL_VERSIONS = True
+                    globals.RUN_ALL_VERSIONS = True
                     args.remove(arg)
                 if arg in ['-p', '--pretty']:
-                    helpers.PRETTY_OUTPUT = True
+                    globals.PRETTY_OUTPUT = True
                     args.remove(arg)
                 if arg in ['-d', '--date']:
-                    helpers.DATE_FORMAT = args[args.index(arg)+1]
+                    globals.DATE_FORMAT = args[args.index(arg)+1]
                     args.remove(arg)
                     args.remove(globals.DATE_FORMAT)
                 if arg in ['-e', '--extension']:
@@ -111,6 +111,7 @@ PRETTY_OUTPUT: True/False
 RUN_ALL_VERSIONS: True/False
 DATE_FORMAT: %Y-%m-%d_%H:%M:%S
 NUM_THREADS: 1
+STFU_MODE: True/False
                     ''')
                     sys.exit(0)
                 try:
