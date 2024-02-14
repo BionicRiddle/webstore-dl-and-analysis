@@ -4,6 +4,12 @@ FROM python:3.11-slim
 # install go
 RUN apt-get update && apt-get install -y golang-go
 
+# build go in zdns
+RUN cd /app/zdns
+RUN cd /app/zdns && \
+    go build && \
+    cd /
+
 # Set the working directory to /app
 WORKDIR /app
 
