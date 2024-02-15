@@ -10,6 +10,13 @@ COPY ./zdns /app/zdns
 RUN apt-get update && \
     apt-get install -y golang-go
 
+# build go in zdns
+RUN cd /app/zdns
+RUN cd /app/zdns && \
+    go build && \
+    cd /
+
+
 # Copy the current directory contents into the container at /app
 COPY requirements.txt /app/requirements.txt
 

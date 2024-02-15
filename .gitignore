@@ -183,3 +183,4 @@ actionsLists
 ext/
 available_domains.txt
 failed.txt
+found_domains.txt
