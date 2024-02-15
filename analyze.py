@@ -4,7 +4,7 @@ import json
 import tempfile
 import threading
 import random
-from keywords_search import analyze_data2
+from keywords_search import analyze2
 from domain_analysis import domain_analysis
 import os
 import time
@@ -175,17 +175,13 @@ def analyze_extension(extension_path: str) -> None:
     if extension.get_extracted_path() is None:
         failed_extension(extension_path)
         return
-    else:
-        # do keyword analysis
-        for root, dirs, files in os.walk(extension.get_extracted_path()):
-            for file in files:
-                if file.split('.')[-1].upper() in FILE_EXTENSIONS_TEXT:
-                    urls = analyze_data2(os.path.join(root, file))
-                    extension.set_keyword_analysis({
-                        "list_of_urls":         urls,
-                        "list_of_actions":      [],
-                        "list_of_common_urls":  []
-                    })
+
+    # do keyword analysis
+    #print("Analyze data started!")
+    analyze2(extension, extension)
+    #print("Analyze data finished!")
+
+        
 
     # --- Static analysis ---
 

@@ -112,7 +112,10 @@ def getActions(data, extension_path, urlPattern):
     return actionUrlMap
 
 def analyze_data(path):
-    #print("Analyzing data: ")
+    ## Path: Path to crx file
+    
+    
+    print("Analyzing data: " + path)
 
     #Keeps track of how many times the urls are encountered
     commonUrls = defaultdict(int)
@@ -300,6 +303,12 @@ def analyze_data2(path):
 ## --------------- 2 ---------------
 
 def analyze(extensions_path, single_extension=None):
+    
+    #extensions_path = extension
+    #extensions_path = extension.get_crx_path()
+    
+    print("Analyze: " + extensions_path)
+    
     #print("Analyze function Start:")
 
     #Keeps track of urls, associated action and the file/extension they reside in
@@ -353,8 +362,10 @@ def analyze(extensions_path, single_extension=None):
             """"""
             for version in versions:
                 if not version.startswith('.'):
+                    print("Version: " + version)
+                    print("Extension_path: " + extension_path)
                     dirpath, path = get_tmp_path(version, extension_path)
-
+            
                     try:
                         # Do the analysis!
 
@@ -411,16 +422,158 @@ def analyze(extensions_path, single_extension=None):
                         #print("Error on ", extension, ": ", str(e))
                         input("(Paused on error) Enter to continue...")
 
-                    try:
-                        shutil.rmtree(dirpath)
-                    except:
-                        pass
+                    #try:
+                        #shutil.rmtree(dirpath)
+                    #except:
+                        #pass
                         #print("Error could not delete tmp dir")
 
         else:
             pass
             #print("[+] Error. No such file or dir: {}".format(extension))
     
+    #print("Analyze all data:")
+    displayData(commonUrls, actionsList, urlList)
+    
+    
+def analyze2(extensions_path, single_extension=None):
+    
+     # Used to retrieve tmp path
+    version = extensions_path.get_crx_path().split("/")[2]
+    extensions_path = extensions_path.get_crx_path().split("/")[0] + "/" + extensions_path.get_crx_path().split("/")[1]
+    
+    # tmp
+    print("CRX Name: " + version)
+    print("CRX Path: " + extensions_path)
+        
+    #print("Analyze function Start:")
+
+    #Keeps track of urls, associated action and the file/extension they reside in
+    #UrlList = defaultdict(list)
+    commonUrls = defaultdict(int)
+
+    #Keeps track of actions and their associated url
+    actionsList = defaultdict(list)
+
+    #Keeps track of url's and the extension & file they belong to
+    urlList = defaultdict(list)
+
+    extensions = os.listdir(extensions_path)
+
+    # skipTo can by used to skip the first n extensions, does nothing if running a single extension is specified
+    skipTo = SKIP_TO
+    i = 0
+    
+    #print("Still alive")
+    
+    for extension in tqdm(extensions):
+        # Test single extension
+        if single_extension and extension != single_extension:
+            continue
+        else:
+            i = i + 1
+            if i < skipTo:
+                continue
+        
+    #print("Alive 2")
+        #print("\n\n\nAnalyzing ", extension)
+
+    extension_path = extensions_path + extension
+        #print("-- Path to extension: ", extension_path)
+
+        ##
+    """"
+    if os.path.isdir(extension_path):
+        versions = sorted([d for d in os.listdir(extension_path) if d[-4:] == ".crx"])
+
+        if not versions:
+            #print("[+] Warning. No CRX files in dir: {}".format(extension_path))
+            pass
+                
+        if len(versions) > 1:
+            #print("More than one version!!! {}".format(extension))
+            print()
+
+
+        # ONLY RUN LATEST VERSION
+        if (not RUN_ALL_VERSIONS):
+            #print("Warning! Only running latest version!")
+            #print()
+            versions = [versions[-1]]
+
+        
+        for version in versions:
+            if not version.startswith('.'):
+                print("Version: " + version)
+                print("Extension_path: " + extension_path)
+                dirpath, path = get_tmp_path(version, extension_path)
+    """
+        
+    #print("HELLO?")
+    # Do the analysis!
+
+    #[0] = Hits
+    #[1] = Urls encountered
+    #[2] = actions
+    #[3] = extension
+    #[4] = Url list with extensions they reside in
+    dirpath, path = get_tmp_path(version, extensions_path)
+    
+    print("Path: " + path)
+    
+    result = analyze_data(path)
+    hits =               result[0] #Hits (?) vad den får ut I guess
+    urls =               result[1] #E.x, {"www.yelp.com" : 1, "www.pizza.com", 2}
+    actions =            result[2]
+    extension_analyzed = result[3] #E.x... tomt
+    urlAndExtensions =   result[4] #
+
+    
+    for url in urls:
+        if url in commonUrls:
+            commonUrls[url] += 1
+        else:
+            commonUrls[url] = 1
+
+    for url in urlAndExtensions:
+        urlList[url].append(urlAndExtensions[url])
+
+    #print("Returned actions: ")
+    #print(str(actionsList))
+    for action in actions:
+        #actionsList[action].append(actions[action])
+        #print("Action: " + str(action))
+        #print("actions[action]: " + str(actions[action][0]))
+        actionsList[action].append(actions[action])
+    
+    #print("ActionList123")
+    #for action in actionsList:
+        #print("Action: " + str(action))
+        #for yourMom in actionsList[action]:
+            #print("Your mom: " + str(yourMom))
+        #print("____________")
+    #print(actionsList)
+
+    if hits:
+        if (PRETTY_OUTPUT):
+            open("hits_"+str(start_time)+".txt", "a+").write( json.dumps({"ext_id": extension, "hits": hits}, indent=4) + "\n" )
+            #print()
+        else:
+            open("hits_"+str(start_time)+".txt", "a+").write( json.dumps({"ext_id": extension, "hits": hits}) + "\n" )
+            #print()
+
+        #Uncomment later   
+        #print(extension, hits)
+
+
+    #try:
+        #shutil.rmtree(dirpath)
+    #except:
+        #pass
+        #print("Error could not delete tmp dir")
+        
+    #print("[+] Error. No such file or dir: {}".format(extension))
+
     #print("Analyze all data:")
     displayData(commonUrls, actionsList, urlList)
 
@@ -443,6 +596,7 @@ def displayData(commonUrls, actionsList, urlList):
     #print(str(urlList))
     #print("\n")
 
+    """"
     json_commonUrls = json.dumps(commonUrls, indent=4)
     json_actionsList = json.dumps(actionsList, indent=4)
     json_urlList = json.dumps(urlList, indent=4)
@@ -456,67 +610,9 @@ def displayData(commonUrls, actionsList, urlList):
     f1.write(json_commonUrls)
     f2.write(json_actionsList)
     f3.write(json_urlList)
-
-
-
     """
-    print("Most common urls: ")
-    f.write("Most common urls:\n")
-    f.write("__________________\n")
-    print("_____________________________")
-    #Commonurl: {"www.google.com" : {'ExtensionName', 1}}
     
-    #Displays most common urls in order:
-    for url in sorted(commonUrls.items(), key=lambda x:x[1], reverse=True):
-        if index_display > 0:
-            print(str(url))
-            f.write(str(url)+"\n")
-
-            index_display -= 1
-        else:
-            continue
-    index_display = 10
-    f.write("__________________\n")
-
-    print("\n")
-    print("Urls and extensions")
-    f.write("Urls and extensions:\n")
-    f.write("\n")
-    print("\n")
-    for url in urlList:
-        if index_display > 0:
-            print(url + ": " + str(urlList[url]))
-            f.write(url + ": " + str(urlList[url])+"\n")
-            f.write("\n")
-            index_display -= 1
-            print('\n')
-        else:
-            continue
     
-    f.write("__________________\n")
-    print("\n")
-    print("Action stuff:")
-    f.write("Actions:\n")
-    f.write("\n")
-    print("\n")
-    for action in actionsList:
-        f.write(action)
-        print(action)
-        print("\n")
-        f.write("\n")
-        for link in actionsList[action]:
-            #print("link: " + str(link))
-            for entry in link:
-                print("Entry:" + str(entry))
-                f.write(str(entry))
-                f.write("\n")
-
-        print("--------------")
-        #f.write(action + ": " + str(actionsList[action])+"\n")
-        f.write("\n")
-    """
-
-
 
 if __name__ == "__main__":
     print('------------ Extensions to Analyze: {} ------------')
@@ -536,5 +632,5 @@ if __name__ == "__main__":
 
 
     extensions_path = 'extensions/'
-    analyze(extensions_path, extension)
+    analyze2(extensions_path, extension)
     
