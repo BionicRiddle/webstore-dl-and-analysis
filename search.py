@@ -1,34 +1,34 @@
 import sys
 import time
 from datetime import datetime
-import base64
-import tempfile
-import codecs
-import json
 import re, os, shutil
-from tqdm import tqdm
-import operator
 import re
 import threading
 import queue
-import random
 from analyze import analyze_extension
 from colorama import Fore, Back, Style
 import builtins
 import globals
 from helpers import *
 from alive_progress import alive_bar
+import sqlite3
+
+DATABASE = 'thesis.db'
 
 # Create queue for threads
 thread_queue = queue.Queue()
 
+# Create a connection to the database
+conn = sqlite3.connect('thesis.db')
+
 # Worker Thread
 class WorkerThread(threading.Thread):
-    def __init__(self, queue, thread_id):
+    def __init__(self, queue, thread_id, db):
         print('Starting thread %d' % thread_id)
         threading.Thread.__init__(self)
         self.queue = queue
         self.thread_id = thread_id
+        self.db = db
         self.stop_event = threading.Event()
         self.counter = 0
         self.current_temp = ""
@@ -42,7 +42,6 @@ class WorkerThread(threading.Thread):
                 break
             try:
                 analyze_extension(extension)
-                #simulate_work(extension)
                 self.counter += 1
             except Exception as e:
                 print(Fore.RED + 'Error in thread %d: %s' % (self.thread_id, str(e)) + Style.RESET_ALL)
@@ -57,6 +56,35 @@ class WorkerThread(threading.Thread):
 
     def stop(self):
         self.stop_event.set()
+
+class SQLWrapper():
+    def __init__(self, database):
+        self.database = database
+        if (sys.version_info.major == 3 and sys.version_info.minor >= 12): # 3.12 or later
+            self._connection = sqlite3.connect(database=self.database, isolation_level="DEFERRED", autocommit=sqlite3.LEGACY_TRANSACTION_CONTROL)
+        else:
+            self._connection = sqlite3.connect(database=self.database, isolation_level="DEFERRED")
+        self._cursor = self._connection.cursor()
+        self._lock = threading.Lock()
+
+    def __enter__(self):
+        return self._connection.cursor()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type is None:
+            self._connection.commit()
+        else:
+            print(exc_type, exc_value, traceback)
+            self._connection.rollback()
+        self._cursor.close()
+
+    def close(self):
+        with self._lock:
+            if self._connection:
+                self._connection.close()
+                self._connection = None
+        
+    
 
 
 if __name__ == "__main__":
@@ -154,14 +182,17 @@ Chalmers University of Technology, Gothenburg, Sweden
     globals.GODADDY_TLDS = godaddy_get_supported_tlds()
     globals.DOMAINSDB_TLDS = domainsdb_get_supported_tlds()
 
+    db = SQLWrapper("example.db")
+
     # Spawn and start threads
     threads = []
     for i in range(globals.NUM_THREADS):
-        t = WorkerThread(thread_queue, i)
+        t = WorkerThread(thread_queue, i, db)
         t.start()
         threads.append(t)
 
     def exit(int, exception=None):
+        sql.close()
         counters = []
         for t in threads:
             t.stop()

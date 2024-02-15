@@ -2,8 +2,8 @@ import sqlite3
 import threading
 import sys
 
-# SQL Tread
-class SQLThread(threading.Thread):
+
+class SQLWrapper():
     def __init__(self, database):
         self.database = database
         if (sys.version_info.major == 3 and sys.version_info.minor >= 12): # 3.12 or later
@@ -32,7 +32,7 @@ class SQLThread(threading.Thread):
         
     
 # Init
-sql = SQLThread("example.db")
+sql = SQLWrapper("example.db")
 
 # Stuff in Worker Thread example
 with sql as cursor:
