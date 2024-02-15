@@ -145,7 +145,7 @@ def read_manifest(crx_path: str) -> dict:
 # It is called with a path to a crx file
 # It shpuld not return anything, but write to files
 # It may throw exceptions indicating that the extension could not be analyzed
-def analyze_extension(extension_path: str) -> None:
+def analyze_extension(extension_path: str, db) -> None:
     # create obj Extension
     try:
         extension = Extension(extension_path)

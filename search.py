@@ -41,7 +41,7 @@ class WorkerThread(threading.Thread):
             except queue.Empty as e:
                 break
             try:
-                analyze_extension(extension)
+                analyze_extension(extension, self.db)
                 self.counter += 1
             except Exception as e:
                 print(Fore.RED + 'Error in thread %d: %s' % (self.thread_id, str(e)) + Style.RESET_ALL)
