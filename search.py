@@ -192,7 +192,7 @@ Chalmers University of Technology, Gothenburg, Sweden
         threads.append(t)
 
     def exit(int, exception=None):
-        sql.close()
+        db.close()
         counters = []
         for t in threads:
             t.stop()

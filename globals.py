@@ -72,3 +72,16 @@ checked_domains.add("adobe.com")
 checked_domains.add("tumblr.com")
 
 checked_domains_lock = threading.Lock()
+
+domains_to_check = set()
+# open file found_domains_grouped.txt and add all domains to domains_to_check
+grouped = open('found_domains_grouped.txt', 'r')
+lines = grouped.readlines()
+grouped.close()
+for line in lines:
+    if line.strip() != "":
+        # if line begin with "http"
+        if line.startswith("\thttp"):
+            domains_to_check.add(line.split("\t")[1].split("\n")[0])
+
+print("TEMP stuff in globals.py")

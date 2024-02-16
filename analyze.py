@@ -181,7 +181,39 @@ def analyze_extension(extension_path: str, db) -> None:
     analyze2(extension, extension)
     #print("Analyze data finished!")
 
-        
+
+
+    url_objs = extension.get_keyword_analysis()["list_of_urls"]
+    url_objs_keys = url_objs.keys()
+
+    output = open('found_extensions.txt', 'a')
+
+    for key in url_objs_keys:
+        #list of files 
+
+        # check if key is in domains_to_check
+        if key not in globals.domains_to_check:
+            continue
+
+        file_list = url_objs[key]
+
+        for file in file_list:
+            tmp_file = file[0]
+            ext = tmp_file.split("/")[3]
+            # evertyhing after ext 4 untill last
+            file = "/".join(tmp_file.split("/")[4:])
+            
+            output.write(key + "\t" + file + "\t" + ext + "\n")
+            #print(key + "\t" + file + "\t" + ext)
+
+            if file is None:
+                continue
+    
+    output.close()
+
+    # find all urls in keyword search that is in domains_to_check
+    extension.clean_up()
+    return
 
     # --- Static analysis ---
 
