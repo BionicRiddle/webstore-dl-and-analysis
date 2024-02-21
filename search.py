@@ -173,21 +173,21 @@ Chalmers University of Technology, Gothenburg, Sweden
     globals.DOMAINSDB_TLDS = domainsdb_get_supported_tlds()
 
     # Create a connection to the database using the SQLWrapper
-    sql = db.SQLWrapper(DATABASE)
+    sql_w = db.SQLWrapper(DATABASE)
 
     # Drop tables if DROP_TABLES is set
     if globals.DROP_TABLES:
-        db.drop_all_tables(sql)
+        db.drop_all_tables(sql_w)
 
     # Spawn and start threads
     threads = []
     for i in range(globals.NUM_THREADS):
-        t = WorkerThread(thread_queue, i, sql)
+        t = WorkerThread(thread_queue, i, sql_w)
         t.start()
         threads.append(t)
 
     def exit(int, exception=None):
-        sql.close()
+        sql_w.close()
         counters = []
         for t in threads:
             t.stop()
