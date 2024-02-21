@@ -2,6 +2,12 @@ import subprocess
 import json
 import os
 
+## köras när tråd startas
+#node = SubprocessHandler(node_script_args)
+
+## köras när tråd stängs
+#node.close_process()
+
 class SubprocessHandler:
     def __init__(self, args):
         # Environment variables for the Node.js script
@@ -58,9 +64,3 @@ class SubprocessHandler:
         self.node_process.stderr.close()
         self.node_process.wait()
 
-
-## köras när tråd startas
-#node = SubprocessHandler(node_script_args)
-
-## köras när tråd stängs
-#node.close_process()

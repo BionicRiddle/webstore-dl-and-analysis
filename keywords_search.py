@@ -461,18 +461,18 @@ def displayData(commonUrls, actionsList, urlList):
     
 
 if __name__ == "__main__":
-    print('------------ Extensions to Analyze: {} ------------')
+    #print('------------ Extensions to Analyze: {} ------------')
 
     ## if -? or -h or --help
     if len(sys.argv) > 1 and sys.argv[1] in ['-?', '-h', '--help']:
-        print("Usage: python3 keywords_search.py [path_to_extensions]")
-        print("Example: python3 keywords_search.py extensions/")
+        #print("Usage: python3 keywords_search.py [path_to_extensions]")
+        #print("Example: python3 keywords_search.py extensions/")
         exit(0)
 
     extension = None
     ## if extension id is given as argument
     if len(sys.argv) > 1:
-        print("Running single extension: ", sys.argv[1])
+        #print("Running single extension: ", sys.argv[1])
         extension = sys.argv[1]
 
 

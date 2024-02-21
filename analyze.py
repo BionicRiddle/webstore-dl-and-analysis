@@ -13,8 +13,6 @@ import globals
 from helpers import *
 import json
 
-from dbtest import main
-
 # Extension class
 
 class Extension:
@@ -41,6 +39,8 @@ class Extension:
             shutil.rmtree(self.extracted_path)
             #print(Fore.YELLOW + 'Cleaned up %s' % self.extracted_path + Style.RESET_ALL)
         else:
+            ## wait for usier input
+            #input("No extracted path to clean up, press enter to continue. %s" % self.crx_path)
             raise Exception("No extracted path to clean up")
 
     def set_extracted_path(self, extracted_path: str) -> None:
@@ -124,6 +124,7 @@ def extract_extension(crx_path: str) -> str:
             except:
                 failed_extension(crx_path)
                 return
+            #print(Fore.GREEN + 'Extracted %s \t %s' % (tmp_path, crx_path) + Style.RESET_ALL)
             return tmp_path
     except Exception as e:
         failed_extension(crx_path, str(e))
@@ -160,7 +161,7 @@ def analyze_extension(extension_path: str, db) -> None:
 
     manifest_version = manifest['manifest_version']
     #print(Fore.GREEN + 'Manifest version: %s' % manifest_version)
-
+    
     # of no permissions skip
     if 'permissions' not in manifest:
         pass
@@ -170,44 +171,40 @@ def analyze_extension(extension_path: str, db) -> None:
         pass
     
     # Extract file
-    extension.set_extracted_path(extract_extension(extension_path))
-
-    # --- Keyword search ---
-    # keyword search, find all FILE_EXTENSIONS_TEXT in extracted files
-    # if found, do keyword_analysis()
-    if extension.get_extracted_path() is None:
-        failed_extension(extension_path)
-        return
-
-    # do keyword analysis
-    #print("Analyze data started!")
-    #print("I broke")
-    #print("Path?: " extension.)
-    
-    #print("Searching for keywords!")
-    # Rename analyze
-    #print("Extracted path: " + extension.get_extracted_path())
-    analyze(extension, False, extension)
-    #print("Done searching for keywords")
-    
-    
+    try:
+        extension.set_extracted_path(extract_extension(extension_path))
+    except Exception as e:
+        #input("Failed to EXTRACT extension %s, press enter to continue" % extension_path)
+        pass
 
 
-    #print("Printing keyword analysis:")
-    #print(str(extension.get_keyword_analysis()['list_of_urls']))
-    
-    main(extension.get_keyword_analysis()['list_of_urls'])
+    try:
+        
+        # --- Keyword search ---
+        # keyword search, find all FILE_EXTENSIONS_TEXT in extracted files
+        # if found, do keyword_analysis()
+        if extension.get_extracted_path() is None:
+            failed_extension(extension_path)
+            return
+
+        # --- Keyword analysis ---
+        
+        # Rename analyze
+        analyze(extension, False, extension)
+
+        # --- Static analysis ---
 
 
-    # --- Static analysis ---
+        # --- Dynamic analysis ---
 
-
-    # --- Dynamic analysis ---
-
-    # --- Write to file ---
-    # write keyword search stuff to file
-    # write static analysis stuff to file
-    # write dynamic analysis stuff to file
+        # --- Write to file ---
+        # write keyword search stuff to file
+        # write static analysis stuff to file
+        # write dynamic analysis stuff to file
+    except Exception as e:
+        # if any exception during analysis, do a clean up to prevent disk filling up
+        extension.clean_up()
+        raise
 
     # --- Clean up ---
     extension.clean_up()
@@ -228,9 +225,6 @@ def analyze_extension(extension_path: str, db) -> None:
             except Exception as e:
                 failed_extension(extension_path, str(e))
                 continue
-
-        
-
 
 if __name__ == "__main__":
     raise Exception("This file is not meant to be run directly")

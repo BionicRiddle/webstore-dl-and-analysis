@@ -237,6 +237,3 @@ if __name__ == "__main__":
             dummy = DummyObject()
             a = domain_analysis(key)
             print(a)
-
-
-
