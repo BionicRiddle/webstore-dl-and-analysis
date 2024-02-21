@@ -154,7 +154,7 @@ def analyze_data(path):
     # This is done per extension
     
     
-    print("Analyzing data: " + path)
+    #print("Analyzing data: " + path)
 
     #Keeps track of how many times the urls are encountered
     commonUrls = defaultdict(int)
@@ -296,7 +296,7 @@ def analyze(extension, isInternal, single_extension=None):
     
     extensions_path = extension.get_crx_path().split("/")[0] + "/" + extension.get_crx_path().split("/")[1]
     
-    print("Analyze: " + str(extensions_path))
+    #print("Analyze: " + str(extensions_path))
     
     #print("Analyze function Start:")
 
