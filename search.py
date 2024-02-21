@@ -1,34 +1,50 @@
+## --- IMPORTS ---
+
+# System
 import sys
+import os
+import shutil
 import time
-from datetime import datetime
-import re, os, shutil
+import builtins
 import re
+from datetime import datetime
+
+# Concurrent threads
 import threading
 import queue
-from analyze import analyze_extension
+
+# CLI colors
 from colorama import Fore, Back, Style
-import builtins
+
+# Progress bar
+from alive_progress import alive_bar
+
+# Global variables and settings
 import globals
 from helpers import *
-from alive_progress import alive_bar
-import sqlite3
 
-DATABASE = 'thesis.db'
+# Mutex SQLite Wrapper
+import db
+
+# Extension analysis
+from analyze import analyze_extension
+
+## --- GLOBALS ---
 
 # Create queue for threads
 thread_queue = queue.Queue()
 
 # Create a connection to the database
-conn = sqlite3.connect('thesis.db')
+DATABASE = 'thesis.db'
 
 # Worker Thread
 class WorkerThread(threading.Thread):
-    def __init__(self, queue, thread_id, db):
+    def __init__(self, queue, thread_id, sql):
         print('Starting thread %d' % thread_id)
         threading.Thread.__init__(self)
         self.queue = queue
         self.thread_id = thread_id
-        self.db = db
+        self.sql = sql
         self.stop_event = threading.Event()
         self.counter = 0
         self.current_temp = ""
@@ -41,7 +57,7 @@ class WorkerThread(threading.Thread):
             except queue.Empty as e:
                 break
             try:
-                analyze_extension(extension, self.db)
+                analyze_extension(extension, self.sql)
                 self.counter += 1
             except Exception as e:
                 print(Fore.RED + 'Error in thread %d: %s' % (self.thread_id, str(e)) + Style.RESET_ALL)
@@ -56,36 +72,6 @@ class WorkerThread(threading.Thread):
 
     def stop(self):
         self.stop_event.set()
-
-class SQLWrapper():
-    def __init__(self, database):
-        self.database = database
-        if (sys.version_info.major == 3 and sys.version_info.minor >= 12): # 3.12 or later
-            self._connection = sqlite3.connect(database=self.database, isolation_level="DEFERRED", autocommit=sqlite3.LEGACY_TRANSACTION_CONTROL)
-        else:
-            self._connection = sqlite3.connect(database=self.database, isolation_level="DEFERRED")
-        self._cursor = self._connection.cursor()
-        self._lock = threading.Lock()
-
-    def __enter__(self):
-        return self._connection.cursor()
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if exc_type is None:
-            self._connection.commit()
-        else:
-            print(exc_type, exc_value, traceback)
-            self._connection.rollback()
-        self._cursor.close()
-
-    def close(self):
-        with self._lock:
-            if self._connection:
-                self._connection.close()
-                self._connection = None
-        
-    
-
 
 if __name__ == "__main__":
 
@@ -119,6 +105,9 @@ if __name__ == "__main__":
                     extension = args[args.index(arg)+1]
                     args.remove(arg)
                     args.remove(extension)
+                if arg in ['-R', '--reset']:
+                    globals.DROP_TABLES = True
+                    args.remove(arg)
                 if arg in ['-h', '--help']:
                     # I hate this
                     print('''
@@ -133,6 +122,7 @@ Optional arguments:
 -d, --date format: date format for output file
 -e, --extension: run only one extension
 -s, --stfu: silent mode
+-R, --reset: reset the database
 
 Optional environment variables:
 PRETTY_OUTPUT: True/False
@@ -169,7 +159,7 @@ Chalmers University of Technology, Gothenburg, Sweden
     extensions_paths = []
 
     if extension is None:
-        extensions_paths = [args[-1]] if len(args) > 1 else ['ext/']
+        extensions_paths = [args[-1]] if len(args) > 1 else [globals.DEFAULT_EXTENSIONS_PATH]
         for extensions_path in extensions_paths:
             if not os.path.isdir(extensions_path):
                 print(Fore.RED + 'Invalid path to extensions' + Style.RESET_ALL)
@@ -182,17 +172,22 @@ Chalmers University of Technology, Gothenburg, Sweden
     globals.GODADDY_TLDS = godaddy_get_supported_tlds()
     globals.DOMAINSDB_TLDS = domainsdb_get_supported_tlds()
 
-    db = SQLWrapper("example.db")
+    # Create a connection to the database using the SQLWrapper
+    sql = db.SQLWrapper(DATABASE)
+
+    # Drop tables if DROP_TABLES is set
+    if globals.DROP_TABLES:
+        db.drop_all_tables(sql)
 
     # Spawn and start threads
     threads = []
     for i in range(globals.NUM_THREADS):
-        t = WorkerThread(thread_queue, i, db)
+        t = WorkerThread(thread_queue, i, sql)
         t.start()
         threads.append(t)
 
     def exit(int, exception=None):
-        db.close()
+        sql.close()
         counters = []
         for t in threads:
             t.stop()
@@ -213,7 +208,8 @@ Chalmers University of Technology, Gothenburg, Sweden
         # Scan and add extensions to thread_queue
         count_extensions = 0
         if extension is not None:
-            thread_queue.put(extension)
+            if count_extensions > 9000: ## TEMP Skip
+                thread_queue.put(extension)
             count_extensions = 1
         else:
             for extensions_path in extensions_paths:
@@ -256,6 +252,3 @@ Chalmers University of Technology, Gothenburg, Sweden
         print('Keyboard interrupt detected - terminating threads')
 
     exit(0)
-
-    
-    

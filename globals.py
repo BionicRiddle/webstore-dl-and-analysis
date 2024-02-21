@@ -4,11 +4,13 @@ import threading
 # Bara globala variabler
 
 # Environment variables
-PRETTY_OUTPUT       = os.getenv('PRETTY_OUTPUT'     , False)
-RUN_ALL_VERSIONS    = os.getenv('RUN_ALL_VERSIONS'  , False)
-DATE_FORMAT         = os.getenv('DATE_FORMAT'       , "%Y-%m-%d_%H:%M:%S")
-NUM_THREADS         = os.getenv('NUM_THREADS'       , 1)
-STFU_MODE           = os.getenv('STFU_MODE'         , False)
+PRETTY_OUTPUT           = os.getenv('PRETTY_OUTPUT'     , False)
+RUN_ALL_VERSIONS        = os.getenv('RUN_ALL_VERSIONS'  , False)
+DATE_FORMAT             = os.getenv('DATE_FORMAT'       , "%Y-%m-%d_%H:%M:%S")
+NUM_THREADS             = os.getenv('NUM_THREADS'       , 1)
+STFU_MODE               = os.getenv('STFU_MODE'         , False)
+DROP_TABLES             = os.getenv('DROP_TABLES'       , False)
+DEFAULT_EXTENSIONS_PATH = os.getenv('DEFAULT_EXTENSIONS_PATH', "extensions/")
 
 DNS_SERVERS = [
     "1.1.1.1",

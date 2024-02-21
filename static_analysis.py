@@ -54,6 +54,4 @@ if __name__ == "__main__":
     dummy = DummyExtensionObject()
 
     static_analysis(dummy)
-
-
     
