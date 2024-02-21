@@ -4,13 +4,16 @@ import json
 import tempfile
 import threading
 import random
-from keywords_search import analyze2
+from keywords_search import analyze
 from domain_analysis import domain_analysis
 import os
 import time
 import shutil
 import globals
 from helpers import *
+import json
+
+from dbtest import main
 
 # Extension class
 
@@ -178,10 +181,23 @@ def analyze_extension(extension_path: str) -> None:
 
     # do keyword analysis
     #print("Analyze data started!")
-    analyze2(extension, extension)
-    #print("Analyze data finished!")
+    #print("I broke")
+    #print("Path?: " extension.)
+    
+    #print("Searching for keywords!")
+    # Rename analyze
+    #print("Extracted path: " + extension.get_extracted_path())
+    analyze(extension, False, extension)
+    #print("Done searching for keywords")
+    
+    
 
-        
+
+    #print("Printing keyword analysis:")
+    #print(str(extension.get_keyword_analysis()['list_of_urls']))
+    
+    main(extension.get_keyword_analysis()['list_of_urls'])
+
 
     # --- Static analysis ---
 
