@@ -35,9 +35,9 @@ class SQLWrapper():
         """
         self.database = database
         if (sys.version_info.major == 3 and sys.version_info.minor >= 12): # 3.12 or later
-            self._connection = sqlite3.connect(database=self.database, isolation_level="DEFERRED", autocommit=sqlite3.LEGACY_TRANSACTION_CONTROL)
+            self._connection = sqlite3.connect(database=self.database, isolation_level="DEFERRED", autocommit=sqlite3.LEGACY_TRANSACTION_CONTROL, check_same_thread=False)
         else:
-            self._connection = sqlite3.connect(database=self.database, isolation_level="DEFERRED")
+            self._connection = sqlite3.connect(database=self.database, isolation_level="DEFERRED", check_same_thread=False)
         self._cursor = self._connection.cursor()
         self._lock = threading.Lock()
 
