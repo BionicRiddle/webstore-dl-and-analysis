@@ -48,7 +48,8 @@ class SQLWrapper():
         Returns:
             sqlite3.Cursor: The SQLite database cursor.
         """
-        return self._connection.cursor()
+        with self._lock:
+            return self._connection.cursor()
 
     def __exit__(self, exc_type, exc_value, traceback):
         """
