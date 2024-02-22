@@ -208,22 +208,21 @@ def analyze_extension(thread, extension_path: str) -> None:
     try:
         extension = Extension(extension_path)
 
-    manifest = extension.get_manifest()
-        
+        manifest = extension.get_manifest()
+            
 
-    manifest_version = manifest['manifest_version']
-    #print(Fore.GREEN + 'Manifest version: %s' % manifest_version)
-    
-    # of no permissions skip
-    if 'permissions' not in manifest:
-        pass
-    
-    # if no host permissions skip
-    if 'host_permissions' not in manifest:
-        pass
-    
-    # Extract file
-    try:
+        manifest_version = manifest['manifest_version']
+        #print(Fore.GREEN + 'Manifest version: %s' % manifest_version)
+        
+        # of no permissions skip
+        if 'permissions' not in manifest:
+            pass
+        
+        # if no host permissions skip
+        if 'host_permissions' not in manifest:
+            pass
+        
+        # Extract file
         extension.set_extracted_path(extract_extension(extension_path))
 
         # --- Keyword search ---
