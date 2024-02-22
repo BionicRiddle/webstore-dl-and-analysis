@@ -243,10 +243,10 @@ def analyze_extension(thread, extension_path: str) -> None:
         
         
         #with sql as c:
-        db.create_table(sql)
+        db.create_table(thread.sql)
         #db.insertDomainTable(c, urls)
         #db.insertActionTable(c, actionsList)
-        db.insertUrlTable(sql, commonUrls)
+        db.insertUrlTable(thread.sql, commonUrls)
         
         #c.execute("SELECT * FROM domain")
         #print(c.fetchone())
