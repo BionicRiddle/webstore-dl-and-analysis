@@ -10,6 +10,9 @@ import sqlite3
 import threading
 import sys
 
+if sqlite3.threadsafety == 0:
+    raise Exception("sqlite3.threadsafety is 0. Program cannot continue as the sqlite3 module is not thread-safe. Needs to be 1 or 3. Check https://sqlite.org/threadsafe.html for more information.")
+
 ## --- CLASSES ---
 
 class SQLWrapper():
