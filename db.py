@@ -77,10 +77,82 @@ class SQLWrapper():
                 self._connection = None
 
 ## --- FUNCTIONS ---
+def insertDomainTable(cursor, urlList):
+    insert = "INSERT INTO domain VALUES ('{0}', '{1}', '{2}')"
+    
+    for url in urlList:
+        for extension in urlList[url]:
+            try:
+                query = insert.format(url, extension[0], 'NX')
+                cursor.execute(query)
+            except sqlite3.Error as er:
+                print('SQLite error: %s' % (' '.join(er.args)))
+
+def insertUrlTable(sqlobject, urls):
+    insert = "INSERT INTO common VALUES ('{0}', '{1}')"
+    
+    # Used to check for duplicates / remedy it
+    select = "SELECT url FROM common WHERE url = ('{0}')"
+    getUrlCount = "SELECT count FROM common WHERE url = ('{0}')"
+    update = "UPDATE common SET count = ? WHERE url = ? ('{0}', '{1}')"
+    
+    for url in urls:
+        ## Check for dupliactes
+        try:
+            exists = None
+            with sqlobject as cursor:
+                query = select.format(url)
+                exists = cursor.execute(query)
+                #print(cursor.fetchone())
+            
+        except sqlite3.Error as er:
+            print('SQLite error 1: %s' % (' '.join(er.args)))
+        
+        # URL has already been added. Increment the existing one instead
+        if exists:
+            # Get current count
+            try:
+                with sqlobject as cursor:
+                    query = getUrlCount.format(url)
+                    cursor.execute(query)
+                    
+                print("Query: " + getUrlCount)
+            except sqlite3.Error as er:
+                print('SQLite error 2: %s' % (' '.join(er.args)))
+            
+            # Update
+            try:
+                with sqlobject as cursor:
+                    #query = update.format(count, url)
+                    #cursor.execute(query)
+                    pass
+            except sqlite3.Error as er:
+                print('SQLite error 3: %s' % (' '.join(er.args)))
+            continue
+            
+        try:
+            query = insert.format(url, urls[url])
+            cursor.execute(query)
+        except sqlite3.Error as er:
+            print('SQLite error: %s' % (' '.join(er.args)))
 
 
-def create_table(cursor, table_name, columns):
-    pass
+def insertActionTable(cursor, actionList):
+    for action in actionList:
+        print("Action: " + str(action))
+
+def create_table(cursor):
+    
+    #Domain Table
+    cursor.execute("CREATE TABLE IF NOT EXISTS domain (url TEXT NOT NULL, extension TEXT NOT NULL, status TEXT, PRIMARY KEY (url,extension))")
+    
+    # Common Url Table
+    cursor.execute("CREATE TABLE IF NOT EXISTS common (url TEXT NOT NULL, count INTEGER NOT NULL, PRIMARY KEY (url))")
+    
+    # Actions List
+    # Components:
+    # Action, Domain, Extension, (Domain should be primary)
+    cursor.execute("CREATE TABLE IF NOT EXISTS action (type TEXT NOT NULL, url TEXT NOT NULL, extension TEXT NOT NULL, PRIMARY KEY (type, url, extension))")
 
 def drop_all_tables(cursor):
     with cursor:

@@ -14,6 +14,7 @@ import globals
 from helpers import *
 import json
 import db
+import db
 
 # Extension class
 
@@ -207,19 +208,22 @@ def analyze_extension(thread, extension_path: str) -> None:
     try:
         extension = Extension(extension_path)
 
-        manifest = extension.get_manifest()
-        manifest_version = manifest['manifest_version']
-        #print(Fore.GREEN + 'Manifest version: %s' % manifest_version)
+    manifest = extension.get_manifest()
         
-        # of no permissions skip TODO
-        if 'permissions' not in manifest:
-            pass
-        
-        # if no host permissions skip TODO
-        if 'host_permissions' not in manifest:
-            pass
-        
-        # Extract file
+
+    manifest_version = manifest['manifest_version']
+    #print(Fore.GREEN + 'Manifest version: %s' % manifest_version)
+    
+    # of no permissions skip
+    if 'permissions' not in manifest:
+        pass
+    
+    # if no host permissions skip
+    if 'host_permissions' not in manifest:
+        pass
+    
+    # Extract file
+    try:
         extension.set_extracted_path(extract_extension(extension_path))
 
         # --- Keyword search ---
@@ -234,8 +238,21 @@ def analyze_extension(thread, extension_path: str) -> None:
         # Rename analyze
         analyze(extension, False, extension)
 
-        # --- Static analysis ---
-
+        urls = extension.get_keyword_analysis()['list_of_urls']
+        actionsList = extension.get_keyword_analysis()['list_of_actions']
+        commonUrls = extension.get_keyword_analysis()['list_of_common_urls']
+        
+        
+        #with sql as c:
+        db.create_table(sql)
+        #db.insertDomainTable(c, urls)
+        #db.insertActionTable(c, actionsList)
+        db.insertUrlTable(sql, commonUrls)
+        
+        #c.execute("SELECT * FROM domain")
+        #print(c.fetchone())
+        # --- Static analysis ---1
+            
         static_analysis(extension, thread.esprima)
 
 
