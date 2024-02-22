@@ -27,6 +27,9 @@ class SQLWrapper():
     """
 
     def __init__(self, database):
+        
+        print(sqlite3.threadsafety)
+        
         """
         Initialize a new SQLWrapper instance.
 
@@ -61,6 +64,7 @@ class SQLWrapper():
             traceback (traceback): A traceback object encapsulating the call stack at the point where the exception was raised, if any.
         """
         if exc_type is None:
+            #print("Committing transaction")
             self._connection.commit()
         else:
             print(exc_type, exc_value, traceback)
@@ -84,64 +88,67 @@ def insertDomainTable(cursor, urlList):
         for extension in urlList[url]:
             try:
                 query = insert.format(url, extension[0], 'NX')
-                print(query)
+                #print(query)
                 cursor.execute(query)
             except sqlite3.Error as er:
                 print('SQLite error: %s' % (' '.join(er.args)))
 
-def insertUrlTable(sqlobject, urls):
-    insert = "INSERT INTO common VALUES ('{0}', '{1}')"
+def insertUrlTable(sqlobject, urls): 
+    #print("Running: ")
+    
+    insert = "INSERT INTO common VALUES (?,?)"
     
     # Used to check for duplicates / remedy it
-    select = "SELECT url FROM common WHERE url = ('{0}')"
-    getUrlCount = "SELECT count FROM common WHERE url = ('{0}')"
-    update = "UPDATE common SET count = '{0}' WHERE url = '{1}'"
+    select = "SELECT url FROM common WHERE url = ?"
+    
+    getUrlCount = "SELECT count FROM common WHERE url = ?"
+    update = "UPDATE common SET count = ? WHERE url = ?"
+    
+    exists = None
     
     for url in urls:
         ## Check for dupliactes
         try:
-            exists = None
             with sqlobject as cursor:
-                query = select.format(url)
-                cursor.execute(query)
-                exists = print(cursor.fetchone())
+                #query = select.format(url)
+                cursor.execute(select, (url,))
+                exists = cursor.fetchone()
             
         except sqlite3.Error as er:
-            print('SQLite error 1: %s' % (' '.join(er.args)))
+            print('SQLite error bazinga: %s' % (' '.join(er.args)))
         
         # URL has already been added. Increment the existing one instead
         if exists:
             # Get current count
-            count = None
-            print("Exists: " + str(exists))
             try:
                 with sqlobject as cursor:
-                    query = getUrlCount.format(url)
-                    cursor.execute(query)
-                    count = cursor.fetchall()
+                    cursor.execute(getUrlCount, (url,))
+                    count = cursor.fetchone()         
             except sqlite3.Error as er:
                 print('SQLite error 2: %s' % (' '.join(er.args)))
             
             # Update
             try:
                 with sqlobject as cursor:
-                    
-                    query = update.format(count, url)
-                    print(query)
-                    cursor.execute(query)
-                    pass
+
+                    #cursor.execute(update, (count, url))
+                    cursor.execute("UPDATE common SET count = ? WHERE url = ?", (count, url))
+
             except sqlite3.Error as er:
                 print('SQLite error 3: %s' % (' '.join(er.args)))
             continue
             
-        try:
-            with sqlobject as cursor:
-                query = insert.format(url, urls[url])
-                cursor.execute(query)
-        except sqlite3.Error as er:
-            print('SQLite error: %s' % (' '.join(er.args)))
-
-
+        else:
+            try:
+                with sqlobject as cursor:
+                    
+                    ## THIS WORKS !!!!
+                    
+                    cursor.execute(insert, (url, urls[url]))
+                    
+            except sqlite3.Error as er:
+                print('SQLite error: %s' % (' '.join(er.args)))
+                  
 def insertActionTable(cursor, actionList):
     for action in actionList:
         print("Action: " + str(action))
@@ -159,10 +166,11 @@ def create_table(sql_object):
         # Action, Domain, Extension, (Domain should be primary)
         cursor.execute("CREATE TABLE IF NOT EXISTS action (type TEXT NOT NULL, url TEXT NOT NULL, extension TEXT NOT NULL, PRIMARY KEY (type, url, extension))")
 
-def drop_all_tables(cursor):
-    with cursor:
-        TABLES = ["example",
-                  "example2"]
+def drop_all_tables(sql_object):
+    with sql_object as cursor:
+        TABLES = ["domain",
+                  "common",
+                  "action"]
         for table in TABLES:
             cursor.execute("DROP TABLE IF EXISTS " + table)    
 
@@ -170,7 +178,7 @@ def drop_all_tables(cursor):
         
 if __name__ == "__main__":
 
-    sql = SQLWrapper("example.db")
+    sql = SQLWrapper("thesis.db")
 
     # Stuff in Worker Thread example
     with sql as cursor:

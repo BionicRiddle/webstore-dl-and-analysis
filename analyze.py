@@ -86,7 +86,7 @@ class Extension:
         return self.manifest
     
     def get_extracted_path(self) -> str:
-        print(self.extracted_path)
+        #print(self.extracted_path)
         return self.extracted_path
 
     def get_keyword_analysis(self) -> dict:
@@ -242,8 +242,10 @@ def analyze_extension(thread, extension_path: str) -> None:
         commonUrls = extension.get_keyword_analysis()['list_of_common_urls']
         
         
+        
         #with sql as c:
-        db.create_table(thread.sql)
+        #if db.tablesCreated(thread.sql) == False:
+        #db.drop_all_tables(thread.sql)
         #db.insertDomainTable(c, urls)
         #db.insertActionTable(c, actionsList)
         db.insertUrlTable(thread.sql, commonUrls)
@@ -251,8 +253,9 @@ def analyze_extension(thread, extension_path: str) -> None:
         #c.execute("SELECT * FROM domain")
         #print(c.fetchone())
         # --- Static analysis ---1
-            
-        static_analysis(extension, thread.esprima)
+           
+        # Broken pipe goes vroom 
+        #static_analysis(extension, thread.esprima)
 
 
         # --- Dynamic analysis ---
