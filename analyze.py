@@ -12,6 +12,7 @@ import shutil
 import globals
 from helpers import *
 import json
+import db
 
 # Extension class
 
@@ -158,6 +159,7 @@ def analyze_extension(extension_path: str, sql) -> None:
         return
 
     manifest = extension.get_manifest()
+        
 
     manifest_version = manifest['manifest_version']
     #print(Fore.GREEN + 'Manifest version: %s' % manifest_version)
@@ -192,8 +194,21 @@ def analyze_extension(extension_path: str, sql) -> None:
         # Rename analyze
         analyze(extension, False, extension)
 
-        # --- Static analysis ---
-
+        urls = extension.get_keyword_analysis()['list_of_urls']
+        actionsList = extension.get_keyword_analysis()['list_of_actions']
+        commonUrls = extension.get_keyword_analysis()['list_of_common_urls']
+        
+        
+        #with sql as c:
+        db.create_table(sql)
+        #db.insertDomainTable(c, urls)
+        #db.insertActionTable(c, actionsList)
+        db.insertUrlTable(sql, commonUrls)
+        
+        #c.execute("SELECT * FROM domain")
+        #print(c.fetchone())
+    # --- Static analysis ---1
+            
 
         # --- Dynamic analysis ---
 
