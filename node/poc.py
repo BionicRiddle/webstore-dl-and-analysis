@@ -55,11 +55,11 @@ class SubprocessHandler:
 input_dir = "./"
 
 # Environment variables for the Node.js script
-NPDE_PATH = os.environ.get("NPDE_PATH", "node")
+NODE_PATH = os.environ.get("NODE_PATH", "node")
 NODE_APP_PATH = os.environ.get("NODE_APP_PATH", './app.js')
 
 # Define the command-line arguments for the Node.js script
-node_script_args = [NPDE_PATH, NODE_APP_PATH]
+node_script_args = [NODE_PATH, NODE_APP_PATH]
 
 # Create an instance of the SubprocessHandler with the specified arguments
 subprocess_handler = SubprocessHandler(node_script_args)
@@ -67,20 +67,24 @@ subprocess_handler = SubprocessHandler(node_script_args)
 
 # for esch file in input_dir, reciursively
 
-for file in os.listdir(input_dir):
-    if file.endswith(".js"):
-        print(os.path.join(input_dir, file))
-        subprocess_handler.send_input(os.path.join(input_dir, file))
 
-        # Read the output from the Node.js process
-        output_lines = subprocess_handler.read_output()
+#print(os.path.join(input_dir, file))
 
-        # convert output to json
-        json_output = json.loads(output_lines)
+#subprocess_handler.send_input(os.path.join(input_dir, file))
 
-        # pretty print the output
+with open("script.js", 'r') as f:
+    file_content = f.read()
+    subprocess_handler.send_input(file_content)
 
-        print(json.dumps(json_output, indent=2))
+# Read the output from the Node.js process
+output_lines = subprocess_handler.read_output()
+
+# convert output to json
+json_output = json.loads(output_lines)
+
+# pretty print the output
+
+print(json.dumps(json_output, indent=2))
 
 # Close the subprocess
 subprocess_handler.close_process()

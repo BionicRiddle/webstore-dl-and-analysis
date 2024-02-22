@@ -102,7 +102,12 @@ if __name__ == "__main__":
 
     with sql as cursor:
         cursor.execute("SELECT * FROM example")
-        print(cursor.fetchall())
+        print(cursor.fetchone())
+        sql.commit()
+        cursor.execute("SELECT * FROM example")
+        print(cursor.fetchone())
+        print(cursor.fetchone())
+        print(cursor.fetchone())
 
     # end of  program
     sql.close()

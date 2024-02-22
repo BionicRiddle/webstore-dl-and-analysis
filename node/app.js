@@ -1,4 +1,3 @@
-const fs = require('fs');
 const esprima = require('esprima');
 
 process.stdin.on('data', (data) => {
@@ -10,18 +9,14 @@ process.stdin.on('data', (data) => {
     }
 
     // Perform actions based on the input
-    if (input === 'exit' || input === 'quit' || input === 'q') {
+    if (input === '!exit' || input === '!quit' || input === '!q') {
         console.log('Exiting the application.');
         process.exit(); // Terminate the process
     } else {
         // Check if the input is a valid file path
         try {
-            // Check if the file exists
-            fs.accessSync(input, fs.constants.F_OK);
-
             // Read the JavaScript code from the specified file
-            const fileContent = fs.readFileSync(input, 'utf8');
-            const ret = esprima.parse(fileContent, {
+            const ret = esprima.parse(input, {
                 range: true,
                 comment: true
             });

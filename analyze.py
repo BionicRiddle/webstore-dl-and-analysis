@@ -6,12 +6,14 @@ import threading
 import random
 from keywords_search import analyze
 from domain_analysis import domain_analysis
+from static_analysis import static_analysis
 import os
 import time
 import shutil
 import globals
 from helpers import *
 import json
+import db
 
 # Extension class
 
@@ -31,17 +33,38 @@ class Extension:
             self.dynamic_analysis = {}
             self.domain_analysis = {}
         except Exception as e:
-            failed_extension(crx_path, str(e))
+            reason = "In 'Extension.__init__'"
+            failed_extension(crx_path, reason, e)
             raise Exception("Failed to create Extension object")
 
     def clean_up(self) -> None:
-        if self.extracted_path:
-            shutil.rmtree(self.extracted_path)
-            #print(Fore.YELLOW + 'Cleaned up %s' % self.extracted_path + Style.RESET_ALL)
-        else:
-            ## wait for usier input
-            #input("No extracted path to clean up, press enter to continue. %s" % self.crx_path)
+        """
+        Cleans up the extracted files by removing the directory specified in `self.extracted_path`.
+
+        This method is typically called after the analysis of the extension is complete and the extracted files are no longer needed.
+
+        """
+
+        # Safety check to prevent accidental deletion of important files
+        if not self.extracted_path:
             raise Exception("No extracted path to clean up")
+        if not os.path.exists(self.extracted_path):
+            raise Exception("Extracted path does not exist")
+        if not os.path.isdir(self.extracted_path):
+            raise Exception("Extracted path is not a directory")
+        if not self.extracted_path.startswith('/tmp/'):
+            raise Exception("Extracted path is not in /tmp/")
+        if len(self.extracted_path) < 6:
+            raise Exception("Something definitely went wrong! Extracted path is too short")
+        if ".." in self.extracted_path:
+            raise Exception("Something definitely went wrong! Extracted path contains '..'")
+
+        # Remove the extracted files
+        try:
+            shutil.rmtree(self.extracted_path)
+        except Exception as e:
+            failed_extension(self.crx_path, "Failed to clean up extracted files", e)
+            raise Exception("Failed to clean up extracted files")
 
     def set_extracted_path(self, extracted_path: str) -> None:
         self.extracted_path = extracted_path
@@ -62,6 +85,7 @@ class Extension:
         return self.manifest
     
     def get_extracted_path(self) -> str:
+        print(self.extracted_path)
         return self.extracted_path
 
     def get_keyword_analysis(self) -> dict:
@@ -93,10 +117,40 @@ def domain_found(domain: str) -> None:
         with open('found_domains.txt', 'a') as f:
             f.write(domain + '\n')
 
-def failed_extension(crx_path: str, reason: str = "") -> None:
+def failed_extension(crx_path: str, reason: str = "", exception=None) -> None:
+    """
+    Logs the failure of a process on a given extension into "failed.txt".
+
+    This function is thread-safe and can be used concurrently from multiple threads.
+
+    Args:
+        crx_path (str): The path of the extension that failed.
+        reason (str, optional): The reason for the failure. Defaults to an empty string.
+        exception (Exception, optional): The exception that was raised, if any. Defaults to None.
+
+    Usage:
+        If an extension fails to process for any reason, you can log the failure like this:
+
+        >   try:
+        >       # Code to process the extension
+        >       do_stuff_that_might_fail_with_an_exception(crx_path)
+        >   except Exception as e:
+        >       # If an exception is raised, log the failure and the exception
+        >       failed_extension(crx_path, "Processing failed", e)
+
+        If you know the reason for the failure but no exception was raised, you can log the failure like this:
+        
+        >   if not is_valid_extension(crx_path):
+        >       # If the extension is not valid, log the failure
+        >       failed_extension(crx_path, "Invalid extension")
+    """
     with failed_lock:
         with open('failed.txt', 'a') as f:
-            f.write(crx_path + '\t' + reason + '\n')
+            e = ""
+            if exeption:
+                e = "\tWith Exeption: [" + str(exeption) + "]"
+            path = crx_path.split('/')[-1]
+            f.write(path + ':\t' + reason + e + '\n')
 
 # TODO: Dynamic analysis stuff
 def failed_run(crx_path: str) -> None:
@@ -112,7 +166,6 @@ def unknown_file_extension(crx_paths: list) -> None:
                 out = '%s\t%s' % (ext, crx_path)
                 f.write(out + '\n')
 
-
 def extract_extension(crx_path: str) -> str:
     try: 
         # using zipfile, extract to tmp dir
@@ -121,10 +174,9 @@ def extract_extension(crx_path: str) -> str:
             tmp_path = tempfile.mkdtemp()
             try:
                 zip_ref.extractall(tmp_path)
-            except:
-                failed_extension(crx_path)
+            except Exception as e:
+                failed_extension(crx_path, "Failed to extract extension", e)
                 return
-            #print(Fore.GREEN + 'Extracted %s \t %s' % (tmp_path, crx_path) + Style.RESET_ALL)
             return tmp_path
     except Exception as e:
         failed_extension(crx_path, str(e))
@@ -149,37 +201,27 @@ def read_manifest(crx_path: str) -> dict:
 # It is called with a path to a crx file
 # It shpuld not return anything, but write to files
 # It may throw exceptions indicating that the extension could not be analyzed
-def analyze_extension(extension_path: str, sql) -> None:
+def analyze_extension(thread, extension_path: str) -> None:
+    
     # create obj Extension
     try:
         extension = Extension(extension_path)
-    except Exception as e:
-        failed_extension(extension_path, str(e))
-        return
 
-    manifest = extension.get_manifest()
-
-    manifest_version = manifest['manifest_version']
-    #print(Fore.GREEN + 'Manifest version: %s' % manifest_version)
-    
-    # of no permissions skip
-    if 'permissions' not in manifest:
-        pass
-    
-    # if no host permissions skip
-    if 'host_permissions' not in manifest:
-        pass
-    
-    # Extract file
-    try:
-        extension.set_extracted_path(extract_extension(extension_path))
-    except Exception as e:
-        #input("Failed to EXTRACT extension %s, press enter to continue" % extension_path)
-        pass
-
-
-    try:
+        manifest = extension.get_manifest()
+        manifest_version = manifest['manifest_version']
+        #print(Fore.GREEN + 'Manifest version: %s' % manifest_version)
         
+        # of no permissions skip TODO
+        if 'permissions' not in manifest:
+            pass
+        
+        # if no host permissions skip TODO
+        if 'host_permissions' not in manifest:
+            pass
+        
+        # Extract file
+        extension.set_extracted_path(extract_extension(extension_path))
+
         # --- Keyword search ---
         # keyword search, find all FILE_EXTENSIONS_TEXT in extracted files
         # if found, do keyword_analysis()
@@ -193,6 +235,8 @@ def analyze_extension(extension_path: str, sql) -> None:
         analyze(extension, False, extension)
 
         # --- Static analysis ---
+
+        static_analysis(extension, thread.esprima)
 
 
         # --- Dynamic analysis ---

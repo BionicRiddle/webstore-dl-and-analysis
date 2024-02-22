@@ -29,7 +29,13 @@ import db
 # Extension analysis
 from analyze import analyze_extension
 
+# Static analysis
+from esprima import Esprima
+
 ## --- GLOBALS ---
+
+# Start time
+start_time = time.time()
 
 # Create queue for threads
 thread_queue = queue.Queue()
@@ -48,6 +54,7 @@ class WorkerThread(threading.Thread):
         self.stop_event = threading.Event()
         self.counter = 0
         self.current_temp = ""
+        self.esprima = Esprima()
 
     def run(self):
         while not self.stop_event.is_set():
@@ -57,11 +64,12 @@ class WorkerThread(threading.Thread):
             except queue.Empty as e:
                 break
             try:
-                analyze_extension(extension, self.sql)
+                analyze_extension(self, extension)
                 self.counter += 1
             except Exception as e:
                 print(Fore.RED + 'Error in thread %d: %s' % (self.thread_id, str(e)) + Style.RESET_ALL)
             self.queue.task_done()
+        self.esprima.close_process()
         print(Fore.YELLOW + 'Thread %d terminated' % self.thread_id + Style.RESET_ALL)
 
     def get_thread_id(self):
@@ -130,6 +138,11 @@ RUN_ALL_VERSIONS: True/False
 DATE_FORMAT: %Y-%m-%d_%H:%M:%S
 NUM_THREADS: 1
 STFU_MODE: True/False
+DROP_TABLES: True/False
+DEFAULT_EXTENSIONS_PATH: "extensions/"
+NODE_PATH: "node"
+NODE_APP_PATH: "./app.js"
+
                     ''')
                     sys.exit(0)
                 try:
@@ -169,8 +182,8 @@ Chalmers University of Technology, Gothenburg, Sweden
 
     # Stuff to do before starting threads
     # Get supported TLDs
-    globals.GODADDY_TLDS = godaddy_get_supported_tlds()
-    globals.DOMAINSDB_TLDS = domainsdb_get_supported_tlds()
+    ###globals.GODADDY_TLDS = godaddy_get_supported_tlds()
+    ###globals.DOMAINSDB_TLDS = domainsdb_get_supported_tlds()
 
     # Create a connection to the database using the SQLWrapper
     sql_w = db.SQLWrapper(DATABASE)
@@ -200,6 +213,8 @@ Chalmers University of Technology, Gothenburg, Sweden
         print('Threads terminated')
         print()
         print(sum(counters), 'extensions analyzed')
+        elapsed = time.time() - start_time
+        print('Elapsed time: %s' % time.strftime("%H:%M:%S", time.gmtime(elapsed)))
         if exception is not None and int != 0:
             raise exception
         sys.exit(int)

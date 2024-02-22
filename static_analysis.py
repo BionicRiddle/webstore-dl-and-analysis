@@ -1,22 +1,30 @@
 import os
 from colorama import Fore, Back, Style
-from pyunpack import Archive
 
+from esprima import Esprima
 
-def static_analysis(extensions) -> bool:
+def static_analysis(extension, esprima) -> bool:
 
     try:
-        extracted_path = extensions.get_extracted_path()
-        for files in os.listdir(extracted_path):
+        print(Fore.GREEN + "Static analysis" + Style.RESET_ALL)
+        extracted_path = extension.get_extracted_path()
+
+        for file in os.listdir(extracted_path):
 
             # Todo: Fix so we also include HTML
             # We only care about .js files (for now)
 
-            if files.endswith(".js"):
-                with open(extracted_path + files, "r") as file:
+            if file.endswith(".js"):
+                print(Fore.GREEN + "Analyzing file: " + os.path.join(extracted_path, file) + Style.RESET_ALL)
+                content = open(os.path.join(extracted_path, file), "r").read()
 
-                    #So here it begins
-                    print("We have arrived!")
+                esprima.send_input(content)
+                print("esprima.send_input(content)")
+
+
+                print(esprima.read_output())
+                print("esprima.read_output()")
+
 
 
     except Exception as e:
@@ -25,33 +33,25 @@ def static_analysis(extensions) -> bool:
 
 class DummyExtensionObject:
     def __init__(self) -> None:
-        self.crx_path = "DUMMY_PATH"
-    def get_keyword_analysis(self) -> dict:
-        return {
-            "list_of_urls": [],
-            "list_of_actions": [],
-            "list_of_common_urls": []
-        }
+        self.static_analysis = {}
+
+    def get_static_analysis(self) -> dict:
+        return self.static_analysis
 
     def get_extracted_path(self):
-        return "url"
+        return "/tmp/tmp990ocxky"
+
+    def get_crx_path(self) -> str:
+        return "extensions/aaanbpflpadmmnkbnlkdehkpjhgbbehl/AAANBPFLPADMMNKBNLKDEHKPJHGBBEHL_1_0_0_0.crx"
 
 if __name__ == "__main__":
-
-    originalDirectory = "/mnt/c/Users/sam00/Desktop/MasterThesis/webstore-dl-and-analysis/" 
-    path = "/mnt/c/Users/sam00/Desktop/MasterThesis/webstore-dl-and-analysis/extensions/akoiagmmfbjephlbkncmnpdakfklipjd"
-
-    os.chdir(path)
-
-    #Filename: AKOIAGMMFBJEPHLBKNCMNPDAKFKLIPJD_5_0_0_0.crx
-
-    # Unpack files
-    Archive("AKOIAGMMFBJEPHLBKNCMNPDAKFKLIPJD_5_0_0_0.crx").extractall(originalDirectory)
-
-    os.chdir(originalDirectory)
 
     # create dummy object
     dummy = DummyExtensionObject()
 
-    static_analysis(dummy)
+    esprima = Esprima()
+
+    static_analysis(dummy, esprima)
+
+    esprima.close_process()
     
