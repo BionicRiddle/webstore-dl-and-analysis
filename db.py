@@ -84,27 +84,35 @@ class SQLWrapper():
                 self._connection = None
 
 ## --- FUNCTIONS ---
-def insertDomainTable(cursor, urlList):
+
+## Inserts
+
+def insertDomainTable(sql_object, urlList):
+    # Insert the domain, extension and dns record type into the database
     insert = "INSERT INTO domain VALUES ('{0}', '{1}', '{2}')"
     
     for url in urlList:
+        # url: Self explanatory
         for extension in urlList[url]:
+            # Extension: The extension and file the domain/url resides in
+            # Todo: Maybe add check for duplicates, depending on if it's already fixed in 
             try:
-                query = insert.format(url, extension[0], 'NX')
-                #print(query)
-                cursor.execute(query)
+                with sql_object as cursor:
+                    cursor.execute(insert, (url, extension[0], 'NX'))
             except sqlite3.Error as er:
                 print('SQLite error: %s' % (' '.join(er.args)))
 
 def insertUrlTable(sqlobject, urls): 
-    #print("Running: ")
-    
-    insert = "INSERT INTO common VALUES (?,?)"
+    # Insert the url & the times it is encountered into the database
+    insert = "INSERT INTO common VALUES(?,?)"
     
     # Used to check for duplicates / remedy it
     select = "SELECT url FROM common WHERE url = ?"
-    
+
+    # Get amount of times url has occured (if it already exists in the database)
     getUrlCount = "SELECT count FROM common WHERE url = ?"
+    
+    # Update the number of times url has been encountered (if it already exists in the database)
     update = "UPDATE common SET count = ? WHERE url = ?"
     
     exists = None
@@ -116,9 +124,8 @@ def insertUrlTable(sqlobject, urls):
                 #query = select.format(url)
                 cursor.execute(select, (url,))
                 exists = cursor.fetchone()
-            
         except sqlite3.Error as er:
-            print('SQLite error bazinga: %s' % (' '.join(er.args)))
+            print('SQLite error: %s' % (' '.join(er.args)))
         
         # URL has already been added. Increment the existing one instead
         if exists:
@@ -128,33 +135,54 @@ def insertUrlTable(sqlobject, urls):
                     cursor.execute(getUrlCount, (url,))
                     count = cursor.fetchone()         
             except sqlite3.Error as er:
-                print('SQLite error 2: %s' % (' '.join(er.args)))
+                print('SQLite error: %s' % (' '.join(er.args)))
             
             # Update
             try:
                 with sqlobject as cursor:
-
-                    #cursor.execute(update, (count, url))
-                    cursor.execute("UPDATE common SET count = ? WHERE url = ?", (count, url))
-
+                    cursor.execute(update, (int(count[0]+1), url))
             except sqlite3.Error as er:
-                print('SQLite error 3: %s' % (' '.join(er.args)))
+                print('SQLite error: %s' % (' '.join(er.args)))
             continue
             
         else:
             try:
                 with sqlobject as cursor:
-                    
-                    ## THIS WORKS !!!!
-                    
-                    cursor.execute(insert, (url, urls[url]))
+                    cursor.execute(insert, (str(url), urls[url]))
                     
             except sqlite3.Error as er:
                 print('SQLite error: %s' % (' '.join(er.args)))
                   
-def insertActionTable(cursor, actionList):
+def insertActionTable(sql_object, actionList):
+    # Queries
+    select = "SELECT url, type, extension FROM action WHERE url = ? AND type = ? AND extension = ?"
+    insert = "INSERT INTO action VALUES (?,?,?)"
+    
+    # Go through each action type (href, fetch, etc)
     for action in actionList:
-        print("Action: " + str(action))
+        # action = href, fetch, etc
+        # actionList[action]: domain followed by a list of extension
+        for entry in actionList[action]:
+            # Entry: Each indidual domain
+            for extension in actionList[action][entry]:
+            # actionList[action][entry]: List of extension(s) the domain resided in
+                try:
+                    with sql_object as cursor:
+                        # Check if domain already exists 
+                        
+                        # --- This may not be necessary --- #
+                        # This check should already be done in each thread during keywordsearch and extension is unqieue per thread
+                        # Will leave this here for now but might look back and reconsider later
+                        
+                        cursor.execute(select, (entry, action, extension))
+                        exists = cursor.fetchone()
+                        # If entry does not exist
+                        if exists == None:
+                            cursor.execute(insert, (entry, action, extension))
+                except sqlite3.Error as er:
+                    print('SQLite error: %s' % (' '.join(er.args)))
+
+## Setup tables
 
 def create_table(sql_object):
     with sql_object as cursor:
@@ -167,7 +195,7 @@ def create_table(sql_object):
         # Actions List
         # Components:
         # Action, Domain, Extension, (Domain should be primary)
-        cursor.execute("CREATE TABLE IF NOT EXISTS action (type TEXT NOT NULL, url TEXT NOT NULL, extension TEXT NOT NULL, PRIMARY KEY (type, url, extension))")
+        cursor.execute("CREATE TABLE IF NOT EXISTS action (url TEXT NOT NULL, type TEXT NOT NULL, extension TEXT NOT NULL, PRIMARY KEY (type, url, extension))")
 
 def drop_all_tables(sql_object):
     with sql_object as cursor:

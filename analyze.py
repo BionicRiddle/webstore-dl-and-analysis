@@ -242,16 +242,11 @@ def analyze_extension(thread, extension_path: str) -> None:
         commonUrls = extension.get_keyword_analysis()['list_of_common_urls']
         
         
-        
-        #with sql as c:
-        #if db.tablesCreated(thread.sql) == False:
-        #db.drop_all_tables(thread.sql)
+        # DB Stuff
         #db.insertDomainTable(c, urls)
-        #db.insertActionTable(c, actionsList)
-        db.insertUrlTable(thread.sql, commonUrls)
-        
-        #c.execute("SELECT * FROM domain")
-        #print(c.fetchone())
+        db.insertActionTable(thread.sql, actionsList)
+        #db.insertUrlTable(thread.sql, commonUrls)
+
         # --- Static analysis ---1
            
         # Broken pipe goes vroom 
