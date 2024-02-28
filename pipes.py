@@ -30,10 +30,10 @@ except:
 pipe_from_node_fd = None
 
 try:
+    os.mkfifo(pipe_to_node)
+    os.mkfifo(pipe_from_node)
 
     while True:
-        os.mkfifo(pipe_to_node)
-        os.mkfifo(pipe_from_node)
 
         input("Press Enter to continue...")
 
@@ -61,7 +61,8 @@ try:
 
         print("done")
 
-        remove_pipes()
+        # send null
+        #os.write(pipe_to_node_fd, b'\0')
 
 except Exception as e:
     remove_pipes()

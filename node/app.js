@@ -1,4 +1,3 @@
-const stream = require('node:stream'); 
 const fs = require('fs');
 const esprima = require('esprima');
 
@@ -25,18 +24,22 @@ let data = '';
 
 const read  = fs.createReadStream(pipe_in, { highWaterMark: BUFFER });
 
-read.on('data', (chunk) => {
-    console.log('Received data:', chunk.toString());
-    // Store the data in a buffer
-    data += chunk;
-});
+read.on('readable', () => { 
+    let chunk; 
 
-read.on('end', () => {
-    console.log('No more data to read');
-    // Now we do analysis on the data and return the result
-    const input = data.toString();
-    
-    const ret = esprima.parse(input, {
+    // Using while loop and calling 
+    // read method 
+    while (null !== (chunk = read.read())) { 
+
+        let dataa = chunk.toString();
+
+        console.log('Received data:', dataa);
+        // Store the data in a buffer
+        data += dataa;
+    } 
+    console.log('END of readable event');
+
+    const ret = esprima.parse(data, {
         range: true,
         comment: true
     });
@@ -44,8 +47,8 @@ read.on('end', () => {
     const write = fs.createWriteStream(pipe_out, { highWaterMark: BUFFER });
     write.write(JSON.stringify(ret, null, 2));
 
-    // Close the write stream
-    write.end();
+    // send null to write pipe
+    write.write(null);
 
     // Clear the buffer
     data = '';
