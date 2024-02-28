@@ -1,27 +1,32 @@
-const esprima = require('esprima');
+// Check args
+if (process.argv.length == 2 || isNaN(process.argv[2])) {
+    console.error('Usage: node pipe.js <NUM>');
+    process.exit(1);
+}
 
-// node_server_pipe.js
-const net = require('net');
+const esprima = require('esprima');
 const fs = require('fs');
-const NUM = 0;
+
+// argument when running the script
+const NUM = process.argv[2];
 const pipe_in = '/tmp/pipe_to_node_' + NUM;
 const pipe_out = '/tmp/pipe_from_node_' + NUM;
 
-// open pipes and read then echo back in reversed
-
 // open pipe for reading
-const read = fs.createReadStream(pipe_in, { highWaterMark: 100 });
-const write = fs.createWriteStream(pipe_out, { highWaterMark: 100 });
+const read = fs.createReadStream(pipe_in, { highWaterMark: 100000 });
+const write = fs.createWriteStream(pipe_out, { highWaterMark: 100000 });
 
 // read from pipe and reverse the string and write to pipe
 read.on('data', (data) => {
-    const input = data.toString().trim(); // Trim to remove newline characters
-    console.log('input: ', input);
+    const input = data.toString();
+
+    const ret = esprima.parse(input, {
+        range: true,
+        comment: true
+    });
 
     // reverse input and write to pipe
-    write.write(input.split("").reverse().join("") + '\n');
-
-    
+    write.write(JSON.stringify(ret, null, 2));
 })
 
 
