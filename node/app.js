@@ -1,6 +1,8 @@
 const fs = require('fs');
 const esprima = require('esprima');
 
+let count = 0;
+
 // Check args
 if (process.argv.length == 2 || isNaN(process.argv[2])) {
     console.error('Usage: node pipe.js <NUM>');
@@ -36,8 +38,7 @@ read.on('readable', () => {
         console.log('Received data:', dataa);
         // Store the data in a buffer
         data += dataa;
-    } 
-    console.log('END of readable event');
+    }
 
     const ret = esprima.parse(data, {
         range: true,
@@ -48,10 +49,15 @@ read.on('readable', () => {
     write.write(JSON.stringify(ret, null, 2));
 
     // send null to write pipe
-    write.write(null);
+    write.end(null);
 
     // Clear the buffer
     data = '';
+
+    count += 1;
+    console.log('Processed:', count);
+
+    // Empty the buffer
 
 });
 
