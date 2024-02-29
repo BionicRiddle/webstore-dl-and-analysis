@@ -31,7 +31,7 @@ class SQLWrapper():
 
     def __init__(self, database):
         
-        print(sqlite3.threadsafety)
+        #print(sqlite3.threadsafety)
         
         """
         Initialize a new SQLWrapper instance.
@@ -89,7 +89,8 @@ class SQLWrapper():
 
 def insertDomainTable(sql_object, urlList):
     # Insert the domain, extension and dns record type into the database
-    insert = "INSERT INTO domain VALUES ('{0}', '{1}', '{2}')"
+    
+    insert = "INSERT INTO domain VALUES (?, ?, ?)"
     
     for url in urlList:
         # url: Self explanatory
@@ -218,12 +219,12 @@ if __name__ == "__main__":
 
     with sql as cursor:
         cursor.execute("SELECT * FROM example")
-        print(cursor.fetchone())
+        #print(cursor.fetchone())
         sql.commit()
         cursor.execute("SELECT * FROM example")
-        print(cursor.fetchone())
-        print(cursor.fetchone())
-        print(cursor.fetchone())
+        #print(cursor.fetchone())
+        #print(cursor.fetchone())
+        #print(cursor.fetchone())
 
     # end of  program
     sql.close()

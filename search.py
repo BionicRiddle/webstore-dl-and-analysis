@@ -187,10 +187,14 @@ Chalmers University of Technology, Gothenburg, Sweden
 
     # Create a connection to the database using the SQLWrapper
     sql_w = db.SQLWrapper(DATABASE)
+    
 
     # Drop tables if DROP_TABLES is set
     if globals.DROP_TABLES:
         db.drop_all_tables(sql_w)
+    
+    # Create tables if they don't exist
+    db.create_table(sql_w)
 
     # Spawn and start threads
     threads = []
@@ -265,5 +269,4 @@ Chalmers University of Technology, Gothenburg, Sweden
     except KeyboardInterrupt:
         print()
         print('Keyboard interrupt detected - terminating threads')
-
     exit(0)
