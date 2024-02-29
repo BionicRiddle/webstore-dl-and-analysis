@@ -148,8 +148,8 @@ def failed_extension(crx_path: str, reason: str = "", exception=None) -> None:
     with failed_lock:
         with open('failed.txt', 'a') as f:
             e = ""
-            if exeption:
-                e = "\tWith Exeption: [" + str(exeption) + "]"
+            if Exception:
+                e = "\tWith Exception: [" + str(Exception) + "]"
             path = crx_path.split('/')[-1]
             f.write(path + ':\t' + reason + e + '\n')
 
@@ -243,9 +243,9 @@ def analyze_extension(thread, extension_path: str) -> None:
         
         
         # DB Stuff
-        #db.insertDomainTable(c, urls)
+        db.insertDomainTable(thread.sql, urls)
         db.insertActionTable(thread.sql, actionsList)
-        #db.insertUrlTable(thread.sql, commonUrls)
+        db.insertUrlTable(thread.sql, commonUrls)
 
         # --- Static analysis ---1
            
@@ -271,18 +271,18 @@ def analyze_extension(thread, extension_path: str) -> None:
 
     urls = extension.get_keyword_analysis()['list_of_urls']
 
-    for s_url in list(urls):
-        for url in s_url:
-            if len(url) == 0:
-                return
+    #for s_url in list(urls):
+    for url in urls:
+        if len(url) == 0:
+            return
 
-            try:
-                if (domain_analysis(url)):
-                    print(Fore.GREEN + 'Domain %s is available' % url + Style.RESET_ALL)
-                    domain_found(url)
-            except Exception as e:
-                failed_extension(extension_path, str(e))
-                continue
+        try:
+            if (domain_analysis(url)):
+                print(Fore.GREEN + 'Domain %s is available' % url + Style.RESET_ALL)
+                domain_found(url)
+        except Exception as e:
+            failed_extension(extension_path, str(e))
+            continue
 
 if __name__ == "__main__":
     raise Exception("This file is not meant to be run directly")
