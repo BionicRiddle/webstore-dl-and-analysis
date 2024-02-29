@@ -1,7 +1,12 @@
 import os
 import time
+import random
+from time import sleep
+
+start_time = time.time()
 
 NUM = 0
+BUFFER_SIZE = 500000
 
 pipe_to_node = '/tmp/pipe_to_node_' + str(NUM)
 pipe_from_node = '/tmp/pipe_from_node_' + str(NUM)
@@ -20,10 +25,24 @@ def remove_pipes():
 ## remove the pipes if they already exist
 try:
     os.unlink(pipe_to_node)
-    os.unlink(pipe_from_node)
-    print("Existing pipes removed")
+    print("Existing pipe_to_node removed")
 except:
     pass
+try:
+    os.unlink(pipe_from_node)
+    print("Existing pipe_from_node removed")
+except:
+    pass
+
+## Open and read files into list
+strgs = []
+input_files = ["node/script.js"]
+for input_file in input_files:
+    with open(input_file, 'r') as file:
+        file_content = file.read().encode()
+        strgs.append(file_content)
+        
+count = 0
 
 ## create named pipes
 
@@ -33,36 +52,29 @@ try:
     os.mkfifo(pipe_to_node)
     os.mkfifo(pipe_from_node)
 
+    ## open the pipe
+    pipe_to_node_fd = os.open(pipe_to_node, os.O_WRONLY)
+    pipe_from_node_fd = os.open(pipe_from_node, os.O_RDONLY)
+
     while True:
 
         input("Press Enter to continue...")
 
-        print("pipes created")
-
-        ## open the pipe
-        pipe_to_node_fd = os.open(pipe_to_node, os.O_WRONLY)
-
-        print("pipes created")
-
         # read file "input_file" and send it to the Node.js process
-        input_file = "node/app.js"
-        with open(input_file, 'r') as file:
-            file_content = file.read().encode() + b'\n'
-            if file_content == '':
-                file_content = b'{}\n'
-            os.write(pipe_to_node_fd, file_content)
+        os.write(pipe_to_node_fd, random.choice(strgs))
         
-
-        pipe_from_node_fd = os.open(pipe_from_node, os.O_RDONLY)
-        print("waiting for the node to finish")
+        #print("waiting for the node to finish")
 
         ## read from the pipe
-        print(os.read(pipe_from_node_fd, 100))
+        return_string = os.read(pipe_from_node_fd, BUFFER_SIZE).decode()
 
-        print("done")
+        print(return_string)
+
+        count += 1
 
         # send null
         #os.write(pipe_to_node_fd, b'\0')
+        #sleep(1)
 
 except Exception as e:
     remove_pipes()
@@ -76,5 +88,9 @@ except KeyboardInterrupt as e:
         print("pipe_from_node_fd already closed")
         pass
     remove_pipes()
+
+print("Total time: ", time.time() - start_time)
+print("Total count: ", count)
+print("Ext per second: ", count / (time.time() - start_time))
 
 

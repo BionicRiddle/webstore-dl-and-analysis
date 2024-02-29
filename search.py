@@ -54,7 +54,7 @@ class WorkerThread(threading.Thread):
         self.stop_event = threading.Event()
         self.counter = 0
         self.current_temp = ""
-        self.esprima = Esprima()
+        self.esprima = Esprima(thread_id)
 
     def run(self):
         while not self.stop_event.is_set():
