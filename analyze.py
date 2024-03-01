@@ -249,8 +249,7 @@ def analyze_extension(thread, extension_path: str) -> None:
 
         # --- Static analysis ---1
            
-        # Broken pipe goes vroom 
-        #static_analysis(extension, thread.esprima)
+        static_analysis(extension, thread.esprima)
 
 
         # --- Dynamic analysis ---
@@ -266,6 +265,8 @@ def analyze_extension(thread, extension_path: str) -> None:
 
     # --- Clean up ---
     extension.clean_up()
+
+    return
 
     # do domain analysis
 

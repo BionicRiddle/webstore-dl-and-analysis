@@ -2,92 +2,44 @@ import os
 import time
 import random
 from time import sleep
+import requests
 
 start_time = time.time()
 
+javascript_code = """
+function addNumbers(a, b) {
+    return a + b;)
+}
+"""
+
+count = 0
+
 NUM = 0
-BUFFER_SIZE = 500000
+PORT = 12300 + NUM
+
+node_server_url = "http://localhost:" + str(PORT)
 
 pipe_to_node = '/tmp/pipe_to_node_' + str(NUM)
 pipe_from_node = '/tmp/pipe_from_node_' + str(NUM)
 
-def remove_pipes():
-    try:
-        os.unlink(pipe_to_node)
-    except:
-        pass
+while True:
+    count += 1
+    try: 
+        # Make a POST request to the Node.js server
+        url = node_server_url + "/parse"
+        response = requests.post(url, data="test", headers={'Content-Type': 'text/plain'})
 
-    try:
-        os.unlink(pipe_from_node)
-    except:
-        pass
+        # Check the response status and content
+        if response.status_code == 200:
+            #print(response.text)
+            pass
+        else:
+            print('Esprima processing failed with status code', response.status_code)
+            print('Server response:', response.text)
 
-## remove the pipes if they already exist
-try:
-    os.unlink(pipe_to_node)
-    print("Existing pipe_to_node removed")
-except:
-    pass
-try:
-    os.unlink(pipe_from_node)
-    print("Existing pipe_from_node removed")
-except:
-    pass
+    except KeyboardInterrupt:
+        break
 
-## Open and read files into list
-strgs = []
-input_files = ["node/script.js"]
-for input_file in input_files:
-    with open(input_file, 'r') as file:
-        file_content = file.read().encode()
-        strgs.append(file_content)
-        
-count = 0
-
-## create named pipes
-
-pipe_from_node_fd = None
-
-try:
-    os.mkfifo(pipe_to_node)
-    os.mkfifo(pipe_from_node)
-
-    ## open the pipe
-    pipe_to_node_fd = os.open(pipe_to_node, os.O_WRONLY)
-    pipe_from_node_fd = os.open(pipe_from_node, os.O_RDONLY)
-
-    while True:
-
-        input("Press Enter to continue...")
-
-        # read file "input_file" and send it to the Node.js process
-        os.write(pipe_to_node_fd, random.choice(strgs))
-        
-        #print("waiting for the node to finish")
-
-        ## read from the pipe
-        return_string = os.read(pipe_from_node_fd, BUFFER_SIZE).decode()
-
-        print(return_string)
-
-        count += 1
-
-        # send null
-        #os.write(pipe_to_node_fd, b'\0')
-        #sleep(1)
-
-except Exception as e:
-    remove_pipes()
-    raise
-except KeyboardInterrupt as e:
-    try:
-        os.close(pipe_from_node_fd)
-        os.close(pipe_to_node_fd)
-        print("closed!")
-    except:
-        print("pipe_from_node_fd already closed")
-        pass
-    remove_pipes()
 
 print("Total time: ", time.time() - start_time)
 print("Total count: ", count)

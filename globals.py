@@ -12,7 +12,7 @@ STFU_MODE               = os.getenv('STFU_MODE'                 , False)
 DROP_TABLES             = os.getenv('DROP_TABLES'               , True)
 DEFAULT_EXTENSIONS_PATH = os.getenv('DEFAULT_EXTENSIONS_PATH'   , "extensions/")
 NODE_PATH               = os.getenv("NODE_PATH"                 , "node")
-NODE_APP_PATH           = os.getenv("NODE_APP_PATH"             , './app.js')
+NODE_APP_PATH           = os.getenv("NODE_APP_PATH"             , './node/app.js')
 
 DNS_SERVERS = [
     "1.1.1.1",
