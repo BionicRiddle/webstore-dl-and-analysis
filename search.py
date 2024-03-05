@@ -56,14 +56,7 @@ class WorkerThread(threading.Thread):
         self._counter = 0
 
         self.sql = sql
-<<<<<<< HEAD
-        self.stop_event = threading.Event()
-        self.counter = 0
-        self.current_temp = ""
-        #self.esprima = Esprima(thread_id)
-=======
         self.esprima = esprima      
->>>>>>> refs/remotes/origin/master
 
     def run(self):
        
@@ -77,16 +70,9 @@ class WorkerThread(threading.Thread):
                 analyze_extension(self, extension)
                 self._counter += 1
             except Exception as e:
-<<<<<<< HEAD
-                print(Fore.RED + 'Error in thread %d: %s' % (self.thread_id, str(e)) + Style.RESET_ALL)
-            self.queue.task_done()
-        #self.esprima.close_process()
-        print(Fore.YELLOW + 'Thread %d terminated' % self.thread_id + Style.RESET_ALL)
-=======
                 print(Fore.RED + 'Error in thread %d: %s' % (self._thread_id, str(e)) + Style.RESET_ALL)
             self._queue.task_done()
         print(Fore.YELLOW + 'Thread %d terminated' % self._thread_id + Style.RESET_ALL)
->>>>>>> refs/remotes/origin/master
 
     def get_thread_id(self):
         return self._thread_id
@@ -201,36 +187,6 @@ Chalmers University of Technology, Gothenburg, Sweden
     # Stuff to do before starting threads
     
     # Get supported TLDs
-<<<<<<< HEAD
-    
-    # TMP budget caching
-    
-    # Godaddy
-    if os.path.exists(os.getcwd() + "/GoDaddyCache.txt"):
-        pass
-    else:
-        f = open("GoDaddyCache.txt", "w")
-        f.write(str(godaddy_get_supported_tlds()))
-        f.close()
-    
-    # DomainDb
-    if os.path.exists(os.getcwd() + "/DomainDbCache.txt"):
-        pass
-    else:
-        f = open("DomainDbCache.txt", "w")
-        f.write(str(domainsdb_get_supported_tlds()))
-        f.close()
-   
-    godaddy = open(os.getcwd() + "/GoDaddyCache.txt", "r")
-    domaindb = open(os.getcwd() + "/DomainDbCache.txt", "r")
-    
-    globals.GODADDY_TLDS = godaddy.read()
-    globals.DOMAINSDB_TLDS = domaindb.read()
-    
-    
-    
-=======
->>>>>>> refs/remotes/origin/master
     #globals.GODADDY_TLDS = godaddy_get_supported_tlds()
     #globals.DOMAINSDB_TLDS = domainsdb_get_supported_tlds()
 
