@@ -71,7 +71,6 @@ class WorkerThread(threading.Thread):
             except Exception as e:
                 print(Fore.RED + 'Error in thread %d: %s' % (self._thread_id, str(e)) + Style.RESET_ALL)
             self._queue.task_done()
-        self.esprima.close_process()
         print(Fore.YELLOW + 'Thread %d terminated' % self._thread_id + Style.RESET_ALL)
 
     def get_thread_id(self):
@@ -218,6 +217,9 @@ Chalmers University of Technology, Gothenburg, Sweden
                 print(Fore.RED + ('Could not get counter from crashed thread %d' % t.get_thread_id() ) + Style.RESET_ALL)
         print('Threads terminated')
         print()
+        print('Closing Esprima process...', end=' ')
+        esprima.close_process()
+        print('Done')
         print(sum(counters), 'extensions analyzed')
         elapsed = time.time() - start_time
         print('Elapsed time: %s' % time.strftime("%H:%M:%S", time.gmtime(elapsed)))

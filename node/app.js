@@ -27,13 +27,14 @@ app.post('/parse', (req, res) => {
     // Perform Esprima processing
     try {
         const ret = esprima.parse(code, {
-            range: true,
-            comment: true
+            range: false,
+            comment: false
         });
-        parsedCode = JSON.stringify(ret, null, 2);
+
+        //let pretty = JSON.stringify(ret, null, 2);
 
         // Do something with the parsed code (modify as needed)
-        res.status(200).send(parsedCode);
+        res.status(200).send(ret);
     } catch (error) {
         res.status(418).send(error);
     }
@@ -49,10 +50,9 @@ app.post('/tokenize', (req, res) => {
     // Perform Esprima processing
     try {
         const ret = esprima.tokenize(code);
-        parsedCode = JSON.stringify(ret, null, 2);
 
         // Do something with the parsed code (modify as needed)
-        res.status(200).send(parsedCode);
+        res.status(200).send(ret);
     } catch (error) {
         res.status(418).send(error);
     }
