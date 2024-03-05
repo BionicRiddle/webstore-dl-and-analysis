@@ -9,6 +9,7 @@ from time import sleep
 import tldextract
 import globals
 from helpers import *
+import db
 
 GODADDY_TLDS = []
 
@@ -34,6 +35,9 @@ def godaddy_is_available(domain, max_retries=10):
                     json_response = response.json()
 
                     if "available" in json_response:
+                        print("Available (GoDaddy): " + domain)
+                        print("Code: " + str(response))
+                        print("Request url: " + request_url)
                         return json_response['available']
                     else:
                         raise Exception("Missing available key in response")
@@ -76,6 +80,7 @@ def domainsdb_is_available(domain, max_retries=10):
                 print(f"DomainsDB Rate limit exceeded. Retrying in 1 second (Attempt {attempt + 1}/{max_retries})")
                 time.sleep(1)
             elif response.status_code == 404:
+                print("Available: " + domain)
                 return True
             else:
                 print(f"Unexpected code {response.status_code}. Retrying (Attempt {attempt + 1}/{max_retries})")
@@ -133,6 +138,10 @@ def dns_query_naive(domain):
 def dns_nxdomain(domain):
 
     record_type = "NS"
+    
+    if domain == "whatsthegist.app":
+        domain = "ext.whatsthegist.app"
+        
 
     try:
         command = ['./zdns/zdns', record_type, '--verbosity', '1']
@@ -165,7 +174,9 @@ def dns_nxdomain(domain):
 
 # If domain is available, return True
 def domain_analysis(url) -> bool:
+    
     # If domain is full URL, extract domain
+    
     domain_parts = tldextract.extract(url)
 
     if (domain_parts.suffix == ""):
@@ -173,6 +184,10 @@ def domain_analysis(url) -> bool:
         return False    
 
     domain = domain_parts.domain + "." + domain_parts.suffix
+    
+    ## domaindb needs to update their stuff...
+    if domain_parts.suffix == "to" or domain_parts == "ly":
+        return False
 
     if domain in globals.checked_domains:
         return False
@@ -187,7 +202,8 @@ def domain_analysis(url) -> bool:
     except Exception as e:
         raise e
 
-    # If we get here, we could not determine if the domain is available with DNS query
+    # If we get here, we could not determine if the domain is available with DNS query   
+    
 
     with globals.checked_domains_lock:
         globals.checked_domains.add(domain)
@@ -197,6 +213,7 @@ def domain_analysis(url) -> bool:
         elif domain_parts.suffix.upper() in globals.DOMAINSDB_TLDS:
             return domainsdb_is_available(domain)
         else:
+            #print(url)
             raise Exception("TLD not supported")
 
     except Exception as e:
