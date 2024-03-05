@@ -190,19 +190,24 @@ Chalmers University of Technology, Gothenburg, Sweden
     sql_w = db.SQLWrapper(DATABASE)
     esprima = Esprima()
 
-    # Drop tables if DROP_TABLES is set
-    if globals.DROP_TABLES:
-        db.drop_all_tables(sql_w)
-    
-    # Create tables if they don't exist
-    db.create_table(sql_w)
+    try:
 
-    # Spawn and start threads
-    threads = []
-    for i in range(globals.NUM_THREADS):
-        t = WorkerThread(thread_queue, i, sql_w, esprima)
-        t.start()
-        threads.append(t)
+        # Drop tables if DROP_TABLES is set
+        if globals.DROP_TABLES:
+            db.drop_all_tables(sql_w)
+        
+        # Create tables if they don't exist
+        db.create_table(sql_w)
+
+        # Spawn and start threads
+        threads = []
+        for i in range(globals.NUM_THREADS):
+            t = WorkerThread(thread_queue, i, sql_w, esprima)
+            t.start()
+            threads.append(t)
+    except (Exception, KeyboardInterrupt) as e:
+        esprima.close_process()
+
 
     def exit(int, exception=None):
         sql_w.close()
