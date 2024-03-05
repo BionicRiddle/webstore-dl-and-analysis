@@ -8,6 +8,7 @@ import time
 import builtins
 import re
 from datetime import datetime
+import zipfile
 
 # Concurrent threads
 import threading
@@ -54,7 +55,7 @@ class WorkerThread(threading.Thread):
         self.stop_event = threading.Event()
         self.counter = 0
         self.current_temp = ""
-        self.esprima = Esprima(thread_id)
+        #self.esprima = Esprima(thread_id)
 
     def run(self):
         while not self.stop_event.is_set():
@@ -69,7 +70,7 @@ class WorkerThread(threading.Thread):
             except Exception as e:
                 print(Fore.RED + 'Error in thread %d: %s' % (self.thread_id, str(e)) + Style.RESET_ALL)
             self.queue.task_done()
-        self.esprima.close_process()
+        #self.esprima.close_process()
         print(Fore.YELLOW + 'Thread %d terminated' % self.thread_id + Style.RESET_ALL)
 
     def get_thread_id(self):
@@ -119,6 +120,8 @@ if __name__ == "__main__":
                 if arg in ['-h', '--help']:
                     # I hate this
                     print('''
+                          
+                          
 Usage: python3 search.py  [options] [path to extensions...]
 Example: python3 search.py extensions/
 
@@ -181,9 +184,37 @@ Chalmers University of Technology, Gothenburg, Sweden
         globals.NUM_THREADS = 1
 
     # Stuff to do before starting threads
+    
     # Get supported TLDs
-    ###globals.GODADDY_TLDS = godaddy_get_supported_tlds()
-    ###globals.DOMAINSDB_TLDS = domainsdb_get_supported_tlds()
+    
+    # TMP budget caching
+    
+    # Godaddy
+    if os.path.exists(os.getcwd() + "/GoDaddyCache.txt"):
+        pass
+    else:
+        f = open("GoDaddyCache.txt", "w")
+        f.write(str(godaddy_get_supported_tlds()))
+        f.close()
+    
+    # DomainDb
+    if os.path.exists(os.getcwd() + "/DomainDbCache.txt"):
+        pass
+    else:
+        f = open("DomainDbCache.txt", "w")
+        f.write(str(domainsdb_get_supported_tlds()))
+        f.close()
+   
+    godaddy = open(os.getcwd() + "/GoDaddyCache.txt", "r")
+    domaindb = open(os.getcwd() + "/DomainDbCache.txt", "r")
+    
+    globals.GODADDY_TLDS = godaddy.read()
+    globals.DOMAINSDB_TLDS = domaindb.read()
+    
+    
+    
+    #globals.GODADDY_TLDS = godaddy_get_supported_tlds()
+    #globals.DOMAINSDB_TLDS = domainsdb_get_supported_tlds()
 
     # Create a connection to the database using the SQLWrapper
     sql_w = db.SQLWrapper(DATABASE)

@@ -24,7 +24,6 @@ def godaddy_is_available(domain, max_retries=10):
     RATE_PER_MINUTE = 60
 
     for attempt in range(max_retries):
-        sleep((60 / RATE_PER_MINUTE) * globals.NUM_THREADS)
         try:
             response = requests.get(request_url, headers = {
                     "Authorization": "sso-key " + API_KEY + ":" + API_SECRET
@@ -33,12 +32,10 @@ def godaddy_is_available(domain, max_retries=10):
             if response.status_code == 200:
                 try:
                     json_response = response.json()
-
+                    
                     if "available" in json_response:
-                        print("Available (GoDaddy): " + domain)
-                        print("Code: " + str(response))
-                        print("Request url: " + request_url)
-                        return json_response['available']
+                        #print("Available?: (GoDaddy)" + domain + ": " + str(json_response['available']))
+                        return json_response['available'], json_response, request_url
                     else:
                         raise Exception("Missing available key in response")
                 except ValueError:
@@ -54,6 +51,9 @@ def godaddy_is_available(domain, max_retries=10):
         except requests.RequestException as e:
             print(f"Request failed with exception: {e}. Retrying (Attempt {attempt + 1}/{max_retries})")
             time.sleep(1)
+            
+        # Test
+        sleep((60 / RATE_PER_MINUTE) * globals.NUM_THREADS)
 
     raise Exception(f"Failed to get response after {max_retries} attempts")
 
@@ -70,7 +70,7 @@ def domainsdb_is_available(domain, max_retries=10):
                     json_response = response.json() 
 
                     if "domains" in json_response:
-                        return False
+                        return False, "None"
                     else:
                         print(json_response)
                         raise Exception("Stuff broke")
@@ -80,8 +80,7 @@ def domainsdb_is_available(domain, max_retries=10):
                 print(f"DomainsDB Rate limit exceeded. Retrying in 1 second (Attempt {attempt + 1}/{max_retries})")
                 time.sleep(1)
             elif response.status_code == 404:
-                print("Available: " + domain)
-                return True
+                return True, "None"
             else:
                 print(f"Unexpected code {response.status_code}. Retrying (Attempt {attempt + 1}/{max_retries})")
                 time.sleep(1)
@@ -138,9 +137,6 @@ def dns_query_naive(domain):
 def dns_nxdomain(domain):
 
     record_type = "NS"
-    
-    if domain == "whatsthegist.app":
-        domain = "ext.whatsthegist.app"
         
 
     try:
@@ -173,7 +169,23 @@ def dns_nxdomain(domain):
         raise e
 
 # If domain is available, return True
-def domain_analysis(url) -> bool:
+def domain_analysis(url):
+    
+    # Debug request
+    if False:
+        API_KEY = "h1JgSaN2VmpJ_TTiof91Kw8iqsSz67S8kRq"
+        API_SECRET = "W9MoHC9NakTKG4ZdQJkLV1"
+                
+                
+        request_url = "https://api.godaddy.com/v1/domains/available?domain=codedrills.io"
+
+        response = requests.get(request_url, headers = {
+                "Authorization": "sso-key " + API_KEY + ":" + API_SECRET
+            })
+
+        json_response = response.json()
+
+        print(json_response)
     
     # If domain is full URL, extract domain
     
@@ -183,14 +195,15 @@ def domain_analysis(url) -> bool:
         #raise Exception("No suffix found for domain: %s" % domain_parts.domain)
         return False    
 
+
     domain = domain_parts.domain + "." + domain_parts.suffix
     
     ## domaindb needs to update their stuff...
     if domain_parts.suffix == "to" or domain_parts == "ly":
-        return False
+        return False, "false"
 
     if domain in globals.checked_domains:
-        return False
+        return False, "false"
 
     ## You can write like this but god will punish you and you will suffer in hell for all eternity
     # return not dns_nxdomain(domain)
@@ -198,23 +211,25 @@ def domain_analysis(url) -> bool:
     try:
         if dns_nxdomain(domain):
             # dns query returned something
-            return True
+            return True, "dns"
     except Exception as e:
         raise e
 
     # If we get here, we could not determine if the domain is available with DNS query   
     
-
+    
+    
     with globals.checked_domains_lock:
         globals.checked_domains.add(domain)
     try:
         if domain_parts.suffix.upper() in globals.GODADDY_TLDS:
-           return godaddy_is_available(domain)
+            pass
+            return godaddy_is_available(domain), "godaddy"
         elif domain_parts.suffix.upper() in globals.DOMAINSDB_TLDS:
-            return domainsdb_is_available(domain)
+            return domainsdb_is_available(domain), "domaindb"
         else:
-            #print(url)
-            raise Exception("TLD not supported")
+            pass
+            #raise Exception("TLD not supported")
 
     except Exception as e:
         print(Fore.RED + str(e) + Style.RESET_ALL)
@@ -237,8 +252,8 @@ if __name__ == "__main__":
             }
 
     # This is normally done in search.py before creating threads
-    globals.GODADDY_TLDS = godaddy_get_supported_tlds()
-    globals.DOMAINSDB_TLDS = domainsdb_get_supported_tlds()
+    #globals.GODADDY_TLDS = godaddy_get_supported_tlds()
+    #globals.DOMAINSDB_TLDS = domainsdb_get_supported_tlds()
 
     url_file = "urlList"
 
@@ -252,5 +267,7 @@ if __name__ == "__main__":
         for key in lines:
             # create dummy object
             dummy = DummyObject()
-            a = domain_analysis(key)
-            print(a)
+            
+                        
+            #a = domain_analysis(key)
+            #print(a)

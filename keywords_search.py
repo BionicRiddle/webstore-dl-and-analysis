@@ -119,7 +119,7 @@ def getActions(data, extension_path, urlPattern):
         
         #Action runs from indexes action[0] -> action[1]
         #Check ahead of the action to see if a url can be found after it, using the getUrl() function
-        if str(getUrl(data[startIndex:endIndex+60], urlPattern)) != 'No url(s) found':
+        if str(getUrl(data[startIndex:endIndex+80], urlPattern)) != 'No url(s) found':
             
             # E.x href, get, fetch etc
             actionType = data[startIndex:endIndex]
@@ -127,7 +127,7 @@ def getActions(data, extension_path, urlPattern):
             #If a url is found, store it in association with the action
         
             # Very much test
-            url = getUrl(data[startIndex:endIndex+60], urlPattern)
+            url = getUrl(data[startIndex:endIndex+80], urlPattern)
             
             # Check if action has already been added
             
@@ -144,11 +144,10 @@ def getActions(data, extension_path, urlPattern):
             else:
                 #print("Url: " + url)
                 actionUrlMap[actionType][url] = [extension_path]
-     
 
     return actionUrlMap
 
-def analyze_data(path):
+def analyze_data(path, extensions_path):
     ## Path: Path to crx file
     
     # This is done per extension
@@ -240,7 +239,7 @@ def analyze_data(path):
                                 commonUrls[url] += 1
 
                                 # Provides information about where the url is found (extension(s) and filenames(s))
-                                urlList[url].append(dirpath + "/" + filename)
+                                urlList[url].append(extensions_path + "/" + filename)
                         
                         for action in actions:
                             #print("Action: " + str(actions[action]))
@@ -347,7 +346,7 @@ def analyze(extension, isInternal, single_extension=None):
         #[4] = Url list with extensions they reside in
     
         
-        result = analyze_data(path)
+        result = analyze_data(path, extensions_path)
         hits =               result[0] #Hits (?) vad den får ut I guess
         urls =               result[1] #E.x, {"www.yelp.com" : 1, "www.pizza.com", 2}
         actions =            result[2]

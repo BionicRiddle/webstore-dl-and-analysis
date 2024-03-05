@@ -272,13 +272,23 @@ def analyze_extension(thread, extension_path: str) -> None:
     urls = extension.get_keyword_analysis()['list_of_urls']
 
     #for s_url in list(urls):
+    
+    
+    
     for url in urls:
         if len(url) == 0:
             return
-
         try:
-            if (domain_analysis(url)):
-                print(Fore.GREEN + 'Domain %s is available' % url + Style.RESET_ALL)
+            results = domain_analysis(url)
+            if results[0][0] == True:
+                if results[1] == "godaddy":
+                    print(Fore.GREEN + 'Domain %s is available (GoDaddy)' % url + Style.RESET_ALL)
+                    print(Fore.BLUE + 'Response: %s' % results[0][1] + Style.RESET_ALL)
+                    print(Fore.CYAN + 'Request: %s' % results[0][2] + Style.RESET_ALL)
+                if results[1] == "domaindb":
+                    print(Fore.GREEN + 'Domain %s is available (DomainDb)' % url + Style.RESET_ALL)
+                if results[1] == "dns":
+                    print(Fore.GREEN + 'Domain %s is available (DNS)' % url + Style.RESET_ALL)
                 domain_found(url)
         except Exception as e:
             failed_extension(extension_path, str(e))
