@@ -186,6 +186,30 @@ Chalmers University of Technology, Gothenburg, Sweden
 
     # Stuff to do before starting threads
     
+        # TMP budget caching
+    
+    # Godaddy
+    if os.path.exists(os.getcwd() + "/GoDaddyCache.txt"):
+        pass
+    else:
+        f = open("GoDaddyCache.txt", "w")
+        f.write(str(godaddy_get_supported_tlds()))
+        f.close()
+    
+    # DomainDb
+    if os.path.exists(os.getcwd() + "/DomainDbCache.txt"):
+        pass
+    else:
+        f = open("DomainDbCache.txt", "w")
+        f.write(str(domainsdb_get_supported_tlds()))
+        f.close()
+   
+    godaddy = open(os.getcwd() + "/GoDaddyCache.txt", "r")
+    domaindb = open(os.getcwd() + "/DomainDbCache.txt", "r")
+    
+    globals.GODADDY_TLDS = godaddy.read()
+    globals.DOMAINSDB_TLDS = domaindb.read()
+    
     # Get supported TLDs
     #globals.GODADDY_TLDS = godaddy_get_supported_tlds()
     #globals.DOMAINSDB_TLDS = domainsdb_get_supported_tlds()

@@ -17,7 +17,7 @@ def static_analysis(extension, esprima) -> bool:
                     ret = esprima.run("parse", content)
 
                 except Exception as e:
-                    print("TODO: failed_extension(str(extension), \"Esprima\", str(e))")
+                    #print("TODO: failed_extension(str(extension), \"Esprima\", str(e))")
                     pass
                     
     except Exception as e:
