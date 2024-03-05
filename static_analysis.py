@@ -33,14 +33,7 @@ def static_analysis(extension, esprima) -> bool:
                     print(pretty)
 
                 except Exception as e:
-                    failedc += 1
-                    print("TODO: failed_extension(str(extension), \"Esprima\", str(e))")
-                    print(str(e))
-                    print(extension)
-                    print(file)
-                    print("C " + str(dcounter))
-                    print("F " + str(failedc))
-                    print(" ")
+                    #print("TODO: failed_extension(str(extension), \"Esprima\", str(e))")
                     pass
                     
     except Exception as e:
