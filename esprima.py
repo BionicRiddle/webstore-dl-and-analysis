@@ -49,11 +49,15 @@ class Esprima:
         self._node_process.send_signal(2)
 
 if __name__ == "__main__":
+
+    print("Öhh, outdated")
+    sys.exit(1)
+    
     from colorama import Fore, Back, Style
     import json
 
     # path like /www/EXTENSION_DIR
-    input_dir = "node/app.js"
+    input_dir = "node/test.js"
 
     # Environment variables for the Node.js script
 
