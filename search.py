@@ -46,41 +46,56 @@ DATABASE = 'thesis.db'
 
 # Worker Thread
 class WorkerThread(threading.Thread):
-    def __init__(self, queue, thread_id, sql):
+    def __init__(self, queue, thread_id, sql, esprima):
         print('Starting thread %d' % thread_id)
         threading.Thread.__init__(self)
-        self.queue = queue
-        self.thread_id = thread_id
+
+        self._queue = queue
+        self._thread_id = thread_id
+        self._stop_event = threading.Event()
+        self._counter = 0
+
         self.sql = sql
+<<<<<<< HEAD
         self.stop_event = threading.Event()
         self.counter = 0
         self.current_temp = ""
         #self.esprima = Esprima(thread_id)
+=======
+        self.esprima = esprima      
+>>>>>>> refs/remotes/origin/master
 
     def run(self):
-        while not self.stop_event.is_set():
+       
+        while not self._stop_event.is_set():
             # Get the work from the queue, if done, terminate thread
             try:
-                extension = self.queue.get(timeout=5)
+                extension = self._queue.get(timeout=5)
             except queue.Empty as e:
                 break
             try:
                 analyze_extension(self, extension)
-                self.counter += 1
+                self._counter += 1
             except Exception as e:
+<<<<<<< HEAD
                 print(Fore.RED + 'Error in thread %d: %s' % (self.thread_id, str(e)) + Style.RESET_ALL)
             self.queue.task_done()
         #self.esprima.close_process()
         print(Fore.YELLOW + 'Thread %d terminated' % self.thread_id + Style.RESET_ALL)
+=======
+                print(Fore.RED + 'Error in thread %d: %s' % (self._thread_id, str(e)) + Style.RESET_ALL)
+            self._queue.task_done()
+        print(Fore.YELLOW + 'Thread %d terminated' % self._thread_id + Style.RESET_ALL)
+>>>>>>> refs/remotes/origin/master
 
     def get_thread_id(self):
-        return self.thread_id
+        return self._thread_id
 
     def get_counter(self):
-        return self.counter        
+        return self._counter        
 
     def stop(self):
-        self.stop_event.set()
+        self._stop_event.set()
 
 if __name__ == "__main__":
 
@@ -186,6 +201,7 @@ Chalmers University of Technology, Gothenburg, Sweden
     # Stuff to do before starting threads
     
     # Get supported TLDs
+<<<<<<< HEAD
     
     # TMP budget caching
     
@@ -213,26 +229,33 @@ Chalmers University of Technology, Gothenburg, Sweden
     
     
     
+=======
+>>>>>>> refs/remotes/origin/master
     #globals.GODADDY_TLDS = godaddy_get_supported_tlds()
     #globals.DOMAINSDB_TLDS = domainsdb_get_supported_tlds()
 
     # Create a connection to the database using the SQLWrapper
     sql_w = db.SQLWrapper(DATABASE)
-    
+    esprima = Esprima()
 
-    # Drop tables if DROP_TABLES is set
-    if globals.DROP_TABLES:
-        db.drop_all_tables(sql_w)
-    
-    # Create tables if they don't exist
-    db.create_table(sql_w)
+    try:
 
-    # Spawn and start threads
-    threads = []
-    for i in range(globals.NUM_THREADS):
-        t = WorkerThread(thread_queue, i, sql_w)
-        t.start()
-        threads.append(t)
+        # Drop tables if DROP_TABLES is set
+        if globals.DROP_TABLES:
+            db.drop_all_tables(sql_w)
+        
+        # Create tables if they don't exist
+        db.create_table(sql_w)
+
+        # Spawn and start threads
+        threads = []
+        for i in range(globals.NUM_THREADS):
+            t = WorkerThread(thread_queue, i, sql_w, esprima)
+            t.start()
+            threads.append(t)
+    except (Exception, KeyboardInterrupt) as e:
+        esprima.close_process()
+
 
     def exit(int, exception=None):
         sql_w.close()
@@ -247,6 +270,9 @@ Chalmers University of Technology, Gothenburg, Sweden
                 print(Fore.RED + ('Could not get counter from crashed thread %d' % t.get_thread_id() ) + Style.RESET_ALL)
         print('Threads terminated')
         print()
+        print('Closing Esprima process...', end=' ')
+        esprima.close_process()
+        print('Done')
         print(sum(counters), 'extensions analyzed')
         elapsed = time.time() - start_time
         print('Elapsed time: %s' % time.strftime("%H:%M:%S", time.gmtime(elapsed)))

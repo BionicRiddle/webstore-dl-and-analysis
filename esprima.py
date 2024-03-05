@@ -1,76 +1,57 @@
 import subprocess
-import os
-from colorama import Fore, Back, Style
-import json
+import requests
+import time
 
 # Global variables and settings
 import globals
 #from helpers import *
 
 class Esprima:
-    def __init__(self, thread_id, args=None):
-        node_script_args = [globals.NODE_PATH, globals.NODE_APP_PATH, thread_id]
-        if args:
-            node_script_args = args
-        self._buffer_size = 500000
-        self._pipe_to_node      = '/tmp/pipe_to_node_' + str(thread_id)
-        self._pipe_from_node    = '/tmp/pipe_from_node_' + str(thread_id)
+    def __init__(self, host="localhost", port=12300):
+        self._debug_out = 'esprima_debug_out.txt'
 
-        # Remove the pipes if they already exist
+        self._host = host
+        self._port = port
+
+        node_script_args = [globals.NODE_PATH, globals.NODE_APP_PATH, str(self._host), str(self._port)]
+        self._node_process = subprocess.Popen(node_script_args, stdout=open(self._debug_out, 'a'), stderr=subprocess.STDOUT)
+        
+        while True:
+            try:
+                response = requests.get("http://" + self._host + ":" + str(self._port) + "/health")
+                if response.status_code == 200:
+                    if response.text == "OK":
+                        break
+            except:
+                time.sleep(0.1)
+
+    def run(self, method, input_text):
+        suported = ["tokenize", "parse"]
+        if method not in suported:
+            raise Exception("Method not supported. Supported methods: (" + ", ".join(suported) + ")")
         try:
-            os.unlink(pipe_to_node)
-        except:
-            pass
-        try:
-            os.unlink(pipe_from_node)
-        except:
-            pass
-
-        # Create named pipes
-        os.mkfifo(self._pipe_to_node)
-        os.mkfifo(self._pipe_from_node)
-
-        # Open the pipes
-        self._pipe_to_node_fd   = os.open(self._pipe_to_node,   os.O_WRONLY)
-        self._pipe_from_node_fd = os.open(self._pipe_from_node, os.O_RDONLY)
-
-        # Start the Node.js script as a subprocess
-        self.node_process = subprocess.Popen(node_script_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-
-    def get_tokens(self, input_text):
-        try:
-            os.write(self._pipe_to_node_fd, input_text.encode()) # TODO: kolla om encode behövs
-            return_string =  os.read(self._pipe_from_node_fd, self._buffer_size).decode()
-
-            # if return_string begins with "Error: ", print it in red
-            if return_string.startswith("Error: "):
-                error = return_string.split("Error: ")[1]
-                raise Exception(error)
-            return return_string
+            response = requests.post("http://{}:{}/{}".format(self._host, self._port, method), data=input_text, headers={'Content-Type': 'text/plain'})
+            if response.status_code == 200:
+                return response.text
+            elif response.status_code == 418: # Esprima error
+                raise Exception("ESPRIMA: " + response.text)
+            elif response.status_code == 400:
+                return "{}"
+            elif response.status_code == 413:
+                # print size of input_text in MB
+                raise Exception("413 Input too large: {:.4f} MB".format(len(input_text) / 1024 / 1024))
+            else: # Server error
+                raise Exception("{} {}".format(response.status_code, response.text))
         except Exception as e:
-            self.close_process()
-
+            raise e
     def close_process(self):
         # Close the subprocess
-        self.node_process.terminate()
-        
-        try:
-            os.close(pipe_from_node_fd)
-            os.close(pipe_to_node_fd)
-        except:
-            pass
-        
-        # Remove pipes
-        try:
-            os.unlink(self._pipe_to_node)
-        except:
-            pass
-        try:
-            os.unlink(self._pipe_from_node)
-        except:
-            pass
+        self._node_process.send_signal(2)
 
 if __name__ == "__main__":
+    from colorama import Fore, Back, Style
+    import json
+
     # path like /www/EXTENSION_DIR
     input_dir = "node/app.js"
 

@@ -1,12 +1,9 @@
 import os
 from colorama import Fore, Back, Style
 
-from esprima import Esprima
-
 def static_analysis(extension, esprima) -> bool:
 
     try:
-        print(Fore.GREEN + "Static analysis" + Style.RESET_ALL)
         extracted_path = extension.get_extracted_path()
 
         for file in os.listdir(extracted_path):
@@ -15,22 +12,17 @@ def static_analysis(extension, esprima) -> bool:
             # We only care about .js files (for now)
 
             if file.endswith(".js"):
-                print(Fore.GREEN + "Analyzing file: " + os.path.join(extracted_path, file) + Style.RESET_ALL)
                 content = open(os.path.join(extracted_path, file), "r").read()
+                try: 
+                    ret = esprima.run("parse", content)
 
-                esprima.send_input(content)
-                print("esprima.send_input(content)")
-
-
-                print(esprima.read_output())
-                print("esprima.read_output()")
-
-
-
+                except Exception as e:
+                    print("TODO: failed_extension(str(extension), \"Esprima\", str(e))")
+                    pass
+                    
     except Exception as e:
-        print(Fore.RED + str(e) + Style.RESET_ALL)
-        return False
-
+        raise Exception("Error in static_analysis: " + str(e))
+    
 class DummyExtensionObject:
     def __init__(self) -> None:
         self.static_analysis = {}
@@ -45,6 +37,7 @@ class DummyExtensionObject:
         return "extensions/aaanbpflpadmmnkbnlkdehkpjhgbbehl/AAANBPFLPADMMNKBNLKDEHKPJHGBBEHL_1_0_0_0.crx"
 
 if __name__ == "__main__":
+    from esprima import Esprima
 
     # create dummy object
     dummy = DummyExtensionObject()
