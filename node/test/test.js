@@ -18,18 +18,6 @@ if (test == 0) {
     url = "https://chalmers.se/";
 }
 
-switch (test) {
-    case 0:
-        url = "https://gp.se/";
-        break;
-    case 1:
-        url = "https://google.se/";
-        break;
-    default:
-        url = "https://kth.se/";
-        break;
-}
-
 if (test == 1) {
     fetch(url)
     .then(response => response.json())
@@ -43,4 +31,16 @@ if (test == 1) {
         }
       })
       .catch(error => console.error(error));
+}
+
+switch (test) {
+    case 0:
+        url = "https://gp.se/";
+        break;
+    case 4:
+        url = "https://google.se/";
+        break;
+    default:
+        url = "https://kth.se/";
+        break;
 }

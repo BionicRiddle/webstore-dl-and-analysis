@@ -1,5 +1,9 @@
 {
   "dependencies": {
+    "ast-eval": "^0.8.0",
+    "cjs": "^0.0.11",
+    "dfatool": "^0.1.1",
+    "escodegen": "^2.1.0",
     "esprima": "^4.0.1",
     "express": "^4.18.3"
   }

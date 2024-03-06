@@ -12,6 +12,7 @@ const PORT = process.argv[3];
 const express = require('express');
 const bodyParser = require('body-parser');
 const esprima = require('esprima');
+const dfatool = require('dfatool');
 
 const app = express();
 
@@ -56,6 +57,43 @@ app.post('/tokenize', (req, res) => {
     } catch (error) {
         res.status(418).send(error);
     }
+});
+
+app.post('/flow', (req, res) => {
+    const code = req.body;
+    // Check if the code is provided
+    if (!code) {
+        return res.status(400).send('Code not provided');
+    }
+
+    // Perform Esprima processing
+    // try {
+        const ast = esprima.parse(code, {
+            loc: true
+        });
+
+        let globalScope = dfatool.newGlobalScope();
+        dfatool.buildScope(ast, globalScope);
+
+        globalScope.initialize();
+        globalScope.derivation();
+
+        var outline = {};
+
+        // Iterate all the defined variables and inference its value
+        for(var name in globalScope._defines){
+            var variable = globalScope._defines[name];
+            var value = variable.inference();
+            if( value ){
+                outline[variable.name] = value.toJSON();
+            }
+        }
+
+        // Do something with the parsed code (modify as needed)
+        res.status(200).send(JSON.stringify(outline, null, 2));
+    // } catch (error) {
+    //     res.status(418).send(JSON.stringify(error, null, 2));
+    // }
 });
 
 app.get('/health', (req, res) => {

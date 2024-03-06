@@ -14,23 +14,23 @@ def static_analysis(extension, esprima) -> bool:
 
 
         for file in os.listdir(extracted_path):
-            print("File: " + file)
 
             # Todo: Fix so we also include HTML
             # We only care about .js files (for now)
 
             if file.endswith(".js"):
+                print("File: " + file)
                 global dcounter
                 global failedc
                 content = open(os.path.join(extracted_path, file), "r").read()
                 try: 
                     dcounter += 1
-                    ret = esprima.run("parse", content)
-                    pretty = json.dumps(json.loads(ret), indent=4)
+                    ret = esprima.run("flow", content)
+                    #pretty = json.dumps(json.loads(ret), indent=4)
 
 
 
-                    print(pretty)
+                    print(ret)
 
                 except Exception as e:
                     #print("TODO: failed_extension(str(extension), \"Esprima\", str(e))")
@@ -61,8 +61,9 @@ if __name__ == "__main__":
     esprima = Esprima()
 
     try:
-            
-        static_analysis(dummy, esprima)
+        #static_analysis(dummy, esprima)
+        while True:
+            sleep(1)
 
 
     except KeyboardInterrupt:
