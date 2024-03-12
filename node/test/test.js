@@ -37,7 +37,7 @@ switch (test) {
     case 0:
         url = "https://gp.se/";
         break;
-    case 4:
+    case 1:
         url = "https://google.se/";
         break;
     default:

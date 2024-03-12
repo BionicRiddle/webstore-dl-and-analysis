@@ -100,11 +100,15 @@ app.get('/health', (req, res) => {
     res.status(200).send('OK');
 });
 
-const server = app.listen(PORT, HOST, () => {});
+const server = app.listen(PORT, HOST, () => {
+    console.log(`Server running at http://${HOST}:${PORT}/`);
+});
 
 // Handle graceful shutdown
 process.on('SIGINT', () => {
+    console.log('Shutting down gracefully...');
     server.close(() => {
+        console.log('Closed out remaining connections');
         process.exit(0);
     });
 });
