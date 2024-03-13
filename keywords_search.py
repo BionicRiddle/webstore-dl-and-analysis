@@ -101,18 +101,23 @@ def getActions(data, extension_path, urlPattern):
     actionUrlMap = defaultdict(dict)
 
     #Actions of interest - To be expanded
-    pattern = ['fetch', 'post', 'get', 'href', 'xhttp']
+    pattern = ['fetch', 'post', 'get', 'href', 'xhttp', 'FETCH', 'POST', 'GET', 'HREF', 'XHTTP']
 
     #Compile the pattern(s) (fetch, post, etc are technically individual patterns - need to combine them)
     regex = re.compile(r'\b(' + '|'.join(pattern) + r')\b')
 
+    #data = "jibberish deluxedwawaDwadwadwadwadsa das dsad wad aw d sec-fetch-mode"":""cors"",""sec-fetch-site"":""cross-site"",""Referer:https://appsumo.com/"
+
     #Looks up the index of each match of a pattern
-    actions = [(m.start(0), m.end(0)) for m in regex.finditer(data.lower())]
-    
+    actions = [(m.start(0), m.end(0)) for m in regex.finditer(data)]
+        
+        #if data[ind.start(0):ind.end(0)].lower() not in pattern:
+            #print(data[ind.start(0):ind.end(0)])
+        #print(data[ind.end(0)])
     #Loop through each action
     for action in actions:
         # Start of supposed url
-        startIndex = action[0]
+        startIndex = action[0]     
         
         #End of supposed url
         endIndex = action[1]
@@ -122,7 +127,7 @@ def getActions(data, extension_path, urlPattern):
         if str(getUrl(data[startIndex:endIndex+80], urlPattern)) != 'No url(s) found':
             
             # E.x href, get, fetch etc
-            actionType = data[startIndex:endIndex]
+            actionType = data[startIndex:endIndex].lower()
             
             #If a url is found, store it in association with the action
         
@@ -130,6 +135,9 @@ def getActions(data, extension_path, urlPattern):
             url = getUrl(data[startIndex:endIndex+80], urlPattern)
             
             # Check if action has already been added
+            #print("url: " + str(url))
+            #print("Actiontype: " + str(actionType))
+            #print("")
             
             if actionType in actionUrlMap:
                 # Check if domain has already been added
@@ -223,7 +231,7 @@ def analyze_data(path, extensions_path):
                         patterns = [httpPattern, wwwPattern]
 
                         # Actions and any associated url's
-                        actions = getActions(data, dirpath + "/" + filename, patterns)
+                        actions = getActions(data, extensions_path + "/" + filename, patterns)
                         
                         #print("Dirpath: " + dirpath + "/" + filename)
 
@@ -419,44 +427,6 @@ def analyze(extension, isInternal, single_extension=None):
         "list_of_actions":  actionsList,
         "list_of_urls": urlList
     })
-
-
-def displayData(commonUrls, actionsList, urlList):
-    #Create file to save the data
-    #f = open("Results " + str(datetime.now()) + ".txt", "w")
-
-    #Set how many links you want displayed:
-    #index_display = 10
-
-    #print("-----Common Urls-----")
-    #print(str(commonUrls))
-    #print("\n")
-
-    
-    #print("-----Action List-----")
-    #for action in actionsList:
-        #print(str(actionsList[action]))
-    #print("\n")
-
-    #print("-----Url List-----")
-    #print(str(urlList))
-    #print("\n")
-    
-
-    
-    json_commonUrls = json.dumps(commonUrls, indent=4)
-    json_actionsList = json.dumps(actionsList, indent=4)
-    json_urlList = json.dumps(urlList, indent=4)
-
-    #with open("sample.json", "w") as outfile:
-
-    f1 = open("commonUrls", "w")
-    f2 = open("actionsLists", "w")
-    f3 = open("urlList", "w")
-
-    f1.write(json_commonUrls)
-    f2.write(json_actionsList)
-    f3.write(json_urlList)
     
 
 if __name__ == "__main__":

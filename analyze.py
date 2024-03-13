@@ -5,7 +5,7 @@ import tempfile
 import threading
 import random
 from keywords_search import analyze
-from domain_analysis import domain_analysis
+from domain_analysis import domain_analysis, doubleCheck
 from static_analysis import static_analysis
 import os
 import time
@@ -113,9 +113,14 @@ domain_found_lock = threading.Lock()
 FILE_EXTENSIONS_SKIP = ["JPG", "PNG", "ICO", "GIF", "SVG", "TTF", "WOFF", "WOFF2", "EOT", "MD", "DS_STORE"]
 FILE_EXTENSIONS_TEXT = ["JS", "CSS", "HTML", "JSON", "TXT", "XML", "YML", "TS", "CFG", "CONF"]
 
-def domain_found(domain: str) -> None:
+def domain_found_godaddy(domain: str) -> None:
     with domain_found_lock:
-        with open('found_domains.txt', 'a') as f:
+        with open('found_domains_godaddy.txt', 'a') as f:
+            f.write(domain + '\n')
+            
+def domain_found_misshosting(domain: str) -> None:
+    with domain_found_lock:
+        with open('found_domains_misshosting.txt', 'a') as f:
             f.write(domain + '\n')
 
 def failed_extension(crx_path: str, reason: str = "", exception=None) -> None:
@@ -240,16 +245,10 @@ def analyze_extension(thread, extension_path: str) -> None:
         urls = extension.get_keyword_analysis()['list_of_urls']
         actionsList = extension.get_keyword_analysis()['list_of_actions']
         commonUrls = extension.get_keyword_analysis()['list_of_common_urls']
-        
-        
-        # DB Stuff
-        db.insertDomainTable(thread.sql, urls)
-        db.insertActionTable(thread.sql, actionsList)
-        db.insertUrlTable(thread.sql, commonUrls)
 
         # --- Static analysis ---1
            
-        static_analysis(extension, thread.esprima)
+        #static_analysis(extension, thread.esprima)
 
 
         # --- Dynamic analysis ---
@@ -261,12 +260,10 @@ def analyze_extension(thread, extension_path: str) -> None:
     except Exception as e:
         # if any exception during analysis, do a clean up to prevent disk filling up
         extension.clean_up()
-        raise
+        #Log to file
 
     # --- Clean up ---
     extension.clean_up()
-
-    return
 
     # do domain analysis
 
@@ -274,26 +271,40 @@ def analyze_extension(thread, extension_path: str) -> None:
 
     #for s_url in list(urls):
     
-    
+    url_dns_record = {}
     
     for url in urls:
         if len(url) == 0:
             return
         try:
-            results = domain_analysis(url)
-            if results[0][0] == True:
+            results = domain_analysis(url)   
+            url_dns_record[url] = results[2]
+            if results[0] == True:
                 if results[1] == "godaddy":
                     print(Fore.GREEN + 'Domain %s is available (GoDaddy)' % url + Style.RESET_ALL)
-                    print(Fore.BLUE + 'Response: %s' % results[0][1] + Style.RESET_ALL)
-                    print(Fore.CYAN + 'Request: %s' % results[0][2] + Style.RESET_ALL)
+                    domain_found_godaddy(url)
+                    
+                    if doubleCheck(url) == "available":
+                        print(Fore.BLUE + "Misshosting says available: " + url + Style.RESET_ALL)
+                        domain_found_misshosting(url)
+                    else:
+                        print(Fore.RED + "Misshosting is either saying invalid tld or not available: " + url + Style.RESET_ALL)
+        
                 if results[1] == "domaindb":
                     print(Fore.GREEN + 'Domain %s is available (DomainDb)' % url + Style.RESET_ALL)
                 if results[1] == "dns":
                     print(Fore.GREEN + 'Domain %s is available (DNS)' % url + Style.RESET_ALL)
-                domain_found(url)
+                #domain_found(url)
         except Exception as e:
             failed_extension(extension_path, str(e))
             continue
+
+    # DB Stuff
+    db.insertDomainTable(thread.sql, urls, url_dns_record)
+    db.insertActionTable(thread.sql, actionsList)
+    db.insertUrlTable(thread.sql, commonUrls)
+    
+    
 
 if __name__ == "__main__":
     raise Exception("This file is not meant to be run directly")

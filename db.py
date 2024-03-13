@@ -87,19 +87,20 @@ class SQLWrapper():
 
 ## Inserts
 
-def insertDomainTable(sql_object, urlList):
+def insertDomainTable(sql_object, urlList, dns_record):
     # Insert the domain, extension and dns record type into the database
     
     insert = "INSERT INTO domain VALUES (?, ?, ?)"
+    
     
     for url in urlList:
         # url: Self explanatory
         for extension in urlList[url]:
             # Extension: The extension and file the domain/url resides in
-            # Todo: Maybe add check for duplicates, depending on if it's already fixed in 
+            # Todo: Maybe add check for duplicates, depending on if it's already fixed in
             try:
                 with sql_object as cursor:
-                    cursor.execute(insert, (url, extension[0], 'NX'))
+                    cursor.execute(insert, (url, extension[0], str(dns_record[url].value)))
             except sqlite3.Error as er:
                 print('SQLite error: %s' % (' '.join(er.args)))
 
