@@ -9,6 +9,7 @@ import codecs
 import json
 import re, os, shutil
 from tqdm import tqdm
+from domain_analysis import isValidUrl
 import operator
 import re
 import json
@@ -57,10 +58,13 @@ def getUrl(data, patterns):
     pattern = re.compile(r'\b(' + '|'.join(patterns) + r')\b')
     url = re.findall(pattern, data.lower())
 
+    # Did we find a url?
     if len(url) > 0:
-        return url[0]
-    else:
-        return 'No url(s) found'
+        ## Check if valid url
+        if isValidUrl(url[0]):
+            return url[0]
+   
+    return 'No url(s) found'
 
 def getUrls(data, patterns):
     # - Try different patterns (Maybe 3 or so)
@@ -101,7 +105,7 @@ def getActions(data, extension_path, urlPattern):
     actionUrlMap = defaultdict(dict)
 
     #Actions of interest - To be expanded
-    pattern = ['fetch', 'post', 'get', 'href', 'xhttp', 'FETCH', 'POST', 'GET', 'HREF', 'XHTTP']
+    pattern = ['fetch', 'post', 'get', 'href', 'xhttp','src', 'FETCH', 'POST', 'GET', 'HREF', 'XHTTP', 'SRC']
 
     #Compile the pattern(s) (fetch, post, etc are technically individual patterns - need to combine them)
     regex = re.compile(r'\b(' + '|'.join(pattern) + r')\b')
@@ -124,7 +128,7 @@ def getActions(data, extension_path, urlPattern):
         
         #Action runs from indexes action[0] -> action[1]
         #Check ahead of the action to see if a url can be found after it, using the getUrl() function
-        if str(getUrl(data[startIndex:endIndex+80], urlPattern)) != 'No url(s) found':
+        if str(getUrl(data[startIndex:endIndex+100], urlPattern)) != 'No url(s) found':
             
             # E.x href, get, fetch etc
             actionType = data[startIndex:endIndex].lower()
@@ -132,7 +136,7 @@ def getActions(data, extension_path, urlPattern):
             #If a url is found, store it in association with the action
         
             # Very much test
-            url = getUrl(data[startIndex:endIndex+80], urlPattern)
+            url = getUrl(data[startIndex:endIndex+100], urlPattern)
             
             # Check if action has already been added
             #print("url: " + str(url))

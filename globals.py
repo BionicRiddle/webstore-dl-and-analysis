@@ -1,13 +1,14 @@
 import os
 import threading
 from enum import Enum
-#Enums
 
+#Enums
 class DNS_RECORDS(Enum):
     NOERROR  = "NOERROR"
     NXDOMAIN = "NXDOMAIN"
     SERVFAIL = "SERVFAIL"
     UNKNOWN  = "UNKNOWN"
+    INVALID  = "INVALID"
 
 
 # Bara globala variabler

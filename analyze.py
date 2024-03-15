@@ -11,6 +11,7 @@ import os
 import time
 import shutil
 import globals
+from globals import DNS_RECORDS
 from helpers import *
 import json
 import db
@@ -245,6 +246,9 @@ def analyze_extension(thread, extension_path: str) -> None:
         urls = extension.get_keyword_analysis()['list_of_urls']
         actionsList = extension.get_keyword_analysis()['list_of_actions']
         commonUrls = extension.get_keyword_analysis()['list_of_common_urls']
+        
+        #print(type(urls))
+        #print(type(commonUrls))
 
         # --- Static analysis ---1
            
@@ -275,9 +279,10 @@ def analyze_extension(thread, extension_path: str) -> None:
     
     for url in urls:
         if len(url) == 0:
-            return
+            # Var "return" men borde rimligen vara continue?
+            continue
         try:
-            results = domain_analysis(url)   
+            results = domain_analysis(url)
             url_dns_record[url] = results[2]
             if results[0] == True:
                 if results[1] == "godaddy":
@@ -301,8 +306,8 @@ def analyze_extension(thread, extension_path: str) -> None:
 
     # DB Stuff
     db.insertDomainTable(thread.sql, urls, url_dns_record)
-    db.insertActionTable(thread.sql, actionsList)
-    db.insertUrlTable(thread.sql, commonUrls)
+    db.insertActionTable(thread.sql, actionsList, url_dns_record)
+    db.insertUrlTable(thread.sql, commonUrls, url_dns_record)
     
     
 

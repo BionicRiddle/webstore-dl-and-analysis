@@ -259,20 +259,50 @@ def dns_nxdomain(domain):
     except Exception as e:
         raise e
 
+def isValidUrl(url):
+    domain_parts = tldextract.extract(url)
+    
+    # Denna e lite skum
+    # https://plus => domain_parts.domain är tom medan domain_parts.suffix == plus
+    # Behöver därmed kolla båda
+    
+    # Disallowed suffixes to prevent false positives
+    # E.x, adense. google returns NXDOMAIN as it is not used but it is not allowed to be purchased for obvious reasons
+    disallowedSuffixes = ["google"]
+    
+    
+    # Filter our invalid urls, e.x https://www.ads or https://a
+    # Filter out invalid / disallowed suffixes
+    # This is horrendus but it works
+    if domain_parts.domain == "www" or domain_parts.suffix in disallowedSuffixes or domain_parts.suffix == "" or domain_parts.domain == "":
+        #raise Exception("No suffix found for domain: %s" % domain_parts.domain)
+        return False
+    
+    #print("Valid domain: " + str(url))
+    return True
+
 # If domain is available, return True
 def domain_analysis(url):
     
     #doubleCheck(url)
+
     
     # If domain is full URL, extract domain
     
     #print(url)
     
+    if isValidUrl(url) == False:
+        return False, "false", DNS_RECORDS.INVALID
+    
     domain_parts = tldextract.extract(url)
     
-    if (domain_parts.suffix == ""):
+    
+
+    """"     
+    if (domain_parts.suffix == "" or domain_parts.domain == ""):
         #raise Exception("No suffix found for domain: %s" % domain_parts.domain)
-        return False, "false", DNS_RECORDS.UNKNOWN    
+        return False, "false", DNS_RECORDS.INVALID
+    """
 
     domain = domain_parts.domain + "." + domain_parts.suffix
     
@@ -290,14 +320,15 @@ def domain_analysis(url):
     # return not dns_nxdomain(domain)
 
     try:
+        if url == "http://www.w3":
+            print(domain)
         dns_reply = dns_nxdomain(domain)
         # dns query returned something
-        if domain == 'pbz.hr' or domain == 'url':
-            pass
-            #print(domain)
-            #print(dns_reply)
+
         if dns_reply == DNS_RECORDS.NXDOMAIN:
             return True, "dns", dns_reply
+        else:
+            return False, "dns", dns_reply
     except Exception as e:
         raise e
 

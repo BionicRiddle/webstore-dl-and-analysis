@@ -9,6 +9,7 @@ Classes:
 import sqlite3
 import threading
 import sys
+from globals import DNS_RECORDS
 
 if sqlite3.threadsafety == 0:
     raise Exception("sqlite3.threadsafety is 0. Program cannot continue as the sqlite3 module is not thread-safe. Needs to be 1 or 3. Check https://sqlite.org/threadsafe.html for more information.")
@@ -91,20 +92,22 @@ def insertDomainTable(sql_object, urlList, dns_record):
     # Insert the domain, extension and dns record type into the database
     
     insert = "INSERT INTO domain VALUES (?, ?, ?)"
-    
-    
-    for url in urlList:
-        # url: Self explanatory
-        for extension in urlList[url]:
-            # Extension: The extension and file the domain/url resides in
-            # Todo: Maybe add check for duplicates, depending on if it's already fixed in
-            try:
-                with sql_object as cursor:
-                    cursor.execute(insert, (url, extension[0], str(dns_record[url].value)))
-            except sqlite3.Error as er:
-                print('SQLite error: %s' % (' '.join(er.args)))
 
-def insertUrlTable(sqlobject, urls): 
+    
+    for url in urlList: 
+        if dns_record[url] is not DNS_RECORDS.INVALID:
+            # url: Self explanatory
+            for extension in urlList[url]:
+                # Extension: The extension and file the domain/url resides in
+                # Todo: Maybe add check for duplicates, depending on if it's already fixed in
+                try:
+                    with sql_object as cursor:
+                        # Invalid url
+                        cursor.execute(insert, (url, extension[0], str(dns_record[url].value)))
+                except sqlite3.Error as er:
+                    print('SQLite error: %s' % (' '.join(er.args)))
+
+def insertUrlTable(sqlobject, urls, dns_record): 
     # Insert the url & the times it is encountered into the database
     insert = "INSERT INTO common VALUES(?,?)"
     
@@ -120,69 +123,79 @@ def insertUrlTable(sqlobject, urls):
     exists = None
     
     for url in urls:
+        if url == "http://www.w3":
+            print("Record: " + url)
+            print(dns_record[url])
+            print()
+        if dns_record[url] is not DNS_RECORDS.INVALID:
         ## Check for dupliactes
-        try:
-            with sqlobject as cursor:
-                #query = select.format(url)
-                cursor.execute(select, (url,))
-                exists = cursor.fetchone()
-        except sqlite3.Error as er:
-            print('SQLite error: %s' % (' '.join(er.args)))
-        
-        # URL has already been added. Increment the existing one instead
-        if exists:
-            # Get current count
             try:
                 with sqlobject as cursor:
-                    cursor.execute(getUrlCount, (url,))
-                    count = cursor.fetchone()         
+                    #query = select.format(url)
+                    cursor.execute(select, (url,))
+                    exists = cursor.fetchone()
             except sqlite3.Error as er:
                 print('SQLite error: %s' % (' '.join(er.args)))
             
-            # Update
-            try:
-                with sqlobject as cursor:
-                    cursor.execute(update, (int(count[0]+1), url))
-            except sqlite3.Error as er:
-                print('SQLite error: %s' % (' '.join(er.args)))
-            continue
-            
-        else:
-            try:
-                with sqlobject as cursor:
-                    cursor.execute(insert, (str(url), urls[url]))
-                    
-            except sqlite3.Error as er:
-                print('SQLite error: %s' % (' '.join(er.args)))
+            # URL has already been added. Increment the existing one instead
+            if exists:
+                # Get current count
+                try:
+                    with sqlobject as cursor:
+                        cursor.execute(getUrlCount, (url,))
+                        count = cursor.fetchone()         
+                except sqlite3.Error as er:
+                    print('SQLite error: %s' % (' '.join(er.args)))
+                
+                # Update
+                try:
+                    with sqlobject as cursor:
+                        cursor.execute(update, (int(count[0]+1), url))
+                except sqlite3.Error as er:
+                    print('SQLite error: %s' % (' '.join(er.args)))
+                continue
+                
+            else:
+                try:
+                    with sqlobject as cursor:
+                        cursor.execute(insert, (str(url), urls[url]))
+                        
+                except sqlite3.Error as er:
+                    print('SQLite error: %s' % (' '.join(er.args)))
                   
-def insertActionTable(sql_object, actionList):
+def insertActionTable(sql_object, actionList, dns_record):
     # Queries
     select = "SELECT url, type, extension FROM action WHERE url = ? AND type = ? AND extension = ?"
     insert = "INSERT INTO action VALUES (?,?,?)"
     
     # Go through each action type (href, fetch, etc)
+    
     for action in actionList:
         # action = href, fetch, etc
         # actionList[action]: domain followed by a list of extension
         for entry in actionList[action]:
             # Entry: Each indidual domain
-            for extension in actionList[action][entry]:
-            # actionList[action][entry]: List of extension(s) the domain resided in
-                try:
-                    with sql_object as cursor:
-                        # Check if domain already exists 
-                        
-                        # --- This may not be necessary --- #
-                        # This check should already be done in each thread during keywordsearch and extension is unqieue per thread
-                        # Will leave this here for now but might look back and reconsider later
-                        
-                        cursor.execute(select, (entry, action, extension))
-                        exists = cursor.fetchone()
-                        # If entry does not exist
-                        if exists == None:
-                            cursor.execute(insert, (entry, action, extension))
-                except sqlite3.Error as er:
-                    print('SQLite error: %s' % (' '.join(er.args)))
+            
+            # Den får inget dns record, varför
+            
+            if dns_record[entry] is not DNS_RECORDS.INVALID:
+                for extension in actionList[action][entry]:
+                # actionList[action][entry]: List of extension(s) the domain resided in
+                    try:
+                        with sql_object as cursor:
+                            # Check if domain already exists 
+                            
+                            # --- This may not be necessary --- #
+                            # This check should already be done in each thread during keywordsearch and extension is unqieue per thread
+                            # Will leave this here for now but might look back and reconsider later
+                            
+                            cursor.execute(select, (entry, action, extension))
+                            exists = cursor.fetchone()
+                            # If entry does not exist
+                            if exists == None:
+                                cursor.execute(insert, (entry, action, extension))
+                    except sqlite3.Error as er:
+                        print('SQLite error: %s' % (' '.join(er.args)))
 
 ## Setup tables
 
