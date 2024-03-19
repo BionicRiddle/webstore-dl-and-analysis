@@ -261,6 +261,10 @@ def dns_nxdomain(domain):
 
 def isValidUrl(url):
     domain_parts = tldextract.extract(url)
+
+    
+    
+    #client.get_domain(client, 'www.google.com')
     
     # Denna e lite skum
     # https://plus => domain_parts.domain är tom medan domain_parts.suffix == plus
@@ -286,6 +290,27 @@ def domain_analysis(url):
     
     #doubleCheck(url)
 
+
+    ## Very early test, promising but need to check if we can use it.
+    
+    try:
+        response = requests.get("https://rdap.org/domain/svt.se")
+    except Exception as e:
+        print(e)
+        
+    print(response)
+    
+    #json_response = response.json()
+    
+    #expiration = json_response["events"]
+    #expiration = expiration["expiration"]
+    
+    #print(json_response)
+    #print(expiration)
+    
+    #print()
+    #print(json_response["Events"])
+    
     
     # If domain is full URL, extract domain
     
@@ -320,8 +345,6 @@ def domain_analysis(url):
     # return not dns_nxdomain(domain)
 
     try:
-        if url == "http://www.w3":
-            print(domain)
         dns_reply = dns_nxdomain(domain)
         # dns query returned something
 
