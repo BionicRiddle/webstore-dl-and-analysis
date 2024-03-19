@@ -5,7 +5,7 @@ import tempfile
 import threading
 import random
 from keywords_search import analyze
-from domain_analysis import domain_analysis, doubleCheck
+from domain_analysis import domain_analysis
 from static_analysis import static_analysis
 import os
 import time
@@ -289,11 +289,7 @@ def analyze_extension(thread, extension_path: str) -> None:
                     print(Fore.GREEN + 'Domain %s is available (GoDaddy)' % url + Style.RESET_ALL)
                     domain_found_godaddy(url)
                     
-                    if doubleCheck(url) == "available":
-                        print(Fore.BLUE + "Misshosting says available: " + url + Style.RESET_ALL)
-                        domain_found_misshosting(url)
-                    else:
-                        print(Fore.RED + "Misshosting is either saying invalid tld or not available: " + url + Style.RESET_ALL)
+                    domain_found_misshosting(url)
         
                 if results[1] == "domaindb":
                     print(Fore.GREEN + 'Domain %s is available (DomainDb)' % url + Style.RESET_ALL)

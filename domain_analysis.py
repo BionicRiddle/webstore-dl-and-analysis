@@ -67,83 +67,52 @@ def godaddy_is_available(domain, max_retries=10):
 
     raise Exception(f"Failed to get response after {max_retries} attempts")
 
-def doubleCheck(url):
-    
-    domain_parts = tldextract.extract(url)
 
-    if (domain_parts.suffix == ""):
-        #raise Exception("No suffix found for domain: %s" % domain_parts.domain)
-        return False    
-
-
-    domain = domain_parts.domain + "." + domain_parts.suffix
+def rdap(domain, max_retries=10):
+    #print(Style.DIM + 'Checking domain %s with GoDaddy' % domain + Style.RESET_ALL)
+    DOMAIN_API = "https://rdap.org/domain/"
     
-    cookies = {
-    'PHPSESSID': '08jmanir8f6fki7t0ka9b16n16',
-    'intercom-id-al0g0fgs': 'fe6386ee-28f8-4392-a9bd-f6786a0bc8c9',
-    'intercom-session-al0g0fgs': '',
-    'intercom-device-id-al0g0fgs': 'e13363dc-7515-424f-ae47-32e50ef692b7',
-    }
-
-    headers = {
-    'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:123.0) Gecko/20100101 Firefox/123.0',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-    'Accept-Language': 'en-US,en;q=0.5',
-    # 'Accept-Encoding': 'gzip, deflate, br',
-    'DNT': '1',
-    'Sec-GPC': '1',
-    'Connection': 'keep-alive',
-    # 'Cookie': 'PHPSESSID=08jmanir8f6fki7t0ka9b16n16; intercom-id-al0g0fgs=fe6386ee-28f8-4392-a9bd-f6786a0bc8c9; intercom-session-al0g0fgs=; intercom-device-id-al0g0fgs=e13363dc-7515-424f-ae47-32e50ef692b7',
-    'Upgrade-Insecure-Requests': '1',
-    'Sec-Fetch-Dest': 'document',
-    'Sec-Fetch-Mode': 'navigate',
-    'Sec-Fetch-Site': 'none',
-    'Sec-Fetch-User': '?1',
-    'Pragma': 'no-cache',
-    'Cache-Control': 'no-cache',
-    # Requests doesn't support trailers
-    # 'TE': 'trailers',
-    }
-    
-    response = requests.get(
-        'https://misshosting.se/domainschecker.php?q=available&domain=' + domain,
-        cookies=cookies,
-        headers=headers,
-    )
-
-    json_response = response.json()
-    
-    
-    #print(json_response['response'][0]['status'])
-    
-    return json_response['response'][0]['status']
-    
-    """
-    #https://misshosting.se/domainschecker.php?q=available&domain=taken.se
-    #https://misshosting.se/domainschecker.php?q=available&domain=taken.se
-    
-    domain_parts = tldextract.extract(url)
-
-    if (domain_parts.suffix == ""):
-        #raise Exception("No suffix found for domain: %s" % domain_parts.domain)
-        return False    
-
-
-    domain = domain_parts.domain + "." + domain_parts.suffix
-    
-    DOMAIN_API = "https://api.godaddy.com/v1/domains/available?domain="
-    API_KEY = "h1JgSaN2VmpJ_TTiof91Kw8iqsSz67S8kRq"
-    API_SECRET = "W9MoHC9NakTKG4ZdQJkLV1"  
     request_url = DOMAIN_API + domain
 
-    response = requests.get(request_url, headers = {
-            "Authorization": "sso-key " + API_KEY + ":" + API_SECRET
-        })
+    print(request_url)
 
-    json_response = response.json()
-    
-    return json_response
-    """
+    RATE_PER_MINUTE = 10000
+
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(request_url, headers = {})
+            
+            if response.status_code == 200:
+                try:
+                    json_response = response.json()
+                    
+                    if "events" in json_response:
+                        for event in json_response['events']:
+                            if event['eventAction'] == "expiration":
+                                return event['eventDate']
+                    raise Exception("Missing event in in response")
+                except ValueError:
+                    raise Exception("Error in response")
+            elif response.status_code == 400:
+                raise Exception("Invalid request (malformed path, unsupported object type, invalid IP address, etc)")
+            elif response.status_code == 403:
+                print(f"Blocked due to abuse or other misbehaviour? Retrying in 1 second (Attempt {attempt + 1}/{max_retries})")
+                time.sleep(1)
+            elif response.status_code == 404:
+                raise Exception("TLD not supported or domain not found")
+            elif response.status_code == 500:
+                raise Exception("RDAP is broken")
+            else:
+                print(f"Unexpected code {response.status_code}. Retrying (Attempt {attempt + 1}/{max_retries})")
+                time.sleep(1)
+        except requests.RequestException as e:
+            print(f"Request failed with exception: {e}. Retrying (Attempt {attempt + 1}/{max_retries})")
+            time.sleep(1)
+            
+        # Test
+        sleep((60 / RATE_PER_MINUTE) * globals.NUM_THREADS)
+
+    raise Exception(f"Failed to get response after {max_retries} attempts")
 
 def domainsdb_is_available(domain, max_retries=10):
     #print(Style.DIM + 'Checking domain %s with DomainsDB' % domain + Style.RESET_ALL)
@@ -288,13 +257,10 @@ def isValidUrl(url):
 # If domain is available, return True
 def domain_analysis(url):
     
-    #doubleCheck(url)
-
-
     ## Very early test, promising but need to check if we can use it.
     
     try:
-        response = requests.get("https://rdap.org/domain/svt.se")
+        rdap(url)
     except Exception as e:
         print(e)
         
@@ -380,21 +346,7 @@ def domain_analysis(url):
 
 if __name__ == "__main__":
 
-    class DummyObject:
-        def __init__(self) -> None:
-            self.crx_path = "DUMMY_PATH"
-        def get_keyword_analysis(self) -> dict:
-            return {
-                "list_of_urls":         [],
-                "list_of_actions":      [],
-                "list_of_common_urls":  []
-            }
-
-    # This is normally done in search.py before creating threads
-    #globals.GODADDY_TLDS = godaddy_get_supported_tlds()
-    #globals.DOMAINSDB_TLDS = domainsdb_get_supported_tlds()
-
-    url_file = "urlList"
+    url_file = "found_domains.txt"
 
     # read file and parse json
     with open(url_file, 'r') as file:
@@ -403,10 +355,14 @@ if __name__ == "__main__":
         lines = file.read().split('\n')
     
 
-        for key in lines:
-            # create dummy object
-            dummy = DummyObject()
-            
-                        
-            #a = domain_analysis(key)
-            #print(a)
+        for full_domain in lines:
+            try:
+                suffix = tldextract.extract(full_domain).suffix
+                if (suffix == "io"):
+                    continue
+                domain = tldextract.extract(full_domain).domain
+                combined = domain + "." + suffix
+                ret = rdap(combined)
+                print(ret)
+            except Exception as e:
+                print(e)

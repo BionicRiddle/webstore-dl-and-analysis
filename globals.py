@@ -43,6 +43,7 @@ DNS_SERVERS = [
 GODADDY_TLDS = []
 DOMAINSDB_TLDS = []
 MISS_TLDS = ["name", "se", "jp", "cn", "ru", "io", "de", "no", "dk", "in", "ae", "eu", "net", "fi", "into", "link", "nu", "org", "com", "bg", "pt", "lv", "ae", "uk", "africa", "co.uk", "club", "co"]
+RDAP_TLDS = []
 
 checked_domains = set()
 

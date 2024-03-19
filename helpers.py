@@ -5,6 +5,7 @@ import builtins
 from colorama import Fore, Back, Style
 import globals
 import requests
+import json
 
 ## Bara funktioner
 
@@ -47,6 +48,21 @@ def domainsdb_get_supported_tlds():
     response = requests.get(DOMAIN_API)
 
     json_response = response.json()
+
+    tlds = []
+    for tld in json_response["includes"]:
+        tlds.append(tld.upper())
+
+    return tlds
+
+def rdap_get_supported_tlds():
+    DOMAIN_API = "https://root.rdap.org/domains"
+
+    response = requests.get(DOMAIN_API)
+
+    json_response = response.json()
+
+    print(json.dumps(json_response, indent=4))
 
     tlds = []
     for tld in json_response["includes"]:

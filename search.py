@@ -203,16 +203,22 @@ Chalmers University of Technology, Gothenburg, Sweden
         f = open("DomainDbCache.txt", "w")
         f.write(str(domainsdb_get_supported_tlds()))
         f.close()
+
+    # RDAP
+    if os.path.exists(os.getcwd() + "/RDAPCache.txt"):
+        pass
+    else:
+        f = open("RDAPCache.txt", "w")
+        f.write(str(rdap_get_supported_tlds()))
+        f.close()
    
     godaddy = open(os.getcwd() + "/GoDaddyCache.txt", "r")
     domaindb = open(os.getcwd() + "/DomainDbCache.txt", "r")
+    rdap_tlds = open(os.getcwd() + "/RDAPCache.txt", "r")
     
     globals.GODADDY_TLDS = godaddy.read()
     globals.DOMAINSDB_TLDS = domaindb.read()
-    
-    # Get supported TLDs
-    #globals.GODADDY_TLDS = godaddy_get_supported_tlds()
-    #globals.DOMAINSDB_TLDS = domainsdb_get_supported_tlds()
+    globals.RDAP_TLDS = rdap_tlds.read()
 
     # Create a connection to the database using the SQLWrapper
     sql_w = db.SQLWrapper(DATABASE)

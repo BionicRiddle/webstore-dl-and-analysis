@@ -14,6 +14,7 @@ const bodyParser = require('body-parser');
 const esprima = require('esprima');
 const dfatool = require('dfatool');
 const estraverse = require('estraverse');
+const escope = require('escope');
 
 const app = express();
 
@@ -78,49 +79,51 @@ app.post('/flow', (req, res) => {
             loc : true
         });
 
+        let scopeManager = escope.analyze(ast);
 
-        scopes = []
+        let currentScope = scopeManager.acquire(ast);   // global scope
+        estraverse.traverse(ast, {
+            enter: function(node, parent) {
+                // do stuff
 
-
-        let outline = estraverse.traverse(ast, {
-            enter: function (node, parent) {
-                // if parent is not null, has a scope and has an ast
-                console.log(parent);
-                if (parent && parent.scope && parent.scope.ast) {
-                    let scope = dfatool.newGlobalScope()
-                    dfatool.buildScope(parent.scope.ast, scope);
-                    scopes.push(scope);
+                if (/Function/.test(node.type)) {
+                    currentScope = scopeManager.acquire(node);  // get current function scope
                 }
-                
-                if (node.type == 'CallExpression') {
-                    if (node.callee.name == 'fetch') {
-                        return estraverse.VisitorOption.Skip;
+
+                let arg = null;
+            
+                if (node.type === 'CallExpression') {
+                    if (node.callee.name === 'fetch') {
+                        arg = node.arguments[0].name;
+                        
+                        let vars = currentScope.variables;
+                        // find "arg" in the current scope
+                        for (let i = 0; i < vars.length; i++) {
+                            if (vars[i].name === arg) {
+                                //console.log('Found ' + arg + ' in scope');
+                                console.log(vars[i]);
+                                let r = currentScope
+                            }
+                        }
+                        
                     }
                 }
             },
-            leave: function (node, parent) {
-                if (node.type == 'CallExpression') {
-                    if (node.callee.name == 'fetch') {
-                        for (let i = 0; i < scopes.length; i++) {
-                            let arg = node.arguments[0].name;
-                            if (scopes[i].getDefine(arg)) {
-                                let variable = scopes[i].getDefine(arg)
-                                let value = variable.inference();
-                                if (value) {
-                                    console.log()
-                                    console.log(value);
-                                }
-                            }
-                        }
-                    }
+            leave: function(node, parent) {
+                if (/Function/.test(node.type)) {
+                    currentScope = currentScope.upper;  // set to parent scope
                 }
+                
+                // do stuff
             }
         });
 
+        //console.log(scopeManager);
+
+        outline = scopeManager
+
         // Do something with the parsed code (modify as needed)
         res.status(200).send(JSON.stringify(outline, null, 2));
-        // print len of scoope
-        console.log(scopes.length);
     // } catch (error) {
     //     res.status(418).send(JSON.stringify(error, null, 2));
     // }
