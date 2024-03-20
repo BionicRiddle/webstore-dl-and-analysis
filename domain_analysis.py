@@ -11,6 +11,7 @@ import globals
 from globals import DNS_RECORDS
 from helpers import *
 import db
+import datetime
 
 
 #Unoffcial API KEY (Samuel)
@@ -74,8 +75,6 @@ def rdap(domain, max_retries=10):
     
     request_url = DOMAIN_API + domain
 
-    print(request_url)
-
     RATE_PER_MINUTE = 10000
 
     for attempt in range(max_retries):
@@ -85,6 +84,8 @@ def rdap(domain, max_retries=10):
             if response.status_code == 200:
                 try:
                     json_response = response.json()
+
+                    return json_response
                     
                     if "events" in json_response:
                         for event in json_response['events']:
@@ -256,16 +257,7 @@ def isValidUrl(url):
 
 # If domain is available, return True
 def domain_analysis(url):
-    
-    ## Very early test, promising but need to check if we can use it.
-    
-    try:
-        rdap(url)
-    except Exception as e:
-        print(e)
         
-    print(response)
-    
     #json_response = response.json()
     
     #expiration = json_response["events"]
@@ -286,8 +278,6 @@ def domain_analysis(url):
         return False, "false", DNS_RECORDS.INVALID
     
     domain_parts = tldextract.extract(url)
-    
-    
 
     """"     
     if (domain_parts.suffix == "" or domain_parts.domain == ""):
@@ -296,6 +286,27 @@ def domain_analysis(url):
     """
 
     domain = domain_parts.domain + "." + domain_parts.suffix
+
+    # RDAP API
+
+    if domain_parts.suffix in globals.RDAP_TLDS:
+        try:
+            ret = rdap(domain)
+            # 2024-08-03T04:00:00Z
+            # check if less than 1 mont of now
+            expiration_time = datetime.datetime.fromisoformat(ret[:-1])
+            # print(Style.DIM + str(expiration_time) + Style.RESET_ALL)
+            if expiration_time < datetime.datetime.now() + datetime.timedelta(days=30):
+                print(Style.BRIGHT + Fore.RED + "Domain is expiring soon: " + domain + Style.RESET_ALL)
+                print(Style.BRIGHT + Fore.RED + "Expiration date: " + str(expiration_time) + Style.RESET_ALL)
+                print(Style.BRIGHT + Fore.RED + "Time until expiration: " + str(expiration_time - datetime.datetime.now()) + Style.RESET_ALL)
+                print()
+                  
+        except Exception as e:
+            print(e)
+            
+    else:
+        print("Not supported")
     
 
     ## domaindb needs to update their stuff...
@@ -322,8 +333,6 @@ def domain_analysis(url):
         raise e
 
     # If we get here, we could not determine if the domain is available with DNS query   
-    
-    
     
     with globals.checked_domains_lock:
         globals.checked_domains.add(domain)
@@ -358,11 +367,22 @@ if __name__ == "__main__":
         for full_domain in lines:
             try:
                 suffix = tldextract.extract(full_domain).suffix
-                if (suffix == "io"):
+                if suffix == "io":
                     continue
                 domain = tldextract.extract(full_domain).domain
                 combined = domain + "." + suffix
                 ret = rdap(combined)
-                print(ret)
+
+                print(json.dumps(ret, indent=4))
+                continue
+                # 2024-08-03T04:00:00Z
+                # check if less than 1 mont of now
+                expiration_time = datetime.datetime.fromisoformat(ret[:-1])
+                # print(Style.DIM + str(expiration_time) + Style.RESET_ALL)
+                if expiration_time < datetime.datetime.now() + datetime.timedelta(days=30):
+                    print(Style.BRIGHT + Fore.RED + "Domain is expiring soon: " + domain + Style.RESET_ALL)
+                    print(Style.BRIGHT + Fore.RED + "Expiration date: " + str(expiration_time) + Style.RESET_ALL)
+                    print(Style.BRIGHT + Fore.RED + "Time until expiration: " + str(expiration_time - datetime.datetime.now()) + Style.RESET_ALL)
+                    print()
             except Exception as e:
                 print(e)

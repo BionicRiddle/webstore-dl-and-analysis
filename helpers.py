@@ -59,13 +59,12 @@ def rdap_get_supported_tlds():
     DOMAIN_API = "https://root.rdap.org/domains"
 
     response = requests.get(DOMAIN_API)
-
-    json_response = response.json()
-
-    print(json.dumps(json_response, indent=4))
+    data = response.json()
 
     tlds = []
-    for tld in json_response["includes"]:
-        tlds.append(tld.upper())
-
+    for i in range(len(data["domainSearchResults"])):
+        rem = data["domainSearchResults"][i]["remarks"]
+        for j in range(len(rem)):
+            if rem[j]["title"] == "RDAP Service":
+                tlds.append(data["domainSearchResults"][i]["ldhName"])
     return tlds
