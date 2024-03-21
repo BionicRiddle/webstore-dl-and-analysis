@@ -259,13 +259,6 @@ def domain_analysis(url):
     
     ## Very early test, promising but need to check if we can use it.
     
-    try:
-        rdap(url)
-    except Exception as e:
-        print(e)
-        
-    print(response)
-    
     #json_response = response.json()
     
     #expiration = json_response["events"]
