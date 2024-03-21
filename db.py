@@ -164,9 +164,11 @@ def insertUrlTable(sqlobject, urls, dns_record):
                     print('SQLite error: %s' % (' '.join(er.args)))
                   
 def insertActionTable(sql_object, actionList, dns_record):
+    
+    
     # Queries
-    select = "SELECT url, type, extension FROM action WHERE url = ? AND type = ? AND extension = ?"
-    insert = "INSERT INTO action VALUES (?,?,?)"
+    select = "SELECT url, type, extension FROM action WHERE url = ? AND type = ? AND extension = ? AND filepath = ?"
+    insert = "INSERT INTO action VALUES (?,?,?,?)"
     
     # Go through each action type (href, fetch, etc)
     
@@ -189,11 +191,15 @@ def insertActionTable(sql_object, actionList, dns_record):
                             # This check should already be done in each thread during keywordsearch and extension is unqieue per thread
                             # Will leave this here for now but might look back and reconsider later
                             
-                            cursor.execute(select, (entry, action, extension))
+                            extensionId = extension.split("/")[0]
+                            filePath = extension.split("/")[1]
+                            print("filepath: " + str(filePath))
+                            
+                            cursor.execute(select, (entry, action, extensionId, filePath))
                             exists = cursor.fetchone()
                             # If entry does not exist
                             if exists == None:
-                                cursor.execute(insert, (entry, action, extension))
+                                cursor.execute(insert, (entry, action, extensionId, filePath))
                     except sqlite3.Error as er:
                         print('SQLite error: %s' % (' '.join(er.args)))
 
@@ -210,7 +216,7 @@ def create_table(sql_object):
         # Actions List
         # Components:
         # Action, Domain, Extension, (Domain should be primary)
-        cursor.execute("CREATE TABLE IF NOT EXISTS action (url TEXT NOT NULL, type TEXT NOT NULL, extension TEXT NOT NULL, PRIMARY KEY (type, url, extension))")
+        cursor.execute("CREATE TABLE IF NOT EXISTS action (url TEXT NOT NULL, type TEXT NOT NULL, extension TEXT NOT NULL, filepath TEXT NOT NULL, PRIMARY KEY (type, url, extension, filepath))")
 
 def drop_all_tables(sql_object):
     with sql_object as cursor:
