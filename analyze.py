@@ -297,7 +297,7 @@ def analyze_extension(thread, extension_path: str) -> None:
                     print(Fore.GREEN + 'Domain %s is available (DNS)' % url + Style.RESET_ALL)
                 #domain_found(url)
         except Exception as e:
-            failed_extension(extension_path, str(e))
+            #failed_extension(extension_path, str(e))
             continue
 
     # DB Stuff
