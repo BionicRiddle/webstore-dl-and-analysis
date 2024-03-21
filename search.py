@@ -122,15 +122,6 @@ NODE_APP_PATH: "PATH" (default: "./node/app.js")
 
 if __name__ == "__main__":
 
-    # I hate this too
-    print(
-"""------------ Extension analyzer V 1.0 ------------
-
-Authors: Samuel Bach, Albin Karlsson 2024
-Chalmers University of Technology, Gothenburg, Sweden
-
---------------------------------------------------"""
-    )
     args = parse_arguments()
 
     # This is a bit stupid, but it works
@@ -155,6 +146,16 @@ Chalmers University of Technology, Gothenburg, Sweden
             print(extensions_path)
             print(Fore.RED + 'Invalid path to extensions' + Style.RESET_ALL)
             sys.exit(1)
+
+    # I hate this too
+    print(
+"""------------ Extension analyzer V 1.0 ------------
+
+Authors: Samuel Bach, Albin Karlsson 2024
+Chalmers University of Technology, Gothenburg, Sweden
+
+--------------------------------------------------"""
+    )
 
     # Stuff to do before starting threads
     
