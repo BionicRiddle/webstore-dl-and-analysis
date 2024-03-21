@@ -85,12 +85,25 @@ def rdap(domain, max_retries=10):
                 try:
                     json_response = response.json()
 
-                    return json_response
-                    
+                    event_list = [
+                        "add period",
+                        "auto renew period",
+                        "client hold",
+                        "client renew prohibited",
+                        "pending restore",
+                        "redemption period",
+                        "renew period",
+                        "server renew prohibited",
+                        "transfer period"
+                    ]
+
+                    event_found = []
                     if "events" in json_response:
+                        #print(json.dumps(json_response, indent=4))
                         for event in json_response['events']:
-                            if event['eventAction'] == "expiration":
-                                return event['eventDate']
+                            if event['eventAction'] in event_list:
+                                event_found.append(event['eventAction'] + ": " + event['eventDate'])
+                        return event_found
                     raise Exception("Missing event in in response")
                 except ValueError:
                     raise Exception("Error in response")
@@ -101,11 +114,13 @@ def rdap(domain, max_retries=10):
                 time.sleep(1)
             elif response.status_code == 404:
                 raise Exception("TLD not supported or domain not found")
+            elif response.status_code == 429:
+                print(f"RDAP Rate limit exceeded. Retrying in 1 second (Attempt {attempt + 1}/{max_retries})")
+                time.sleep(1)
             elif response.status_code == 500:
                 raise Exception("RDAP is broken")
             else:
-                print(f"Unexpected code {response.status_code}. Retrying (Attempt {attempt + 1}/{max_retries})")
-                time.sleep(1)
+                raise Exception("Unexpected code " + str(response.status_code))
         except requests.RequestException as e:
             print(f"Request failed with exception: {e}. Retrying (Attempt {attempt + 1}/{max_retries})")
             time.sleep(1)
@@ -292,22 +307,35 @@ def domain_analysis(url):
     if domain_parts.suffix in globals.RDAP_TLDS:
         try:
             ret = rdap(domain)
-            # 2024-08-03T04:00:00Z
-            # check if less than 1 mont of now
-            expiration_time = datetime.datetime.fromisoformat(ret[:-1])
-            # print(Style.DIM + str(expiration_time) + Style.RESET_ALL)
-            if expiration_time < datetime.datetime.now() + datetime.timedelta(days=30):
-                print(Style.BRIGHT + Fore.RED + "Domain is expiring soon: " + domain + Style.RESET_ALL)
-                print(Style.BRIGHT + Fore.RED + "Expiration date: " + str(expiration_time) + Style.RESET_ALL)
-                print(Style.BRIGHT + Fore.RED + "Time until expiration: " + str(expiration_time - datetime.datetime.now()) + Style.RESET_ALL)
+
+            for event in ret:
+                print(event)
+
+            if len(ret) != 0:
+                print("Domain: " + domain)
                 print()
+
+
+
+
+        # # 2024-08-03T04:00:00Z
+        # # check if less than 1 mont of now
+        # expiration_time = datetime.datetime.fromisoformat(ret[:-1])
+        # # print(Style.DIM + str(expiration_time) + Style.RESET_ALL)
+        # if expiration_time < datetime.datetime.now() + datetime.timedelta(days=30):
+        #     print(Style.BRIGHT + Fore.RED + "Domain is expiring soon: " + domain + Style.RESET_ALL)
+        #     print(Style.BRIGHT + Fore.RED + "Expiration date: " + str(expiration_time) + Style.RESET_ALL)
+        #     print(Style.BRIGHT + Fore.RED + "Time until expiration: " + str(expiration_time - datetime.datetime.now()) + Style.RESET_ALL)
+        #     print()
                   
         except Exception as e:
-            print(e)
+            #print(e)
+            pass
             
     else:
-        pass
-        #print("Not supported")
+        return False, "false", DNS_RECORDS.NOERROR
+
+    raise Exception("haha nothing")
     
 
     ## domaindb needs to update their stuff...
