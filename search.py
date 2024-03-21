@@ -9,6 +9,7 @@ import builtins
 import re
 from datetime import datetime
 import zipfile
+import argparse
 
 # Concurrent threads
 import threading
@@ -83,85 +84,44 @@ class WorkerThread(threading.Thread):
     def stop(self):
         self._stop_event.set()
 
+def parse_arguments():
+    parser = argparse.ArgumentParser(
+        description = """
+Extension analyzer
+
+Authors: Samuel Bach, Albin Karlsson 2024
+Chalmers University of Technology, Gothenburg, Sweden
+""", 
+        epilog = '''
+Optional environment variables:
+PRETTY_OUTPUT: True/False (default: False)
+RUN_ALL_VERSIONS: True/False (default: False)
+DATE_FORMAT: %Y-%m-%d_%H:%M:%S
+NUM_THREADS: N (default: 1)
+STFU_MODE: True/False (default: False)
+DROP_TABLES: True/False (default: False)
+DEFAULT_EXTENSIONS_PATH: "PATH" (default: "extensions/")
+NODE_PATH: "PATH" (default: "node")
+NODE_APP_PATH: "PATH" (default: "./node/app.js")
+    ''',
+    formatter_class = argparse.RawTextHelpFormatter
+    )
+
+    # Optional arguments
+    parser.add_argument('-t', '--threads',          type=int,               help="Number of threads to use",            default=globals.NUM_THREADS)
+    parser.add_argument('-a', '--all',              action='store_true',    help="Run all versions of each extension",  default=globals.RUN_ALL_VERSIONS)
+    parser.add_argument('-p', '--pretty_output',    action='store_true',    help="Pretty print the output",             default=globals.PRETTY_OUTPUT)
+    parser.add_argument('-d', '--date_format',      type=str,               help="Date format for output file",         default=globals.DATE_FORMAT)
+    parser.add_argument('-e', '--extension',        type=str,               help="Run only one extension",              default=None)
+    parser.add_argument('-s', '--stfu',             action='store_true',    help="Silent mode",                         default=globals.STFU_MODE)
+    parser.add_argument('-R', '--reset',            action='store_true',    help="Reset the database",                  default=globals.DROP_TABLES)
+    
+    # Positional argument
+    parser.add_argument('path_to_extensions',       nargs='*',              help="Path to extensions",                  default=[globals.DEFAULT_EXTENSIONS_PATH])    
+    return parser.parse_args()
+
 if __name__ == "__main__":
 
-    extension = None
-
-    # list of args to be removed from when parsing
-    args = sys.argv.copy()
-
-    try:
-        # optional arguments, exit if invalid
-        if len(args) > 1:
-            for arg in args:
-                if arg in ['-t', '--threads']:
-                    globals.NUM_THREADS = args[args.index(arg)+1]
-                    args.remove(arg)
-                    args.remove(globals.NUM_THREADS)
-                if arg in ['-s', '--stfu']:
-                    globals.STFU_MODE = True
-                    args.remove(arg)
-                if arg in ['-a', '--all']:
-                    globals.RUN_ALL_VERSIONS = True
-                    args.remove(arg)
-                if arg in ['-p', '--pretty']:
-                    globals.PRETTY_OUTPUT = True
-                    args.remove(arg)
-                if arg in ['-d', '--date']:
-                    globals.DATE_FORMAT = args[args.index(arg)+1]
-                    args.remove(arg)
-                    args.remove(globals.DATE_FORMAT)
-                if arg in ['-e', '--extension']:
-                    extension = args[args.index(arg)+1]
-                    args.remove(arg)
-                    args.remove(extension)
-                if arg in ['-R', '--reset']:
-                    globals.DROP_TABLES = True
-                    args.remove(arg)
-                if arg in ['-h', '--help']:
-                    # I hate this
-                    print('''
-                          
-                          
-Usage: python3 search.py  [options] [path to extensions...]
-Example: python3 search.py extensions/
-
-Optional arguments:
--h, --help: show this help message and exit
--t, --threads: number of threads to use
--a, --all: run all versions of each extension
--p, --pretty output: pretty print the output
--d, --date format: date format for output file
--e, --extension: run only one extension
--s, --stfu: silent mode
--R, --reset: reset the database
-
-Optional environment variables:
-PRETTY_OUTPUT: True/False
-RUN_ALL_VERSIONS: True/False
-DATE_FORMAT: %Y-%m-%d_%H:%M:%S
-NUM_THREADS: 1
-STFU_MODE: True/False
-DROP_TABLES: True/False
-DEFAULT_EXTENSIONS_PATH: "extensions/"
-NODE_PATH: "node"
-NODE_APP_PATH: "./app.js"
-
-                    ''')
-                    sys.exit(0)
-                try:
-                    globals.NUM_THREADS = int(globals.NUM_THREADS)
-                except:
-                    raise Exception("Invalid number of threads: " + globals.NUM_THREADS)
-
-        for arg in args:
-            if arg[0] == '-':
-                raise Exception("Invalid argument: " + arg)
-
-    except Exception as e:
-        print(Fore.RED + str(e) + Style.RESET_ALL)
-        sys.exit(1)
-    
     # I hate this too
     print(
 """------------ Extension analyzer V 1.0 ------------
@@ -171,18 +131,30 @@ Chalmers University of Technology, Gothenburg, Sweden
 
 --------------------------------------------------"""
     )
+    args = parse_arguments()
 
-    # Get path to extensions
-    extensions_paths = []
+    # This is a bit stupid, but it works
+    globals.NUM_THREADS = args.threads
+    globals.RUN_ALL_VERSIONS = args.all
+    globals.PRETTY_OUTPUT = args.pretty_output
+    globals.DATE_FORMAT = args.date_format
+    globals.STFU_MODE = args.stfu
+    globals.DROP_TABLES = args.reset
 
-    if extension is None:
-        extensions_paths = [args[-1]] if len(args) > 1 else [globals.DEFAULT_EXTENSIONS_PATH]
-        for extensions_path in extensions_paths:
-            if not os.path.isdir(extensions_path):
-                print(Fore.RED + 'Invalid path to extensions' + Style.RESET_ALL)
-                sys.exit(1)
-    else:
+    extensions_paths = args.path_to_extensions
+
+    if args.extension is not None:
         globals.NUM_THREADS = 1
+
+    if not extensions_paths and args.extension is None:
+        print(Fore.RED + 'No extension path' + Style.RESET_ALL)
+        sys.exit(1)
+
+    for extensions_path in extensions_paths:
+        if not os.path.isdir(extensions_path):
+            print(extensions_path)
+            print(Fore.RED + 'Invalid path to extensions' + Style.RESET_ALL)
+            sys.exit(1)
 
     # Stuff to do before starting threads
     
@@ -269,9 +241,8 @@ Chalmers University of Technology, Gothenburg, Sweden
     try:
         # Scan and add extensions to thread_queue
         count_extensions = 0
-        if extension is not None:
-            if count_extensions > 9000: ## TEMP Skip
-                thread_queue.put(extension)
+        if args.extension is not None:
+            thread_queue.put(args.extension)
             count_extensions = 1
         else:
             for extensions_path in extensions_paths:
