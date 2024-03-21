@@ -91,21 +91,27 @@ class SQLWrapper():
 def insertDomainTable(sql_object, urlList, dns_record):
     # Insert the domain, extension and dns record type into the database
     
-    insert = "INSERT INTO domain VALUES (?, ?, ?)"
+    insert = "INSERT INTO domain VALUES (?, ?, ?, ?)"
 
     
     for url in urlList: 
         if dns_record[url] is not DNS_RECORDS.INVALID:
             # url: Self explanatory
-            for extension in urlList[url]:
-                # Extension: The extension and file the domain/url resides in
-                # Todo: Maybe add check for duplicates, depending on if it's already fixed in
-                try:
-                    with sql_object as cursor:
-                        # Invalid url
-                        cursor.execute(insert, (url, extension[0], str(dns_record[url].value)))
-                except sqlite3.Error as er:
-                    print('SQLite error: %s' % (' '.join(er.args)))
+            for extensions in urlList[url]:
+                for extension in extensions:
+                    #print("Extension: " + str(extension))
+                    split = extension.split("/")
+
+                    extensionId = split[0]
+                    filePath = extension.replace(extensionId, '')    
+                    # Extension: The extension and file the domain/url resides in
+                    # Todo: Maybe add check for duplicates, depending on if it's already fixed in
+                    try:
+                        with sql_object as cursor:
+                            # Invalid url
+                            cursor.execute(insert, (url, extensionId, filePath, str(dns_record[url].value)))
+                    except sqlite3.Error as er:
+                        print('SQLite error: %s' % (' '.join(er.args)))
 
 def insertUrlTable(sqlobject, urls, dns_record): 
     # Insert the url & the times it is encountered into the database
@@ -123,11 +129,8 @@ def insertUrlTable(sqlobject, urls, dns_record):
     exists = None
     
     for url in urls:
-        if url == "http://www.w3":
-            print("Record: " + url)
-            print(dns_record[url])
-            print()
         if dns_record[url] is not DNS_RECORDS.INVALID:
+            
         ## Check for dupliactes
             try:
                 with sqlobject as cursor:
@@ -191,9 +194,12 @@ def insertActionTable(sql_object, actionList, dns_record):
                             # This check should already be done in each thread during keywordsearch and extension is unqieue per thread
                             # Will leave this here for now but might look back and reconsider later
                             
-                            extensionId = extension.split("/")[0]
-                            filePath = extension.split("/")[1]
-                            print("filepath: " + str(filePath))
+                            #print(extension)
+                            split = extension.split("/")
+                            #print(split)
+                            extensionId = split[0]
+                            filePath = extension.replace(extensionId, '')
+                            
                             
                             cursor.execute(select, (entry, action, extensionId, filePath))
                             exists = cursor.fetchone()
@@ -208,7 +214,7 @@ def insertActionTable(sql_object, actionList, dns_record):
 def create_table(sql_object):
     with sql_object as cursor:
         #Domain Table
-        cursor.execute("CREATE TABLE IF NOT EXISTS domain (url TEXT NOT NULL, extension TEXT NOT NULL, status TEXT, PRIMARY KEY (url,extension))")
+        cursor.execute("CREATE TABLE IF NOT EXISTS domain (url TEXT NOT NULL, extension TEXT NOT NULL, filepath TEXT NOT NULL, status TEXT, PRIMARY KEY (url,extension,filepath))")
         
         # Common Url Table
         cursor.execute("CREATE TABLE IF NOT EXISTS common (url TEXT NOT NULL, count INTEGER NOT NULL, PRIMARY KEY (url))")

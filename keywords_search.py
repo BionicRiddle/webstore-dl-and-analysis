@@ -95,7 +95,7 @@ def containsAction(dictionary, action):
             return True
     return False
 
-def getActions(data, extensionId, filePath, urlPattern):
+def getActions(data, filePath, urlPattern):
     #Fix bugs (Check return types from getUrl, see if it messes up the function)
     # - Bug is that it reads strings as actions, should not do that
     
@@ -250,18 +250,34 @@ def analyze_data(path, extensions_path):
                         
                         # Determine path (I do not like this but I hope it is better performance than doing os.walk or something simmilar again)
                         split = dirpath.split("/")
-                        for x in range(3):
-                            split.pop(0)
                         filePath = ""
-                        for entry in split:
-                            filePath = filePath + "/" + entry
+                        if len(split) > 0:
+                            for x in range(3):
+                                split.pop(0)
+                            for entry in split:
+                                filePath = filePath + "/" + entry
+                            
+                        if filePath == "":
+                            filePath = "/"    
+                        
+                        #print("FilePath: " + str(filePath))
+                        #print("Split: " + str(split))
+                        #print("Dirpath: " + str(dirpath))
+                        #print("____________________")
+
 
                         # Actions and any associated url's
                         
                         extensionId = extensions_path.split("/")[1]
+                        #print("ExtensionId: " + str(extensionId))
                         #print(extensions_path)
                         
-                        actions = getActions(data, extensionId, extensionId + "/" + filePath + "/" + filename, patterns)
+                        #print(extensionId)
+                        #print(filePath)
+                        #print(filename)
+                        #print("Final version: " + str(extensionId + filePath + filename))
+                        #print("______________")
+                        actions = getActions(data, extensionId + filePath + filename, patterns)
                         
                         #print("Dirpath: " + dirpath + "/" + filename)
 
@@ -277,7 +293,7 @@ def analyze_data(path, extensions_path):
                                 commonUrls[url] += 1
 
                                 # Provides information about where the url is found (extension(s) and filenames(s))
-                                urlList[url].append(extensions_path + "/" + filename)
+                                urlList[url].append(extensionId + filePath + filename)
                         
                         for action in actions:
                             #print("Action: " + str(actions[action]))

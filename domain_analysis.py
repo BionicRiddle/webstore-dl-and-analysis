@@ -306,7 +306,8 @@ def domain_analysis(url):
             print(e)
             
     else:
-        print("Not supported")
+        pass
+        #print("Not supported")
     
 
     ## domaindb needs to update their stuff...
