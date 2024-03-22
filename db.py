@@ -92,6 +92,7 @@ def insertDomainTable(sql_object, urlList, dns_record):
     # Insert the domain, extension and dns record type into the database
     
     insert = "INSERT INTO domain VALUES (?, ?, ?, ?)"
+    select = "SELECT url, extension, filepath FROM domain WHERE url = ? AND extension = ? AND filepath = ?"
 
     
     for url in urlList: 
@@ -103,15 +104,28 @@ def insertDomainTable(sql_object, urlList, dns_record):
                     split = extension.split("/")
 
                     extensionId = split[0]
-                    filePath = extension.replace(extensionId, '')    
-                    # Extension: The extension and file the domain/url resides in
-                    # Todo: Maybe add check for duplicates, depending on if it's already fixed in
+                    filePath = extension.replace(extensionId, '')
+                        
+                    # Check for duplicates
+                    exists = ""
                     try:
                         with sql_object as cursor:
-                            # Invalid url
-                            cursor.execute(insert, (url, extensionId, filePath, str(dns_record[url].value)))
+                            cursor.execute(select, (url, extensionId, filePath))
+                            exists = cursor.fetchone()
                     except sqlite3.Error as er:
-                        print('SQLite error: %s' % (' '.join(er.args)))
+                        print("Error with selecting: " + str(er))
+                        
+                    
+                    # Extension: The extension and file the domain/url resides in
+                    # Todo: Maybe add check for duplicates, depending on if it's already fixed in
+                    
+                    if exists == None:
+                        try:
+                            with sql_object as cursor:
+                                # Invalid url
+                                cursor.execute(insert, (url, extensionId, filePath, str(dns_record[url].value)))
+                        except sqlite3.Error as er:
+                            print("Error Sqlite: " + str(er))
 
 def insertUrlTable(sqlobject, urls, dns_record): 
     # Insert the url & the times it is encountered into the database
@@ -200,7 +214,7 @@ def insertActionTable(sql_object, actionList, dns_record):
                             extensionId = split[0]
                             filePath = extension.replace(extensionId, '')
                             
-                            
+                            #print(filePath)
                             cursor.execute(select, (entry, action, extensionId, filePath))
                             exists = cursor.fetchone()
                             # If entry does not exist
