@@ -242,6 +242,7 @@ def create_table(sql_object):
         cursor.execute("CREATE TABLE IF NOT EXISTS action (url TEXT NOT NULL, type TEXT NOT NULL, extension TEXT NOT NULL, filepath TEXT NOT NULL, PRIMARY KEY (type, url, extension, filepath))")
 
 def drop_all_tables(sql_object):
+    print("Dropping tables")
     with sql_object as cursor:
         TABLES = ["domain",
                   "common",
