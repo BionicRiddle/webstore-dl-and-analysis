@@ -259,9 +259,6 @@ def analyze_data(path, extensions_path):
                                 filePath = filePath + "/" + entry
                             filePath = filePath + "/"
                         
-                
-
-
                         # Actions and any associated url's
                         
                         extensionId = extensions_path.split("/")[1]
@@ -282,10 +279,6 @@ def analyze_data(path, extensions_path):
                                 commonUrls[url] += 1
 
                                 # Provides information about where the url is found (extension(s) and filenames(s))
-                                if extensionId == "cgggfndkphggbgeimpplooflemnfndok":
-                                    pass
-                                    #print(split)
-                                    #print(filePath + filename)
                                 urlList[url].append(extensionId + filePath + filename)
                         
                         for action in actions:
@@ -409,7 +402,7 @@ def analyze(extension, isInternal, single_extension=None):
 
         for url in urlAndExtensions:
             urlList[url].append(urlAndExtensions[url])
-
+            
         #print("Returned actions: ")
         #print(str(actionsList))
         

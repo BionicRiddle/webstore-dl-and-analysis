@@ -223,11 +223,13 @@ def dns_nxdomain(domain):
                 raise Exception("Go command failed: " + result.stdout)
 
             if (response["status"] == "NOERROR"):
+                #print("NOERROR")
                 # We got a response, no need to continue
                 #return False
                 return DNS_RECORDS.NOERROR
             
             if (response["status"] == "NXDOMAIN"):
+                print("NXDOMAIN!")
                 # We can assume the domain is available
                 #return True
                 return DNS_RECORDS.NXDOMAIN
