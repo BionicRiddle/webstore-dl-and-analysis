@@ -103,6 +103,7 @@ DROP_TABLES: True/False (default: False)
 DEFAULT_EXTENSIONS_PATH: "PATH" (default: "extensions/")
 NODE_PATH: "PATH" (default: "node")
 NODE_APP_PATH: "PATH" (default: "./node/app.js")
+RANDOM_EXTENSION_ORDER: True/False (default: False)
     ''',
     formatter_class = argparse.RawTextHelpFormatter
     )
@@ -115,6 +116,7 @@ NODE_APP_PATH: "PATH" (default: "./node/app.js")
     parser.add_argument('-e', '--extension',        type=str,               help="Run only one extension",              default=None)
     parser.add_argument('-s', '--stfu',             action='store_true',    help="Silent mode",                         default=globals.STFU_MODE)
     parser.add_argument('-R', '--reset',            action='store_true',    help="Reset the database",                  default=globals.DROP_TABLES)
+    parser.add_argument('-r', '--random',           action='store_true',    help="Randomize extension order",           default=globals.RANDOM_EXTENSION_ORDER)
     
     # Positional argument
     parser.add_argument('path_to_extensions',       nargs='*',              help="Path to extensions",                  default=[globals.DEFAULT_EXTENSIONS_PATH])    
@@ -158,10 +160,8 @@ Chalmers University of Technology, Gothenburg, Sweden
     )
 
     # Stuff to do before starting threads
-    
-        # TMP budget caching
-    
-    # Godaddy
+
+    # Godaddy get supported TLDs
     if os.path.exists(os.getcwd() + "/GoDaddyCache.txt"):
         pass
     else:
@@ -169,7 +169,7 @@ Chalmers University of Technology, Gothenburg, Sweden
         f.write(str(godaddy_get_supported_tlds()))
         f.close()
     
-    # DomainDb
+    # DomainDb get supported TLDs
     if os.path.exists(os.getcwd() + "/DomainDbCache.txt"):
         pass
     else:
@@ -177,7 +177,7 @@ Chalmers University of Technology, Gothenburg, Sweden
         f.write(str(domainsdb_get_supported_tlds()))
         f.close()
 
-    # RDAP
+    # RDAP get supported TLDs
     if os.path.exists(os.getcwd() + "/RDAPCache.txt"):
         pass
     else:
@@ -185,6 +185,7 @@ Chalmers University of Technology, Gothenburg, Sweden
         f.write(str(rdap_get_supported_tlds()))
         f.close()
    
+    # Read the cache files
     godaddy = open(os.getcwd() + "/GoDaddyCache.txt", "r")
     domaindb = open(os.getcwd() + "/DomainDbCache.txt", "r")
     rdap_tlds = open(os.getcwd() + "/RDAPCache.txt", "r")
@@ -217,6 +218,7 @@ Chalmers University of Technology, Gothenburg, Sweden
 
 
     def exit(int, exception=None):
+        globals.TEMINATE = True
         sql_w.close()
         counters = []
         for t in threads:
@@ -248,7 +250,12 @@ Chalmers University of Technology, Gothenburg, Sweden
         else:
             for extensions_path in extensions_paths:
                 # for each dir in extensions_path
-                for dir in os.listdir(extensions_path):
+                extension_path_list = os.listdir(extensions_path)
+
+                if (globals.RANDOM_EXTENSION_ORDER):
+                    random.shuffle(extension_path_list)
+
+                for dir in extension_path_list:
                     versions = sorted([d for d in os.listdir(extensions_path + dir) if d[-4:] == ".crx"])
                     if not versions:
                         # Empty dir

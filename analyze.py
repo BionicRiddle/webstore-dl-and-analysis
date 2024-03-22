@@ -209,24 +209,10 @@ def read_manifest(crx_path: str) -> dict:
 # It shpuld not return anything, but write to files
 # It may throw exceptions indicating that the extension could not be analyzed
 def analyze_extension(thread, extension_path: str) -> None:
-    
+
     # create obj Extension
     try:
         extension = Extension(extension_path)
-
-        #manifest = extension.get_manifest()
-            
-
-        #manifest_version = manifest['manifest_version']
-        #print(Fore.GREEN + 'Manifest version: %s' % manifest_version)
-        
-        # of no permissions skip
-        #if 'permissions' not in manifest:
-        #    pass
-        
-        # if no host permissions skip
-        #if 'host_permissions' not in manifest:
-        #    pass
         
         # Extract file
         extension.set_extracted_path(extract_extension(extension_path))
@@ -279,10 +265,11 @@ def analyze_extension(thread, extension_path: str) -> None:
     
     for url in urls:
         if len(url) == 0:
-            # Var "return" men borde rimligen vara continue?
+            print(Fore.RED + 'Possible error: Empty URL' + Style.RESET_ALL)
             continue
         try:
             results = domain_analysis(url)
+            continue # TEMP
             url_dns_record[url] = results[2]
             if results[0] == True:
                 if results[1] == "godaddy":
@@ -299,6 +286,8 @@ def analyze_extension(thread, extension_path: str) -> None:
         except Exception as e:
             #failed_extension(extension_path, str(e))
             continue
+
+    return # TEMP
 
     # DB Stuff
     db.insertDomainTable(thread.sql, urls, url_dns_record)

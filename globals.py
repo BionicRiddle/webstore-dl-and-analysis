@@ -2,6 +2,9 @@ import os
 import threading
 from enum import Enum
 
+# If True, this signals long running functions to terminate
+TEMINATE = False
+
 #Enums
 class DNS_RECORDS(Enum):
     NOERROR  = "NOERROR"
@@ -23,6 +26,7 @@ DROP_TABLES             = os.getenv('DROP_TABLES'               , False)
 DEFAULT_EXTENSIONS_PATH = os.getenv('DEFAULT_EXTENSIONS_PATH'   , "extensions/")
 NODE_PATH               = os.getenv("NODE_PATH"                 , "node")
 NODE_APP_PATH           = os.getenv("NODE_APP_PATH"             , './node/app.js')
+RANDOM_EXTENSION_ORDER  = os.getenv("RANDOM_EXTENSION_ORDER"    , False)
 
 DNS_SERVERS = [
     "1.1.1.1",

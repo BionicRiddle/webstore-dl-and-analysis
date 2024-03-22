@@ -97,11 +97,21 @@ def rdap(domain, max_retries=10):
                         "transfer period"
                     ]
 
+                    event_blacklist = [
+                        "last update of RDAP database",
+                        "registration",
+                        "expiration",
+                        "last changed",
+                        "transfer",
+                        "reregistration"
+                    ]
+
                     event_found = []
                     if "events" in json_response:
                         #print(json.dumps(json_response, indent=4))
                         for event in json_response['events']:
-                            if event['eventAction'] in event_list:
+                            #if event['eventAction'] in event_list:
+                            if event['eventAction'] not in event_blacklist:
                                 event_found.append(event['eventAction'] + ": " + event['eventDate'])
                         return event_found
                     raise Exception("Missing event in in response")
