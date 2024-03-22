@@ -250,33 +250,19 @@ def analyze_data(path, extensions_path):
                         
                         # Determine path (I do not like this but I hope it is better performance than doing os.walk or something simmilar again)
                         split = dirpath.split("/")
+                        extensionId = extensions_path.split("/")[1]
                         filePath = ""
                         if len(split) > 0:
                             for x in range(3):
                                 split.pop(0)
                             for entry in split:
                                 filePath = filePath + "/" + entry
-                            
-                        if filePath == "":
-                            filePath = "/"    
+                            filePath = filePath + "/"
                         
-                        #print("FilePath: " + str(filePath))
-                        #print("Split: " + str(split))
-                        #print("Dirpath: " + str(dirpath))
-                        #print("____________________")
-
-
                         # Actions and any associated url's
                         
                         extensionId = extensions_path.split("/")[1]
-                        #print("ExtensionId: " + str(extensionId))
-                        #print(extensions_path)
                         
-                        #print(extensionId)
-                        #print(filePath)
-                        #print(filename)
-                        #print("Final version: " + str(extensionId + filePath + filename))
-                        #print("______________")
                         actions = getActions(data, extensionId + filePath + filename, patterns)
                         
                         #print("Dirpath: " + dirpath + "/" + filename)
@@ -416,7 +402,7 @@ def analyze(extension, isInternal, single_extension=None):
 
         for url in urlAndExtensions:
             urlList[url].append(urlAndExtensions[url])
-
+            
         #print("Returned actions: ")
         #print(str(actionsList))
         
