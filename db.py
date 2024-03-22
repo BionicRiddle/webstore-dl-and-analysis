@@ -107,6 +107,8 @@ def insertDomainTable(sql_object, urlList, dns_record):
                     filePath = extension.replace(extensionId, '')
                         
                     # Check for duplicates
+                    # I ignore for now :)
+                    """
                     exists = ""
                     try:
                         with sql_object as cursor:
@@ -114,18 +116,19 @@ def insertDomainTable(sql_object, urlList, dns_record):
                             exists = cursor.fetchone()
                     except sqlite3.Error as er:
                         print("Error with selecting: " + str(er))
+                    """
                         
                     
                     # Extension: The extension and file the domain/url resides in
                     # Todo: Maybe add check for duplicates, depending on if it's already fixed in
                     
-                    if exists == None:
-                        try:
-                            with sql_object as cursor:
-                                # Invalid url
-                                cursor.execute(insert, (url, extensionId, filePath, str(dns_record[url].value)))
-                        except sqlite3.Error as er:
-                            print("Error Sqlite: " + str(er))
+                    #if exists == None:
+                    try:
+                        with sql_object as cursor:
+                            # Invalid url
+                            cursor.execute(insert, (url, extensionId, filePath, str(dns_record[url].value)))
+                    except sqlite3.Error as er:
+                        print("Your mom is: " + str(er))
 
 def insertUrlTable(sqlobject, urls, dns_record): 
     # Insert the url & the times it is encountered into the database
@@ -152,7 +155,7 @@ def insertUrlTable(sqlobject, urls, dns_record):
                     cursor.execute(select, (url,))
                     exists = cursor.fetchone()
             except sqlite3.Error as er:
-                print('SQLite error: %s' % (' '.join(er.args)))
+                print('SQLite error1: %s' % (' '.join(er.args)))
             
             # URL has already been added. Increment the existing one instead
             if exists:
@@ -162,14 +165,14 @@ def insertUrlTable(sqlobject, urls, dns_record):
                         cursor.execute(getUrlCount, (url,))
                         count = cursor.fetchone()         
                 except sqlite3.Error as er:
-                    print('SQLite error: %s' % (' '.join(er.args)))
+                    print('SQLite error2: %s' % (' '.join(er.args)))
                 
                 # Update
                 try:
                     with sqlobject as cursor:
                         cursor.execute(update, (int(count[0]+1), url))
                 except sqlite3.Error as er:
-                    print('SQLite error: %s' % (' '.join(er.args)))
+                    print('SQLite error3: %s' % (' '.join(er.args)))
                 continue
                 
             else:
@@ -178,7 +181,7 @@ def insertUrlTable(sqlobject, urls, dns_record):
                         cursor.execute(insert, (str(url), urls[url]))
                         
                 except sqlite3.Error as er:
-                    print('SQLite error: %s' % (' '.join(er.args)))
+                    print('SQLite error4: %s' % (' '.join(er.args)))
                   
 def insertActionTable(sql_object, actionList, dns_record):
     
