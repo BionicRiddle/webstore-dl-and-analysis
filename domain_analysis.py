@@ -83,38 +83,7 @@ def rdap(domain, max_retries=10):
             
             if response.status_code == 200:
                 try:
-                    json_response = response.json()
-
-                    event_list = [
-                        "add period",
-                        "auto renew period",
-                        "client hold",
-                        "client renew prohibited",
-                        "pending restore",
-                        "redemption period",
-                        "renew period",
-                        "server renew prohibited",
-                        "transfer period"
-                    ]
-
-                    event_blacklist = [
-                        "last update of RDAP database",
-                        "registration",
-                        "expiration",
-                        "last changed",
-                        "transfer",
-                        "reregistration"
-                    ]
-
-                    event_found = []
-                    if "events" in json_response:
-                        #print(json.dumps(json_response, indent=4))
-                        for event in json_response['events']:
-                            #if event['eventAction'] in event_list:
-                            if event['eventAction'] not in event_blacklist:
-                                event_found.append(event['eventAction'] + ": " + event['eventDate'])
-                        return event_found
-                    raise Exception("Missing event in in response")
+                    return response.json()
                 except ValueError:
                     raise Exception("Error in response")
             elif response.status_code == 400:
@@ -256,34 +225,39 @@ def dns_nxdomain(domain):
     except Exception as e:
         raise e
 
-def isValidUrl(url):
-    domain_parts = tldextract.extract(url)
+# https://datatracker.ietf.org/doc/html/rfc8056
+# Returns a bunch of stuff (i hate this)
+def rdap_analysis(domain):
+    if domain_parts.suffix in globals.RDAP_TLDS:
+        try:
+            ret = rdap(domain)
 
-    
-    
-    #client.get_domain(client, 'www.google.com')
-    
-    # Denna e lite skum
-    # https://plus => domain_parts.domain är tom medan domain_parts.suffix == plus
-    # Behöver därmed kolla båda
-    
-    # Disallowed suffixes to prevent false positives
-    # E.x, adense. google returns NXDOMAIN as it is not used but it is not allowed to be purchased for obvious reasons
-    disallowedSuffixes = ["google"]
-    
-    
-    # Filter our invalid urls, e.x https://www.ads or https://a
-    # Filter out invalid / disallowed suffixes
-    # This is horrendus but it works
-    if domain_parts.domain == "www" or domain_parts.suffix in disallowedSuffixes or domain_parts.suffix == "" or domain_parts.domain == "":
-        #raise Exception("No suffix found for domain: %s" % domain_parts.domain)
-        return False
-    
-    #print("Valid domain: " + str(url))
-    return True
+            if len(ret) != 0:
+                return "SUS"
+            
+            rdap_dump = json.dumps(ret).replace("'", "''")
+            expiration_date = None
+            available_date = None
+            deleted_date = None
+
+            if ret:
+                for event in ret['events']:
+                    if ('eventAction' in event and 'eventDate' in event):
+                        if event['eventAction'] == 'expiration':
+                            expiration_date = event['eventDate']
+                        if event['eventAction'] == 'auto renew period':
+                            available_date = event['eventDate']
+                        if event['eventAction'] == 'pending delete':
+                            deleted_date = event['eventDate']
+            
+            return rdap_dump, expiration_date, available_date, deleted_date
+        except Exception as e:
+            raise Exception("RDAP analysis failed: " + str(e))
+             
 
 # If domain is available, return True
 def domain_analysis(url):
+    print(Fore.RED + "Deprecated" + Style.RESET_ALL)
         
     #json_response = response.json()
     
@@ -300,9 +274,6 @@ def domain_analysis(url):
     # If domain is full URL, extract domain
     
     #print(url)
-    
-    if isValidUrl(url) == False:
-        return False, "false", DNS_RECORDS.INVALID
     
     domain_parts = tldextract.extract(url)
 
@@ -327,19 +298,16 @@ def domain_analysis(url):
                 print("Domain: " + domain)
                 print()
 
-
-
-
-        # # 2024-08-03T04:00:00Z
-        # # check if less than 1 mont of now
-        # expiration_time = datetime.datetime.fromisoformat(ret[:-1])
-        # # print(Style.DIM + str(expiration_time) + Style.RESET_ALL)
-        # if expiration_time < datetime.datetime.now() + datetime.timedelta(days=30):
-        #     print(Style.BRIGHT + Fore.RED + "Domain is expiring soon: " + domain + Style.RESET_ALL)
-        #     print(Style.BRIGHT + Fore.RED + "Expiration date: " + str(expiration_time) + Style.RESET_ALL)
-        #     print(Style.BRIGHT + Fore.RED + "Time until expiration: " + str(expiration_time - datetime.datetime.now()) + Style.RESET_ALL)
-        #     print()
-                  
+            # # 2024-08-03T04:00:00Z
+            # # check if less than 1 mont of now
+            # expiration_time = datetime.datetime.fromisoformat(ret[:-1])
+            # # print(Style.DIM + str(expiration_time) + Style.RESET_ALL)
+            # if expiration_time < datetime.datetime.now() + datetime.timedelta(days=30):
+            #     print(Style.BRIGHT + Fore.RED + "Domain is expiring soon: " + domain + Style.RESET_ALL)
+            #     print(Style.BRIGHT + Fore.RED + "Expiration date: " + str(expiration_time) + Style.RESET_ALL)
+            #     print(Style.BRIGHT + Fore.RED + "Time until expiration: " + str(expiration_time - datetime.datetime.now()) + Style.RESET_ALL)
+            #     print()
+                        
         except Exception as e:
             #print(e)
             pass

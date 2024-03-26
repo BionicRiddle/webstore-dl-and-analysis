@@ -6,6 +6,7 @@ from colorama import Fore, Back, Style
 import globals
 import requests
 import json
+import tldextract
 
 ## Bara funktioner
 
@@ -68,3 +69,38 @@ def rdap_get_supported_tlds():
             if rem[j]["title"] == "RDAP Service":
                 tlds.append(data["domainSearchResults"][i]["ldhName"])
     return tlds
+
+
+def get_valid_domain(url):
+    """
+    Extracts the valid domain from a given URL.
+
+    This function uses the tldextract library to extract the domain and suffix from the URL.
+    It then checks if the domain or suffix is valid according to certain rules.
+    If the domain is 'www', or the suffix is in a list of disallowed suffixes, or either the domain or suffix is empty, the function returns False.
+    Otherwise, it returns the domain and suffix concatenated with a '.'.
+
+    Parameters:
+    url (str): The URL to extract the domain from.
+
+    Returns:
+    str|bool: The valid domain if it exists, otherwise False.
+
+    Example:
+    >>> get_valid_domain("https://www.google.com")
+    'google.com'
+    >>> get_valid_domain("https://www.ads")
+    False
+    """
+    domain_parts = tldextract.extract(url)
+    domain = domain_parts.domain
+    suffix = domain_parts.suffix
+    disallowed_suffixes = ["google"]
+    
+    if domain == "www" or suffix in disallowed_suffixes or suffix == "" or domain == "":
+        return False
+
+    return domain + "." + suffix
+
+if __name__ == "__main__":
+    raise Exception("This file is not meant to be run directly")

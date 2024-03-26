@@ -88,6 +88,9 @@ class SQLWrapper():
 
 ## Inserts
 
+def insertDomainMetaTable(sql_object, domain, dns_status, rdap_dump, expiration_date, available_date, deleted_date):
+    print("TODO: db.insertDomainMetaTable")
+
 def insertDomainTable(sql_object, urlList, dns_record):
     # Insert the domain, extension and dns record type into the database
     

@@ -193,7 +193,7 @@ def extract_extension(crx_path: str) -> str:
                 return
             return tmp_path
     except Exception as e:
-        failed_extension(crx_path, str(e))
+        failed_extension(crx_path, "Failed to extract extension", e)
         raise Exception("Failed to extract extension")
 
 def read_manifest(crx_path: str) -> dict:
@@ -204,7 +204,7 @@ def read_manifest(crx_path: str) -> dict:
             manifest = json.loads(zip_ref.read('manifest.json'))
             return manifest
     except Exception as e:
-        failed_extension(crx_path , str(e))
+        failed_extension(crx_path, "Failed to read manifest", e)
         raise Exception("Failed to read manifest")
     
             
@@ -280,41 +280,38 @@ def analyze_extension(thread, extension_path: str) -> None:
             print(Fore.RED + 'Possible error: Empty URL' + Style.RESET_ALL)
             continue
         try:
-
-            url_parts = tldextract.extract(url)
-            domain = url_parts.domain + '.' + url_parts.suffix
+            domain = helpers.get_valid_domain(url)
+            dns_status = None
 
             # Check if domain is valid
-            if is_valid_domain(domain) == False:
-                something = DNS_RECORDS.INVALID
-                print(Fore.RED + 'Invalid domain %s' % domain + Style.RESET_ALL)
-                continue
+            if domain == None:
+                dns_status = DNS_RECORDS.INVALID
+                print(Fore.RED + 'Invalid domain %s' % url + Style.RESET_ALL)
+            else:
+                # Check if domain already tested druing current run
+                with globals.checked_domains_lock:
+                    if url in globals.checked_domains:
+                        continue
+                    globals.checked_domains.add(url)
 
+                results = dns_analysis(url)
 
-            results = dns_analysis(url)
+                domain = domain
+                dns_status = dns_status
+                rdap_dump = None
+                expiration_date = None
+                available_date = None
+                deleted_date = None
 
-            rdap_results = None
-            if (results == globals.DNS_RECORDS.NXDOMAIN):
-                rdap_results = rdap_analysis(url)
+                rdap_results = None
+                if (results == globals.DNS_RECORDS.NXDOMAIN):
+                    # i hate this
+                    rdap_dump, expiration_date, available_date, deleted_date = rdap_analysis(domain)
 
+                db.insertDomainMetaTable(thread.sql, domain, dns_status, rdap_dump, expiration_date, available_date, deleted_date)
 
-
-            continue # TEMP
-            url_dns_record[url] = results[2]
-            if results[0] == True:
-                if results[1] == "godaddy":
-                    print(Fore.GREEN + 'Domain %s is available (GoDaddy)' % url + Style.RESET_ALL)
-                    domain_found_godaddy(url)
-                    
-                    domain_found_misshosting(url)
-        
-                if results[1] == "domaindb":
-                    print(Fore.GREEN + 'Domain %s is available (DomainDb)' % url + Style.RESET_ALL)
-                if results[1] == "dns":
-                    print(Fore.GREEN + 'Domain %s is available (DNS)' % url + Style.RESET_ALL)
-                #domain_found(url)
         except Exception as e:
-            #failed_extension(extension_path, str(e))
+            failed_extension(extension_path, str(e))
             continue
 
     return # TEMP

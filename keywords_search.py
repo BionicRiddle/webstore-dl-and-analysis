@@ -9,7 +9,6 @@ import codecs
 import json
 import re, os, shutil
 from tqdm import tqdm
-from domain_analysis import isValidUrl
 import operator
 import re
 import json
@@ -61,8 +60,7 @@ def getUrl(data, patterns):
     # Did we find a url?
     if len(url) > 0:
         ## Check if valid url
-        if isValidUrl(url[0]):
-            return url[0]
+        return url[0]
    
     return 'No url(s) found'
 
