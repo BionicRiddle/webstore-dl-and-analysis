@@ -64,14 +64,19 @@ class WorkerThread(threading.Thread):
         while not self._stop_event.is_set():
             # Get the work from the queue, if done, terminate thread
             try:
-                extension = self._queue.get(timeout=5)
+                extension = self._queue.get(timeout=3)
             except queue.Empty as e:
                 break
             try:
+                if (globals.TEMINATE):
+                    break
                 analyze_extension(self, extension)
                 self._counter += 1
             except Exception as e:
-                print(Fore.RED + 'Error in thread %d: %s' % (self._thread_id, str(e)) + Style.RESET_ALL)
+                print(Fore.RED + 'Error in thread %d, cannot continue: %s' % (self._thread_id, e) + Style.RESET_ALL)
+                # signal to all threads to terminate
+                globals.TEMINATE = True
+                break
             self._queue.task_done()
         print(Fore.YELLOW + 'Thread %d terminated' % self._thread_id + Style.RESET_ALL)
 
@@ -259,7 +264,7 @@ Chalmers University of Technology, Gothenburg, Sweden
                     versions = sorted([d for d in os.listdir(extensions_path + dir) if d[-4:] == ".crx"])
                     if not versions:
                         # Empty dir
-                        print("[+] Error (get_tmp_path) in {}: {}".format(dir, 'OK') ) # TODO: Check if output format is important
+                        print(Fore.RED + 'No extensions found in %s' % dir + Style.RESET_ALL)
                         continue
 
                     if globals.RUN_ALL_VERSIONS:

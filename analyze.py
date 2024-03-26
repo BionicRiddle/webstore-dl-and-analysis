@@ -47,17 +47,24 @@ class Extension:
 
         """
 
-        # Safety check to prevent accidental deletion of important files
+        # Safety checks to prevent accidental deletion of important files
         if not self.extracted_path:
-            raise Exception("No extracted path to clean up")
+            failed_extension(self.crx_path, "No extracted path to clean up", e)
+            return
+
         if not os.path.exists(self.extracted_path):
             raise Exception("Extracted path does not exist")
+
         if not os.path.isdir(self.extracted_path):
-            raise Exception("Extracted path is not a directory")
+            failed_extension(self.crx_path, "Extracted path is not a directory", e)
+            return
+
         if not self.extracted_path.startswith('/tmp/'):
             raise Exception("Extracted path is not in /tmp/")
+
         if len(self.extracted_path) < 6:
             raise Exception("Something definitely went wrong! Extracted path is too short")
+
         if ".." in self.extracted_path:
             raise Exception("Something definitely went wrong! Extracted path contains '..'")
 
@@ -66,7 +73,7 @@ class Extension:
             shutil.rmtree(self.extracted_path)
         except Exception as e:
             failed_extension(self.crx_path, "Failed to clean up extracted files", e)
-            raise Exception("Failed to clean up extracted files")
+            return
 
     def set_extracted_path(self, extracted_path: str) -> None:
         self.extracted_path = extracted_path
@@ -213,7 +220,7 @@ def analyze_extension(thread, extension_path: str) -> None:
     # create obj Extension
     try:
         extension = Extension(extension_path)
-        
+
         # Extract file
         extension.set_extracted_path(extract_extension(extension_path))
 
@@ -251,6 +258,8 @@ def analyze_extension(thread, extension_path: str) -> None:
         # if any exception during analysis, do a clean up to prevent disk filling up
         extension.clean_up()
         #Log to file
+        failed_extension(extension_path, "Something went wrong when analyzing the extension source code", e)
+        return
 
     # --- Clean up ---
     extension.clean_up()
@@ -264,11 +273,32 @@ def analyze_extension(thread, extension_path: str) -> None:
     url_dns_record = {}
     
     for url in urls:
+        if globals.TEMINATE:
+            print(Fore.RED + 'TODO' + Style.RESET_ALL)
+            return
         if len(url) == 0:
             print(Fore.RED + 'Possible error: Empty URL' + Style.RESET_ALL)
             continue
         try:
-            results = domain_analysis(url)
+
+            url_parts = tldextract.extract(url)
+            domain = url_parts.domain + '.' + url_parts.suffix
+
+            # Check if domain is valid
+            if is_valid_domain(domain) == False:
+                something = DNS_RECORDS.INVALID
+                print(Fore.RED + 'Invalid domain %s' % domain + Style.RESET_ALL)
+                continue
+
+
+            results = dns_analysis(url)
+
+            rdap_results = None
+            if (results == globals.DNS_RECORDS.NXDOMAIN):
+                rdap_results = rdap_analysis(url)
+
+
+
             continue # TEMP
             url_dns_record[url] = results[2]
             if results[0] == True:
