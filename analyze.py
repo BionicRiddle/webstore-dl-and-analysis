@@ -5,7 +5,7 @@ import tempfile
 import threading
 import random
 from keywords_search import analyze
-from domain_analysis import domain_analysis
+from domain_analysis import dns_analysis, rdap_analysis
 from static_analysis import static_analysis
 import os
 import time
@@ -15,7 +15,7 @@ from globals import DNS_RECORDS
 from helpers import *
 import json
 import db
-import db
+import traceback
 
 # Extension class
 
@@ -165,6 +165,7 @@ def failed_extension(crx_path: str, reason: str = "", exception=None) -> None:
                 e = "\tWith Exception: [" + str(Exception) + "]"
             path = crx_path.split('/')[-1]
             f.write(path + ':\t' + reason + e + '\n')
+            f.write(traceback.format_exc() + '\n\n')
 
 # TODO: Dynamic analysis stuff
 def failed_run(crx_path: str) -> None:
@@ -228,7 +229,7 @@ def analyze_extension(thread, extension_path: str) -> None:
         # keyword search, find all FILE_EXTENSIONS_TEXT in extracted files
         # if found, do keyword_analysis()
         if extension.get_extracted_path() is None:
-            failed_extension(extension_path)
+            failed_extension(extension_path, "Extension was not extracted properly")
             return
 
         # --- Keyword analysis ---
@@ -274,13 +275,15 @@ def analyze_extension(thread, extension_path: str) -> None:
     
     for url in urls:
         if globals.TEMINATE:
-            print(Fore.RED + 'TODO' + Style.RESET_ALL)
+            print(Fore.RED + 'TODO: We are currently terminating while a extension is running, we want to add it to failed extension with the reason "stopped early"' + Style.RESET_ALL)
             return
         if len(url) == 0:
             print(Fore.RED + 'Possible error: Empty URL' + Style.RESET_ALL)
             continue
         try:
-            domain = helpers.get_valid_domain(url)
+            # domain:   example.com
+            # tld:      com
+            domain, tld = get_valid_domain(url)
             dns_status = None
 
             # Check if domain is valid
@@ -290,6 +293,7 @@ def analyze_extension(thread, extension_path: str) -> None:
             else:
                 # Check if domain already tested druing current run
                 with globals.checked_domains_lock:
+                    print("I got the lock")
                     if url in globals.checked_domains:
                         continue
                     globals.checked_domains.add(url)
@@ -306,15 +310,18 @@ def analyze_extension(thread, extension_path: str) -> None:
                 rdap_results = None
                 if (results == globals.DNS_RECORDS.NXDOMAIN):
                     # i hate this
-                    rdap_dump, expiration_date, available_date, deleted_date = rdap_analysis(domain)
+                    print("Doing RDAP analysis")
+                    if tld in globals.RDAP_TLDS:
+                        res = rdap_analysis(domain)
+                        if res is not None:
+                            (rdap_dump, expiration_date, available_date, deleted_date) = res
+                
+                print(rdap_dump)
 
-                db.insertDomainMetaTable(thread.sql, domain, dns_status, rdap_dump, expiration_date, available_date, deleted_date)
-
+                db.insertDomainMetaTable(thread.sql, domain, dns_status, expiration_date, available_date, deleted_date, rdap_dump)
         except Exception as e:
-            failed_extension(extension_path, str(e))
+            failed_extension(extension_path, "Failed to analyze domain", e)
             continue
-
-    return # TEMP
 
     # DB Stuff
     db.insertDomainTable(thread.sql, urls, url_dns_record)

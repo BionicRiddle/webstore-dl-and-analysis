@@ -1,6 +1,7 @@
 ## --- IMPORTS ---
 
 # System
+import traceback
 import sys
 import os
 import shutil
@@ -73,6 +74,7 @@ class WorkerThread(threading.Thread):
                 analyze_extension(self, extension)
                 self._counter += 1
             except Exception as e:
+                traceback.print_exc()
                 print(Fore.RED + 'Error in thread %d, cannot continue: %s' % (self._thread_id, e) + Style.RESET_ALL)
                 # signal to all threads to terminate
                 globals.TEMINATE = True
@@ -289,10 +291,6 @@ Chalmers University of Technology, Gothenburg, Sweden
 
         # wait for all threads to finish or if the main thread is terminated, if main thread is terminated, terminate all threads
         thread_queue.join()
-
-        # terminate all threads TODO: Kasnke onödig
-        for t in threads:
-            t.stop()
     except KeyboardInterrupt:
         print()
         print('Keyboard interrupt detected - terminating threads')

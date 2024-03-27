@@ -100,7 +100,7 @@ def get_valid_domain(url):
     if domain == "www" or suffix in disallowed_suffixes or suffix == "" or domain == "":
         return False
 
-    return domain + "." + suffix
+    return (domain + "." + suffix).lower(), suffix.lower()
 
 if __name__ == "__main__":
     raise Exception("This file is not meant to be run directly")

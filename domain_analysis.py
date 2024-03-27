@@ -68,7 +68,6 @@ def godaddy_is_available(domain, max_retries=10):
 
     raise Exception(f"Failed to get response after {max_retries} attempts")
 
-
 def rdap(domain, max_retries=10):
     #print(Style.DIM + 'Checking domain %s with GoDaddy' % domain + Style.RESET_ALL)
     DOMAIN_API = "https://rdap.org/domain/"
@@ -183,14 +182,8 @@ def dns_query_naive(domain):
             raise e
     return False
 
-# Will return True if we get NXDOMAIN, else False or raise Exeption.
-# Exeption if we could not determine
-# GUD JAG ÄR TRÖTT
-def dns_nxdomain(domain):
-
+def dns_analysis(domain):
     record_type = "NS"
-    #print(DNS_RECORDS.NOSTATUS.value)
-    
     try:
         command = ['./zdns/zdns', record_type, '--verbosity', '1']
         result = subprocess.run(command, input=domain, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -208,14 +201,11 @@ def dns_nxdomain(domain):
                 return DNS_RECORDS.NOERROR
             
             if (response["status"] == "NXDOMAIN"):
-                print("NXDOMAIN!")
                 # We can assume the domain is available
-                #return True
                 return DNS_RECORDS.NXDOMAIN
             
             if (response["status"] == "SERVFAIL"):
                 # We got a SERVFAIL, could not determine if domain is available
-                #return False
                 return DNS_RECORDS.SERVFAIL
         else:
             # Print an error message if the command failed
@@ -228,32 +218,29 @@ def dns_nxdomain(domain):
 # https://datatracker.ietf.org/doc/html/rfc8056
 # Returns a bunch of stuff (i hate this)
 def rdap_analysis(domain):
-    if domain_parts.suffix in globals.RDAP_TLDS:
-        try:
-            ret = rdap(domain)
+    try:
+        ret = rdap(domain)
 
-            if len(ret) != 0:
-                return "SUS"
-            
-            rdap_dump = json.dumps(ret).replace("'", "''")
-            expiration_date = None
-            available_date = None
-            deleted_date = None
+        if len(ret) != 0:
+            return None
+        
+        rdap_dump = json.dumps(ret).replace("'", "''")
+        expiration_date = None
+        available_date = None
+        deleted_date = None
 
-            if ret:
-                for event in ret['events']:
-                    if ('eventAction' in event and 'eventDate' in event):
-                        if event['eventAction'] == 'expiration':
-                            expiration_date = event['eventDate']
-                        if event['eventAction'] == 'auto renew period':
-                            available_date = event['eventDate']
-                        if event['eventAction'] == 'pending delete':
-                            deleted_date = event['eventDate']
-            
-            return rdap_dump, expiration_date, available_date, deleted_date
-        except Exception as e:
-            raise Exception("RDAP analysis failed: " + str(e))
-             
+        if ret:
+            for event in ret['events']:
+                if ('eventAction' in event and 'eventDate' in event):
+                    if event['eventAction'] == 'expiration':
+                        expiration_date = datetime.fromisoformat(event['eventDate'])
+                    if event['eventAction'] == 'auto renew period':
+                        available_date = datetime.fromisoformat(event['eventDate'])
+                    if event['eventAction'] == 'pending delete':
+                        deleted_date = datetime.fromisoformat(event['eventDate'])
+        return (rdap_dump, expiration_date, available_date, deleted_date)
+    except Exception as e:
+        raise Exception("RDAP analysis failed: " + str(e))
 
 # If domain is available, return True
 def domain_analysis(url):

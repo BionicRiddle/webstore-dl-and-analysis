@@ -10,6 +10,7 @@ import sqlite3
 import threading
 import sys
 from globals import DNS_RECORDS
+from datetime import datetime
 
 if sqlite3.threadsafety == 0:
     raise Exception("sqlite3.threadsafety is 0. Program cannot continue as the sqlite3 module is not thread-safe. Needs to be 1 or 3. Check https://sqlite.org/threadsafe.html for more information.")
@@ -88,8 +89,16 @@ class SQLWrapper():
 
 ## Inserts
 
-def insertDomainMetaTable(sql_object, domain, dns_status, rdap_dump, expiration_date, available_date, deleted_date):
-    print("TODO: db.insertDomainMetaTable")
+def insertDomainMetaTable(sql_object, domain: str, dns_status: str, expiration_date: datetime, available_date: datetime, deleted_date: datetime, rdap_dump: str):
+    print("Inserting into domain_meta")
+    insert = "INSERT INTO domain_meta (domain, status, expired, available, remove, raw_json) VALUES (?,?,?,?,?,?)"
+
+    try:
+        with sql_object as cursor:
+            # Invalid url
+            cursor.execute(insert, (domain, dns_status, expiration_date, available_date, deleted_date, rdap_dump))
+    except sqlite3.Error as e:
+        print("Your mom is: " + str(e))
 
 def insertDomainTable(sql_object, urlList, dns_record):
     # Insert the domain, extension and dns record type into the database
@@ -234,20 +243,24 @@ def insertActionTable(sql_object, actionList, dns_record):
 def create_table(sql_object):
     with sql_object as cursor:
         #Domain Table
-        cursor.execute("CREATE TABLE IF NOT EXISTS domain (url TEXT NOT NULL, extension TEXT NOT NULL, filepath TEXT NOT NULL, status TEXT, PRIMARY KEY (url,extension,filepath))")
+        cursor.execute("CREATE TABLE IF NOT EXISTS domain (url TEXT NOT NULL, extension TEXT NOT NULL, filepath TEXT NOT NULL, status TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (url,extension,filepath))")
+
+        #Domain Meta Table
+        cursor.execute("CREATE TABLE IF NOT EXISTS domain_meta (domain TEXT NOT NULL, status TEXT, expired DATETIME, available DATETIME, remove DATETIME, raw_json TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (timestamp,domain))")
         
         # Common Url Table
-        cursor.execute("CREATE TABLE IF NOT EXISTS common (url TEXT NOT NULL, count INTEGER NOT NULL, PRIMARY KEY (url))")
+        cursor.execute("CREATE TABLE IF NOT EXISTS common (url TEXT NOT NULL, count INTEGER NOT NULL, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (url))")
         
         # Actions List
         # Components:
         # Action, Domain, Extension, (Domain should be primary)
-        cursor.execute("CREATE TABLE IF NOT EXISTS action (url TEXT NOT NULL, type TEXT NOT NULL, extension TEXT NOT NULL, filepath TEXT NOT NULL, PRIMARY KEY (type, url, extension, filepath))")
+        cursor.execute("CREATE TABLE IF NOT EXISTS action (url TEXT NOT NULL, type TEXT NOT NULL, extension TEXT NOT NULL, filepath TEXT NOT NULL, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (type, url, extension, filepath))")
 
 def drop_all_tables(sql_object):
     print("Dropping tables")
     with sql_object as cursor:
         TABLES = ["domain",
+                  "domain_meta",
                   "common",
                   "action"]
         for table in TABLES:
