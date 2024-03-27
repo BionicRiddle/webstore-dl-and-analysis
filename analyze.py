@@ -272,6 +272,8 @@ def analyze_extension(thread, extension_path: str) -> None:
     #for s_url in list(urls):
     
     url_dns_record = {}
+
+    checked_domains = set()
     
     for url in urls:
         if globals.TEMINATE:
@@ -319,12 +321,13 @@ def analyze_extension(thread, extension_path: str) -> None:
                 print(rdap_dump)
 
                 db.insertDomainMetaTable(thread.sql, domain, dns_status, expiration_date, available_date, deleted_date, rdap_dump)
+                db.insertDomainTable(thread.sql, domain, extension_path)
         except Exception as e:
             failed_extension(extension_path, "Failed to analyze domain", e)
             continue
 
     # DB Stuff
-    db.insertDomainTable(thread.sql, urls, url_dns_record)
+    #db.insertDomainTable(thread.sql, urls)
     db.insertActionTable(thread.sql, actionsList, url_dns_record)
     db.insertUrlTable(thread.sql, commonUrls, url_dns_record)
     

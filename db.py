@@ -100,47 +100,19 @@ def insertDomainMetaTable(sql_object, domain: str, dns_status: str, expiration_d
     except sqlite3.Error as e:
         print("Your mom is: " + str(e))
 
-def insertDomainTable(sql_object, urlList, dns_record):
-    # Insert the domain, extension and dns record type into the database
+def insertDomainTable(sql_object, url, extension_path):
     
-    insert = "INSERT INTO domain VALUES (?, ?, ?, ?)"
-    select = "SELECT url, extension, filepath FROM domain WHERE url = ? AND extension = ? AND filepath = ?"
+    insert = "INSERT INTO domain (domain, extension, filepath) VALUES (?, ?, ?)"
 
+    split = extension_path.split("/")
+    extensionId = split[0] # .replace("TODO", "")  Ta bort .crx
+    filePath = extension.replace(split[0], '')                       
     
-    for url in urlList: 
-        if dns_record[url] is not DNS_RECORDS.INVALID:
-            # url: Self explanatory
-            for extensions in urlList[url]:
-                for extension in extensions:
-                    #print("Extension: " + str(extension))
-                    split = extension.split("/")
-
-                    extensionId = split[0]
-                    filePath = extension.replace(extensionId, '')
-                        
-                    # Check for duplicates
-                    # I ignore for now :)
-                    """
-                    exists = ""
-                    try:
-                        with sql_object as cursor:
-                            cursor.execute(select, (url, extensionId, filePath))
-                            exists = cursor.fetchone()
-                    except sqlite3.Error as er:
-                        print("Error with selecting: " + str(er))
-                    """
-                        
-                    
-                    # Extension: The extension and file the domain/url resides in
-                    # Todo: Maybe add check for duplicates, depending on if it's already fixed in
-                    
-                    #if exists == None:
-                    try:
-                        with sql_object as cursor:
-                            # Invalid url
-                            cursor.execute(insert, (url, extensionId, filePath, str(dns_record[url].value)))
-                    except sqlite3.Error as er:
-                        print("Your mom is: " + str(er))
+    try:
+        with sql_object as cursor:
+            cursor.execute(insert, (url, extensionId, filePath))
+    except sqlite3.Error as er:
+        print("Your mom is: " + str(er))
 
 def insertUrlTable(sqlobject, urls, dns_record): 
     # Insert the url & the times it is encountered into the database
@@ -243,7 +215,7 @@ def insertActionTable(sql_object, actionList, dns_record):
 def create_table(sql_object):
     with sql_object as cursor:
         #Domain Table
-        cursor.execute("CREATE TABLE IF NOT EXISTS domain (url TEXT NOT NULL, extension TEXT NOT NULL, filepath TEXT NOT NULL, status TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (url,extension,filepath))")
+        cursor.execute("CREATE TABLE IF NOT EXISTS domain (domain TEXT NOT NULL, extension TEXT NOT NULL, filepath TEXT NOT NULL, PRIMARY KEY (domain,extension,filepath))")
 
         #Domain Meta Table
         cursor.execute("CREATE TABLE IF NOT EXISTS domain_meta (domain TEXT NOT NULL, status TEXT, expired DATETIME, available DATETIME, remove DATETIME, raw_json TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (timestamp,domain))")
