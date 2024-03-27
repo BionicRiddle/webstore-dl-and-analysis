@@ -105,14 +105,14 @@ def insertDomainTable(sql_object, url, extension_path):
     insert = "INSERT INTO domain (domain, extension, filepath) VALUES (?, ?, ?)"
 
     split = extension_path.split("/")
-    extensionId = split[0] # .replace("TODO", "")  Ta bort .crx
+    extensionId = split[0].replace(".crx", "") # Ta bort .crx
     filePath = extension.replace(split[0], '')                       
     
     try:
         with sql_object as cursor:
             cursor.execute(insert, (url, extensionId, filePath))
     except sqlite3.Error as er:
-        print("Your mom is: " + str(er))
+        print("TRUDILUTT DUPLICATE: " + str(er))
 
 def insertUrlTable(sqlobject, urls, dns_record): 
     # Insert the url & the times it is encountered into the database

@@ -273,8 +273,6 @@ def analyze_extension(thread, extension_path: str) -> None:
     
     url_dns_record = {}
 
-    checked_domains = set()
-    
     for url in urls:
         if globals.TEMINATE:
             print(Fore.RED + 'TODO: We are currently terminating while a extension is running, we want to add it to failed extension with the reason "stopped early"' + Style.RESET_ALL)
@@ -295,12 +293,11 @@ def analyze_extension(thread, extension_path: str) -> None:
             else:
                 # Check if domain already tested druing current run
                 with globals.checked_domains_lock:
-                    print("I got the lock")
                     if url in globals.checked_domains:
                         continue
                     globals.checked_domains.add(url)
 
-                results = dns_analysis(url)
+                results = dns_analysis(url) # DENNA ÄR FUCKED OCH GER BARA NXDOMAIN ATM 27/3 <3 <3 <3 <3 <3
 
                 domain = domain
                 dns_status = dns_status
@@ -317,8 +314,6 @@ def analyze_extension(thread, extension_path: str) -> None:
                         res = rdap_analysis(domain)
                         if res is not None:
                             (rdap_dump, expiration_date, available_date, deleted_date) = res
-                
-                print(rdap_dump)
 
                 db.insertDomainMetaTable(thread.sql, domain, dns_status, expiration_date, available_date, deleted_date, rdap_dump)
                 db.insertDomainTable(thread.sql, domain, extension_path)
@@ -327,9 +322,8 @@ def analyze_extension(thread, extension_path: str) -> None:
             continue
 
     # DB Stuff
-    #db.insertDomainTable(thread.sql, urls)
-    db.insertActionTable(thread.sql, actionsList, url_dns_record)
-    db.insertUrlTable(thread.sql, commonUrls, url_dns_record)
+    #db.insertActionTable(thread.sql, actionsList, url_dns_record)
+    #db.insertUrlTable(thread.sql, commonUrls, url_dns_record)
     
     
 
