@@ -297,7 +297,7 @@ def analyze_extension(thread, extension_path: str) -> None:
                         continue
                     globals.checked_domains.add(url)
 
-                results = dns_analysis(url) # DENNA ÄR FUCKED OCH GER BARA NXDOMAIN ATM 27/3 <3 <3 <3 <3 <3
+                results = dns_analysis(domain) # DENNA ÄR FUCKED OCH GER BARA NXDOMAIN ATM 27/3 <3 <3 <3 <3 <3
 
                 domain = domain
                 dns_status = dns_status

@@ -184,6 +184,7 @@ def dns_query_naive(domain):
 
 def dns_analysis(domain):
     record_type = "NS"
+    print(domain)
     try:
         command = ['./zdns/zdns', record_type, '--verbosity', '1']
         result = subprocess.run(command, input=domain, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -213,6 +214,7 @@ def dns_analysis(domain):
             raise Exception("Command failed with return code:", result.returncode)
         # print exit code
     except Exception as e:
+        print(Fore.RED + str(e) + Style.RESET_ALL)
         raise e
 
 # https://datatracker.ietf.org/doc/html/rfc8056

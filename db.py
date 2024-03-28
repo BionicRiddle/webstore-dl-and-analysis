@@ -90,7 +90,7 @@ class SQLWrapper():
 ## Inserts
 
 def insertDomainMetaTable(sql_object, domain: str, dns_status: str, expiration_date: datetime, available_date: datetime, deleted_date: datetime, rdap_dump: str):
-    print("Inserting into domain_meta")
+    #print("Inserting into domain_meta")
     insert = "INSERT INTO domain_meta (domain, status, expired, available, remove, raw_json) VALUES (?,?,?,?,?,?)"
 
     try:
