@@ -11,7 +11,7 @@ import globals
 from globals import DNS_RECORDS
 from helpers import *
 import db
-import datetime
+from datetime import datetime
 
 
 #Unoffcial API KEY (Samuel)
@@ -235,7 +235,7 @@ def rdap_analysis(domain):
         if ret and 'events' in ret:
             for event in ret['events']:
                 if ('eventAction' in event and 'eventDate' in event):
-                    if event['eventAction'] == 'expiration':
+                    if event['eventAction'] == 'expiration': 
                         expiration_date = datetime.fromisoformat(event['eventDate'])
                     if event['eventAction'] == 'auto renew period':
                         available_date = datetime.fromisoformat(event['eventDate'])

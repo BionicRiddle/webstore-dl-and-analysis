@@ -282,7 +282,6 @@ def analyze_extension(thread, extension_path: str) -> None:
         try:
             # domain:   example.com
             # tld:      com
-            url = "https://gild.net"
             domain, tld = get_valid_domain(url)
             dns_status = None
 
@@ -301,7 +300,6 @@ def analyze_extension(thread, extension_path: str) -> None:
                 if do_dns:
                     results = dns_analysis(domain)
 
-                    domain = domain
                     dns_status = results.value
                     rdap_dump = None
                     expiration_date = None
