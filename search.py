@@ -263,6 +263,9 @@ Chalmers University of Technology, Gothenburg, Sweden
                     random.shuffle(extension_path_list)
 
                 for dir in extension_path_list:
+                    # If something is wrong while it is scanning the extensions, it will terminate all threads
+                    if (globals.TEMINATE):
+                        exit(0)
                     versions = sorted([d for d in os.listdir(extensions_path + dir) if d[-4:] == ".crx"])
                     if not versions:
                         # Empty dir
@@ -281,6 +284,8 @@ Chalmers University of Technology, Gothenburg, Sweden
         # porgress bar using qsize, using alive_bar
         with alive_bar(count_extensions, bar='blocks', spinner='dots_waves', length=40, title='Analyzing extensions', manual=True) as bar:
             while not thread_queue.empty():
+                if (globals.TEMINATE):
+                        exit(0)
                 item_progress = 1 - (thread_queue.qsize() / count_extensions)
                 bar(item_progress)
                 time.sleep(1)

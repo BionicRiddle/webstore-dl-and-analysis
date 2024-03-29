@@ -214,7 +214,9 @@ def dns_analysis(domain):
             raise Exception("Command failed with return code:", result.returncode)
         # print exit code
     except Exception as e:
-        print(Fore.RED + str(e) + Style.RESET_ALL)
+        if (e.args[0] == 2):
+            globals.TEMINATE = True
+            print(Fore.RED + "ZDNS could not be found." + Style.RESET_ALL)
         raise e
 
 # https://datatracker.ietf.org/doc/html/rfc8056
