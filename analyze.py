@@ -288,7 +288,7 @@ def analyze_extension(thread, extension_path: str) -> None:
             # Check if domain is valid
             if domain == None or tld == None:
                 dns_status = DNS_RECORDS.INVALID
-                print(Fore.RED + 'Invalid URL:  %s' % url + Style.RESET_ALL)
+                #print(Fore.RED + 'Invalid URL:  %s' % url + Style.RESET_ALL)
             else:
                 # Check if domain already tested druing current run
                 do_dns = True
