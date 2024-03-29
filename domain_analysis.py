@@ -82,7 +82,6 @@ def rdap(domain, max_retries=10):
             
             if response.status_code == 200:
                 try:
-                    print(response.json())
                     return response.json()
                 except ValueError:
                     raise Exception("Error in response")
