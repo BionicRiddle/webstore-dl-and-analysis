@@ -161,8 +161,8 @@ def failed_extension(crx_path: str, reason: str = "", exception=None) -> None:
     with failed_lock:
         with open('failed.txt', 'a') as f:
             e = ""
-            if Exception:
-                e = "\tWith Exception: [" + str(Exception) + "]"
+            if exception:
+                e = "\tWith Exception: [" + str(exception) + "]"
             path = crx_path.split('/')[-1]
             f.write(path + ':\t' + reason + e + '\n')
             f.write(traceback.format_exc() + '\n\n')
@@ -269,11 +269,10 @@ def analyze_extension(thread, extension_path: str) -> None:
 
     urls = extension.get_keyword_analysis()['list_of_urls']
 
-    #for s_url in list(urls):
-    
     url_dns_record = {}
 
-    for url in urls:
+    for url, files in urls.items():
+
         if globals.TEMINATE:
             print(Fore.RED + 'TODO: We are currently terminating while a extension is running, we want to add it to failed extension with the reason "stopped early"' + Style.RESET_ALL)
             return
@@ -289,34 +288,45 @@ def analyze_extension(thread, extension_path: str) -> None:
             # Check if domain is valid
             if domain == None:
                 dns_status = DNS_RECORDS.INVALID
-                print(Fore.RED + 'Invalid domain %s' % url + Style.RESET_ALL)
+                print(Fore.RED + 'Invalid URL:  %s' % url + Style.RESET_ALL)
             else:
                 # Check if domain already tested druing current run
+                do_dns = True
                 with globals.checked_domains_lock:
-                    if url in globals.checked_domains:
-                        continue
-                    globals.checked_domains.add(url)
+                    if domain in globals.checked_domains:
+                        do_dns = False
+                    globals.checked_domains.add(domain)
 
-                results = dns_analysis(domain) # DENNA ÄR FUCKED OCH GER BARA NXDOMAIN ATM 27/3 <3 <3 <3 <3 <3
+                if do_dns:
+                    results = dns_analysis(domain) # DENNA ÄR FUCKED OCH GER BARA NXDOMAIN ATM 27/3 <3 <3 <3 <3 <3
 
-                domain = domain
-                dns_status = dns_status
-                rdap_dump = None
-                expiration_date = None
-                available_date = None
-                deleted_date = None
+                    domain = domain
+                    dns_status = dns_status
+                    rdap_dump = None
+                    expiration_date = None
+                    available_date = None
+                    deleted_date = None
 
-                rdap_results = None
-                if (results == globals.DNS_RECORDS.NXDOMAIN):
-                    # i hate this
-                    print("Doing RDAP analysis")
-                    if tld in globals.RDAP_TLDS:
-                        res = rdap_analysis(domain)
-                        if res is not None:
-                            (rdap_dump, expiration_date, available_date, deleted_date) = res
-
-                db.insertDomainMetaTable(thread.sql, domain, dns_status, expiration_date, available_date, deleted_date, rdap_dump)
-                db.insertDomainTable(thread.sql, domain, extension_path)
+                    rdap_results = None
+                    if (results == globals.DNS_RECORDS.NXDOMAIN):
+                        # i hate this
+                        print("Doing RDAP analysis")
+                        if tld in globals.RDAP_TLDS:
+                            res = rdap_analysis(domain)
+                            if res is not None:
+                                (rdap_dump, expiration_date, available_date, deleted_date) = res
+                        else:
+                            # If RDAP is not supported by TLD
+                            rdap_dump = '{"STATUS": "RDAP_NOT_SUPPORTED"}'
+                    # We only want this to run if we just did dns (and rdap)
+                    db.insertDomainMetaTable(thread.sql, domain, dns_status, expiration_date, available_date, deleted_date, rdap_dump)
+                # We always want to do this even if we skipped dns
+                # We want a rectord for each file the url is in
+                for files_something in files:
+                    # TODO: @Samuel, varför är de en lista i en lista?
+                    for file in files_something:
+                        file_whitout_id = file.split("/", 1)[1]
+                        db.insertDomainTable(thread.sql, domain, extension_path, file_whitout_id)
         except Exception as e:
             failed_extension(extension_path, "Failed to analyze domain", e)
             continue

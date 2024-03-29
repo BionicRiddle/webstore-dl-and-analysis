@@ -184,7 +184,6 @@ def dns_query_naive(domain):
 
 def dns_analysis(domain):
     record_type = "NS"
-    print(domain)
     try:
         command = ['./zdns/zdns', record_type, '--verbosity', '1']
         result = subprocess.run(command, input=domain, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)

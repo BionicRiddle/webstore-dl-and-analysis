@@ -100,19 +100,21 @@ def insertDomainMetaTable(sql_object, domain: str, dns_status: str, expiration_d
     except sqlite3.Error as e:
         print("Your mom is: " + str(e))
 
-def insertDomainTable(sql_object, url, extension_path):
+def insertDomainTable(sql_object, url,  extension_path, file_path="Funkar inte ATM"):
     
-    insert = "INSERT INTO domain (domain, extension, filepath) VALUES (?, ?, ?)"
+    insert = "INSERT OR IGNORE INTO domain (domain, extension, filepath) VALUES (?, ?, ?)"
 
     split = extension_path.split("/")
-    extensionId = split[0].replace(".crx", "") # Ta bort .crx
-    filePath = extension.replace(split[0], '')                       
-    
+    extension_id = split[-1].replace(".crx", "") # Ta bort .crx
+
     try:
         with sql_object as cursor:
-            cursor.execute(insert, (url, extensionId, filePath))
+            cursor.execute(insert, (url, extension_id, file_path))
+    except sqlite3.IntegrityError as er:
+        print("This should not happen because of the IGNORE statement")
     except sqlite3.Error as er:
-        print("TRUDILUTT DUPLICATE: " + str(er))
+        print("SQLite error: %s" % (' '.join(er.args)))
+        raise er
 
 def insertUrlTable(sqlobject, urls, dns_record): 
     # Insert the url & the times it is encountered into the database
@@ -198,15 +200,15 @@ def insertActionTable(sql_object, actionList, dns_record):
                             #print(extension)
                             split = extension.split("/")
                             #print(split)
-                            extensionId = split[0]
-                            filePath = extension.replace(extensionId, '')
+                            extension_id = split[0]
+                            filePath = extension.replace(extension_id, '')
                             
                             #print(filePath)
-                            cursor.execute(select, (entry, action, extensionId, filePath))
+                            cursor.execute(select, (entry, action, extension_id, filePath))
                             exists = cursor.fetchone()
                             # If entry does not exist
                             if exists == None:
-                                cursor.execute(insert, (entry, action, extensionId, filePath))
+                                cursor.execute(insert, (entry, action, extension_id, filePath))
                     except sqlite3.Error as er:
                         print('SQLite error: %s' % (' '.join(er.args)))
 
