@@ -286,7 +286,7 @@ def analyze_extension(thread, extension_path: str) -> None:
             dns_status = None
 
             # Check if domain is valid
-            if domain == None:
+            if domain == None or tld == None:
                 dns_status = DNS_RECORDS.INVALID
                 print(Fore.RED + 'Invalid URL:  %s' % url + Style.RESET_ALL)
             else:
@@ -298,10 +298,10 @@ def analyze_extension(thread, extension_path: str) -> None:
                     globals.checked_domains.add(domain)
 
                 if do_dns:
-                    results = dns_analysis(domain) # DENNA ÄR FUCKED OCH GER BARA NXDOMAIN ATM 27/3 <3 <3 <3 <3 <3
+                    results = dns_analysis(domain)
 
                     domain = domain
-                    dns_status = dns_status
+                    dns_status = results.value
                     rdap_dump = None
                     expiration_date = None
                     available_date = None
@@ -310,11 +310,8 @@ def analyze_extension(thread, extension_path: str) -> None:
                     rdap_results = None
                     if (results == globals.DNS_RECORDS.NXDOMAIN):
                         # i hate this
-                        print("Doing RDAP analysis")
                         if tld in globals.RDAP_TLDS:
-                            res = rdap_analysis(domain)
-                            if res is not None:
-                                (rdap_dump, expiration_date, available_date, deleted_date) = res
+                            rdap_dump, expiration_date, available_date, deleted_date = rdap_analysis(domain)
                         else:
                             # If RDAP is not supported by TLD
                             rdap_dump = '{"STATUS": "RDAP_NOT_SUPPORTED"}'

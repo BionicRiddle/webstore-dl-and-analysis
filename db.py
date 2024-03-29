@@ -244,7 +244,7 @@ def drop_all_tables(sql_object):
         
 if __name__ == "__main__":
 
-    sql = SQLWrapper("thesis.db")
+    sql = SQLWrapper(globals.DATABASE)
 
     # Stuff in Worker Thread example
     with sql as cursor:

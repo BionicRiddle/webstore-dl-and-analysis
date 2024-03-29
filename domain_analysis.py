@@ -82,6 +82,7 @@ def rdap(domain, max_retries=10):
             
             if response.status_code == 200:
                 try:
+                    print(response.json())
                     return response.json()
                 except ValueError:
                     raise Exception("Error in response")
@@ -91,7 +92,7 @@ def rdap(domain, max_retries=10):
                 print(f"Blocked due to abuse or other misbehaviour? Retrying in 1 second (Attempt {attempt + 1}/{max_retries})")
                 time.sleep(1)
             elif response.status_code == 404:
-                raise Exception("TLD not supported or domain not found")
+                return {"Status": "TLD_NOT_SUPPORTED_OR_DOMAIN_NOT_FOUND"}
             elif response.status_code == 429:
                 print(f"RDAP Rate limit exceeded. Retrying in 1 second (Attempt {attempt + 1}/{max_retries})")
                 time.sleep(1)
@@ -182,7 +183,7 @@ def dns_query_naive(domain):
             raise e
     return False
 
-def dns_analysis(domain):
+def dns_analysis(domain: str):
     record_type = "NS"
     try:
         command = ['./zdns/zdns', record_type, '--verbosity', '1']
@@ -224,15 +225,15 @@ def rdap_analysis(domain):
     try:
         ret = rdap(domain)
 
-        if len(ret) != 0:
-            return None
+        if len(ret) == 0:
+            return None, None, None, None
         
         rdap_dump = json.dumps(ret).replace("'", "''")
         expiration_date = None
         available_date = None
         deleted_date = None
 
-        if ret:
+        if ret and 'events' in ret:
             for event in ret['events']:
                 if ('eventAction' in event and 'eventDate' in event):
                     if event['eventAction'] == 'expiration':
