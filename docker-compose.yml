@@ -6,4 +6,4 @@ services:
     volumes:
       - .:/app
     environment:
-      - STFU_MODE=true
+      - STFU_MODE=false

@@ -209,6 +209,7 @@ def read_manifest(crx_path: str) -> dict:
 # It shpuld not return anything, but write to files
 # It may throw exceptions indicating that the extension could not be analyzed
 def analyze_extension(thread, extension_path: str) -> None:
+    print(Fore.YELLOW + 'Analyzing extension %s' % extension_path + Style.RESET_ALL)
     
     # create obj Extension
     try:
