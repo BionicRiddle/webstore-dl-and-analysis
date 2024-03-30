@@ -286,14 +286,15 @@ Chalmers University of Technology, Gothenburg, Sweden
                         count_extensions += 1
             print('Found %d extensions' % count_extensions)
 
-        # porgress bar using qsize, using alive_bar
-        with alive_bar(count_extensions, bar='blocks', spinner='dots_waves', length=40, title='Analyzing extensions', manual=True) as bar:
-            while not thread_queue.empty():
-                item_progress = 1 - (thread_queue.qsize() / count_extensions)
-                bar(item_progress)
-                time.sleep(1)
-            bar(1)
-            
+        if not globals.STFU_MODE:
+            # progress bar using qsize, using alive_bar
+            with alive_bar(count_extensions, bar='blocks', spinner='dots_waves', length=40, title='Analyzing extensions', manual=True) as bar:
+                while not thread_queue.empty():
+                    item_progress = 1 - (thread_queue.qsize() / count_extensions)
+                    bar(item_progress)
+                    time.sleep(1)
+                bar(1)
+                
         # Wait for all threads to finish
         print('Waiting for threads to finish...')
 

@@ -12,7 +12,7 @@ def simulate_work(extension):
     time.sleep(random.uniform(0.1, 1))
     print(Style.DIM + ('Analyzed extension %s' % extension) + Style.RESET_ALL)
 
-def print(*args, **kwargs):
+def print_old(*args, **kwargs):
     if not globals.STFU_MODE:
         builtins.print(*args, **kwargs)
 
