@@ -5,7 +5,7 @@ import tempfile
 import threading
 import random
 from keywords_search import analyze
-from domain_analysis import domain_analysis, doubleCheck
+from domain_analysis import dns_analysis, rdap_analysis
 from static_analysis import static_analysis
 import os
 import time
@@ -15,7 +15,7 @@ from globals import DNS_RECORDS
 from helpers import *
 import json
 import db
-import db
+import traceback
 
 # Extension class
 
@@ -47,17 +47,24 @@ class Extension:
 
         """
 
-        # Safety check to prevent accidental deletion of important files
+        # Safety checks to prevent accidental deletion of important files
         if not self.extracted_path:
-            raise Exception("No extracted path to clean up")
+            failed_extension(self.crx_path, "No extracted path to clean up", e)
+            return
+
         if not os.path.exists(self.extracted_path):
             raise Exception("Extracted path does not exist")
+
         if not os.path.isdir(self.extracted_path):
-            raise Exception("Extracted path is not a directory")
+            failed_extension(self.crx_path, "Extracted path is not a directory", e)
+            return
+
         if not self.extracted_path.startswith('/tmp/'):
             raise Exception("Extracted path is not in /tmp/")
+
         if len(self.extracted_path) < 6:
             raise Exception("Something definitely went wrong! Extracted path is too short")
+
         if ".." in self.extracted_path:
             raise Exception("Something definitely went wrong! Extracted path contains '..'")
 
@@ -66,7 +73,7 @@ class Extension:
             shutil.rmtree(self.extracted_path)
         except Exception as e:
             failed_extension(self.crx_path, "Failed to clean up extracted files", e)
-            raise Exception("Failed to clean up extracted files")
+            return
 
     def set_extracted_path(self, extracted_path: str) -> None:
         self.extracted_path = extracted_path
@@ -154,10 +161,11 @@ def failed_extension(crx_path: str, reason: str = "", exception=None) -> None:
     with failed_lock:
         with open('failed.txt', 'a') as f:
             e = ""
-            if Exception:
-                e = "\tWith Exception: [" + str(Exception) + "]"
+            if exception:
+                e = "\tWith Exception: [" + str(exception) + "]"
             path = crx_path.split('/')[-1]
             f.write(path + ':\t' + reason + e + '\n')
+            f.write(traceback.format_exc() + '\n\n')
 
 # TODO: Dynamic analysis stuff
 def failed_run(crx_path: str) -> None:
@@ -186,7 +194,7 @@ def extract_extension(crx_path: str) -> str:
                 return
             return tmp_path
     except Exception as e:
-        failed_extension(crx_path, str(e))
+        failed_extension(crx_path, "Failed to extract extension", e)
         raise Exception("Failed to extract extension")
 
 def read_manifest(crx_path: str) -> dict:
@@ -197,7 +205,7 @@ def read_manifest(crx_path: str) -> dict:
             manifest = json.loads(zip_ref.read('manifest.json'))
             return manifest
     except Exception as e:
-        failed_extension(crx_path , str(e))
+        failed_extension(crx_path, "Failed to read manifest", e)
         raise Exception("Failed to read manifest")
     
             
@@ -209,25 +217,11 @@ def read_manifest(crx_path: str) -> dict:
 # It shpuld not return anything, but write to files
 # It may throw exceptions indicating that the extension could not be analyzed
 def analyze_extension(thread, extension_path: str) -> None:
-    
+
     # create obj Extension
     try:
         extension = Extension(extension_path)
 
-        #manifest = extension.get_manifest()
-            
-
-        #manifest_version = manifest['manifest_version']
-        #print(Fore.GREEN + 'Manifest version: %s' % manifest_version)
-        
-        # of no permissions skip
-        #if 'permissions' not in manifest:
-        #    pass
-        
-        # if no host permissions skip
-        #if 'host_permissions' not in manifest:
-        #    pass
-        
         # Extract file
         extension.set_extracted_path(extract_extension(extension_path))
 
@@ -235,7 +229,7 @@ def analyze_extension(thread, extension_path: str) -> None:
         # keyword search, find all FILE_EXTENSIONS_TEXT in extracted files
         # if found, do keyword_analysis()
         if extension.get_extracted_path() is None:
-            failed_extension(extension_path)
+            failed_extension(extension_path, "Extension was not extracted properly")
             return
 
         # --- Keyword analysis ---
@@ -262,6 +256,8 @@ def analyze_extension(thread, extension_path: str) -> None:
         # if any exception during analysis, do a clean up to prevent disk filling up
         extension.clean_up()
         #Log to file
+        failed_extension(extension_path, "Something went wrong when analyzing the extension source code", e)
+        return
 
     # --- Clean up ---
     extension.clean_up()
@@ -270,41 +266,67 @@ def analyze_extension(thread, extension_path: str) -> None:
 
     urls = extension.get_keyword_analysis()['list_of_urls']
 
-    #for s_url in list(urls):
-    
     url_dns_record = {}
-    
-    for url in urls:
+
+    for url, files in urls.items():
+
+        if globals.TEMINATE:
+            print(Fore.RED + 'TODO: We are currently terminating while a extension is running, we want to add it to failed extension with the reason "stopped early"' + Style.RESET_ALL)
+            return
         if len(url) == 0:
-            # Var "return" men borde rimligen vara continue?
+            print(Fore.RED + 'Possible error: Empty URL' + Style.RESET_ALL)
             continue
         try:
-            results = domain_analysis(url)
-            url_dns_record[url] = results[2]
-            if results[0] == True:
-                if results[1] == "godaddy":
-                    print(Fore.GREEN + 'Domain %s is available (GoDaddy)' % url + Style.RESET_ALL)
-                    domain_found_godaddy(url)
-                    
-                    if doubleCheck(url) == "available":
-                        print(Fore.BLUE + "Misshosting says available: " + url + Style.RESET_ALL)
-                        domain_found_misshosting(url)
-                    else:
-                        print(Fore.RED + "Misshosting is either saying invalid tld or not available: " + url + Style.RESET_ALL)
-        
-                if results[1] == "domaindb":
-                    print(Fore.GREEN + 'Domain %s is available (DomainDb)' % url + Style.RESET_ALL)
-                if results[1] == "dns":
-                    print(Fore.GREEN + 'Domain %s is available (DNS)' % url + Style.RESET_ALL)
-                #domain_found(url)
+            # domain:   example.com
+            # tld:      com
+            domain, tld = get_valid_domain(url)
+            dns_status = None
+
+            # Check if domain is valid
+            if domain == None or tld == None:
+                dns_status = DNS_RECORDS.INVALID
+                #print(Fore.RED + 'Invalid URL:  %s' % url + Style.RESET_ALL)
+            else:
+                # Check if domain already tested druing current run
+                do_dns = True
+                with globals.checked_domains_lock:
+                    if domain in globals.checked_domains:
+                        do_dns = False
+                    globals.checked_domains.add(domain)
+
+                if do_dns:
+                    results = dns_analysis(domain)
+
+                    dns_status = results.value
+                    rdap_dump = None
+                    expiration_date = None
+                    available_date = None
+                    deleted_date = None
+
+                    rdap_results = None
+                    if (results == globals.DNS_RECORDS.NXDOMAIN):
+                        # i hate this
+                        if tld in globals.RDAP_TLDS:
+                            rdap_dump, expiration_date, available_date, deleted_date = rdap_analysis(domain)
+                        else:
+                            # If RDAP is not supported by TLD
+                            rdap_dump = '{"STATUS": "RDAP_NOT_SUPPORTED"}'
+                    # We only want this to run if we just did dns (and rdap)
+                    db.insertDomainMetaTable(thread.sql, domain, dns_status, expiration_date, available_date, deleted_date, rdap_dump)
+                # We always want to do this even if we skipped dns
+                # We want a rectord for each file the url is in
+                for files_something in files:
+                    # TODO: @Samuel, varför är de en lista i en lista?
+                    for file in files_something:
+                        file_whitout_id = file.split("/", 1)[1]
+                        db.insertDomainTable(thread.sql, domain, extension_path, file_whitout_id)
         except Exception as e:
-            failed_extension(extension_path, str(e))
+            failed_extension(extension_path, "Failed to analyze domain", e)
             continue
 
     # DB Stuff
-    db.insertDomainTable(thread.sql, urls, url_dns_record)
-    db.insertActionTable(thread.sql, actionsList, url_dns_record)
-    db.insertUrlTable(thread.sql, commonUrls, url_dns_record)
+    #db.insertActionTable(thread.sql, actionsList, url_dns_record)
+    #db.insertUrlTable(thread.sql, commonUrls, url_dns_record)
     
     
 

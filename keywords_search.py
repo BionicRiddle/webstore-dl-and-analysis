@@ -9,7 +9,6 @@ import codecs
 import json
 import re, os, shutil
 from tqdm import tqdm
-from domain_analysis import isValidUrl
 import operator
 import re
 import json
@@ -61,8 +60,7 @@ def getUrl(data, patterns):
     # Did we find a url?
     if len(url) > 0:
         ## Check if valid url
-        if isValidUrl(url[0]):
-            return url[0]
+        return url[0]
    
     return 'No url(s) found'
 
@@ -95,7 +93,7 @@ def containsAction(dictionary, action):
             return True
     return False
 
-def getActions(data, extension_path, urlPattern):
+def getActions(data, filePath, urlPattern):
     #Fix bugs (Check return types from getUrl, see if it messes up the function)
     # - Bug is that it reads strings as actions, should not do that
     
@@ -128,7 +126,7 @@ def getActions(data, extension_path, urlPattern):
         
         #Action runs from indexes action[0] -> action[1]
         #Check ahead of the action to see if a url can be found after it, using the getUrl() function
-        if str(getUrl(data[startIndex:endIndex+100], urlPattern)) != 'No url(s) found':
+        if str(getUrl(data[endIndex:endIndex+100], urlPattern)) != 'No url(s) found':
             
             # E.x href, get, fetch etc
             actionType = data[startIndex:endIndex].lower()
@@ -136,7 +134,22 @@ def getActions(data, extension_path, urlPattern):
             #If a url is found, store it in association with the action
         
             # Very much test
-            url = getUrl(data[startIndex:endIndex+100], urlPattern)
+            url = getUrl(data[endIndex:endIndex+100], urlPattern)
+            
+            # If beginning of url is matched too far away ahead, it is likely not part of the action
+            # src="/img/list.png"></a> <div class="dropdown-content"> <a target="blank" href="https://www.w3techic.co
+            # The href link will match to the src attribute here which is incorrect
+            # Addtionally, the href link is cut, should be .com
+            
+            # Check that the url begins within the first 30 characters
+            #print(data[startIndex:endIndex])
+            
+            if url in data[endIndex+30:endIndex+100]:
+                continue
+                        
+            
+            #print(data[startIndex:endIndex+100])
+            #print(url not in data[startIndex:endIndex+50])
             
             # Check if action has already been added
             #print("url: " + str(url))
@@ -146,16 +159,16 @@ def getActions(data, extension_path, urlPattern):
             if actionType in actionUrlMap:
                 # Check if domain has already been added
                 if url in actionUrlMap[actionType]:
-                    if extension_path not in actionUrlMap[actionType][url]:
+                    if filePath not in actionUrlMap[actionType][url]:
                         #print("Appending to:")
                         #print(str(actionUrlMap[actionType][url]))
-                        actionUrlMap[actionType][url].append(extension_path)
+                        actionUrlMap[actionType][url].append(filePath)
                 else:
                     # Action has been added but the url has not
-                    actionUrlMap[actionType][url] = [extension_path]
+                    actionUrlMap[actionType][url] = [filePath]
             else:
                 #print("Url: " + url)
-                actionUrlMap[actionType][url] = [extension_path]
+                actionUrlMap[actionType][url] = [filePath]
 
     return actionUrlMap
 
@@ -193,7 +206,6 @@ def analyze_data(path, extensions_path):
             except:
                 extension = "NONE"
             if extension in ["js", "html", "json", "ts", "es"]:
-
                 data = ""
                 with open(dirpath + os.sep + filename, encoding='utf-8', errors='ignore') as dataFile:
                     data = " ".join(dataFile.read().split())
@@ -233,9 +245,23 @@ def analyze_data(path, extensions_path):
 
 
                         patterns = [httpPattern, wwwPattern]
-
+                        
+                        # Determine path (I do not like this but I hope it is better performance than doing os.walk or something simmilar again)
+                        split = dirpath.split("/")
+                        extensionId = extensions_path.split("/")[1]
+                        filePath = ""
+                        if len(split) > 0:
+                            for x in range(3):
+                                split.pop(0)
+                            for entry in split:
+                                filePath = filePath + "/" + entry
+                            filePath = filePath + "/"
+                        
                         # Actions and any associated url's
-                        actions = getActions(data, extensions_path + "/" + filename, patterns)
+                        
+                        extensionId = extensions_path.split("/")[1]
+                        
+                        actions = getActions(data, extensionId + filePath + filename, patterns)
                         
                         #print("Dirpath: " + dirpath + "/" + filename)
 
@@ -251,7 +277,7 @@ def analyze_data(path, extensions_path):
                                 commonUrls[url] += 1
 
                                 # Provides information about where the url is found (extension(s) and filenames(s))
-                                urlList[url].append(extensions_path + "/" + filename)
+                                urlList[url].append(extensionId + filePath + filename)
                         
                         for action in actions:
                             #print("Action: " + str(actions[action]))
@@ -374,7 +400,7 @@ def analyze(extension, isInternal, single_extension=None):
 
         for url in urlAndExtensions:
             urlList[url].append(urlAndExtensions[url])
-
+            
         #print("Returned actions: ")
         #print(str(actionsList))
         

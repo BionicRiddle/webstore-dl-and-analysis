@@ -11,6 +11,7 @@ import globals
 from globals import DNS_RECORDS
 from helpers import *
 import db
+from datetime import datetime
 
 
 #Unoffcial API KEY (Samuel)
@@ -67,83 +68,45 @@ def godaddy_is_available(domain, max_retries=10):
 
     raise Exception(f"Failed to get response after {max_retries} attempts")
 
-def doubleCheck(url):
+def rdap(domain, max_retries=10):
+    #print(Style.DIM + 'Checking domain %s with GoDaddy' % domain + Style.RESET_ALL)
+    DOMAIN_API = "https://rdap.org/domain/"
     
-    domain_parts = tldextract.extract(url)
-
-    if (domain_parts.suffix == ""):
-        #raise Exception("No suffix found for domain: %s" % domain_parts.domain)
-        return False    
-
-
-    domain = domain_parts.domain + "." + domain_parts.suffix
-    
-    cookies = {
-    'PHPSESSID': '08jmanir8f6fki7t0ka9b16n16',
-    'intercom-id-al0g0fgs': 'fe6386ee-28f8-4392-a9bd-f6786a0bc8c9',
-    'intercom-session-al0g0fgs': '',
-    'intercom-device-id-al0g0fgs': 'e13363dc-7515-424f-ae47-32e50ef692b7',
-    }
-
-    headers = {
-    'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:123.0) Gecko/20100101 Firefox/123.0',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-    'Accept-Language': 'en-US,en;q=0.5',
-    # 'Accept-Encoding': 'gzip, deflate, br',
-    'DNT': '1',
-    'Sec-GPC': '1',
-    'Connection': 'keep-alive',
-    # 'Cookie': 'PHPSESSID=08jmanir8f6fki7t0ka9b16n16; intercom-id-al0g0fgs=fe6386ee-28f8-4392-a9bd-f6786a0bc8c9; intercom-session-al0g0fgs=; intercom-device-id-al0g0fgs=e13363dc-7515-424f-ae47-32e50ef692b7',
-    'Upgrade-Insecure-Requests': '1',
-    'Sec-Fetch-Dest': 'document',
-    'Sec-Fetch-Mode': 'navigate',
-    'Sec-Fetch-Site': 'none',
-    'Sec-Fetch-User': '?1',
-    'Pragma': 'no-cache',
-    'Cache-Control': 'no-cache',
-    # Requests doesn't support trailers
-    # 'TE': 'trailers',
-    }
-    
-    response = requests.get(
-        'https://misshosting.se/domainschecker.php?q=available&domain=' + domain,
-        cookies=cookies,
-        headers=headers,
-    )
-
-    json_response = response.json()
-    
-    
-    #print(json_response['response'][0]['status'])
-    
-    return json_response['response'][0]['status']
-    
-    """
-    #https://misshosting.se/domainschecker.php?q=available&domain=taken.se
-    #https://misshosting.se/domainschecker.php?q=available&domain=taken.se
-    
-    domain_parts = tldextract.extract(url)
-
-    if (domain_parts.suffix == ""):
-        #raise Exception("No suffix found for domain: %s" % domain_parts.domain)
-        return False    
-
-
-    domain = domain_parts.domain + "." + domain_parts.suffix
-    
-    DOMAIN_API = "https://api.godaddy.com/v1/domains/available?domain="
-    API_KEY = "h1JgSaN2VmpJ_TTiof91Kw8iqsSz67S8kRq"
-    API_SECRET = "W9MoHC9NakTKG4ZdQJkLV1"  
     request_url = DOMAIN_API + domain
 
-    response = requests.get(request_url, headers = {
-            "Authorization": "sso-key " + API_KEY + ":" + API_SECRET
-        })
+    RATE_PER_MINUTE = 10000
 
-    json_response = response.json()
-    
-    return json_response
-    """
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(request_url, headers = {})
+            
+            if response.status_code == 200:
+                try:
+                    return response.json()
+                except ValueError:
+                    raise Exception("Error in response")
+            elif response.status_code == 400:
+                raise Exception("Invalid request (malformed path, unsupported object type, invalid IP address, etc)")
+            elif response.status_code == 403:
+                print(f"Blocked due to abuse or other misbehaviour? Retrying in 1 second (Attempt {attempt + 1}/{max_retries})")
+                time.sleep(1)
+            elif response.status_code == 404:
+                return {"Status": "TLD_NOT_SUPPORTED_OR_DOMAIN_NOT_FOUND"}
+            elif response.status_code == 429:
+                print(f"RDAP Rate limit exceeded. Retrying in 1 second (Attempt {attempt + 1}/{max_retries})")
+                time.sleep(1)
+            elif response.status_code == 500:
+                raise Exception("RDAP is broken")
+            else:
+                raise Exception("Unexpected code " + str(response.status_code))
+        except requests.RequestException as e:
+            print(f"Request failed with exception: {e}. Retrying (Attempt {attempt + 1}/{max_retries})")
+            time.sleep(1)
+            
+        # Test
+        sleep((60 / RATE_PER_MINUTE) * globals.NUM_THREADS)
+
+    raise Exception(f"Failed to get response after {max_retries} attempts")
 
 def domainsdb_is_available(domain, max_retries=10):
     #print(Style.DIM + 'Checking domain %s with DomainsDB' % domain + Style.RESET_ALL)
@@ -220,14 +183,8 @@ def dns_query_naive(domain):
             raise e
     return False
 
-# Will return True if we get NXDOMAIN, else False or raise Exeption.
-# Exeption if we could not determine
-# GUD JAG ÄR TRÖTT
-def dns_nxdomain(domain):
-
+def dns_analysis(domain: str):
     record_type = "NS"
-    #print(DNS_RECORDS.NOSTATUS.value)
-    
     try:
         command = ['./zdns/zdns', record_type, '--verbosity', '1']
         result = subprocess.run(command, input=domain, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -239,18 +196,17 @@ def dns_nxdomain(domain):
                 raise Exception("Go command failed: " + result.stdout)
 
             if (response["status"] == "NOERROR"):
+                #print("NOERROR")
                 # We got a response, no need to continue
                 #return False
                 return DNS_RECORDS.NOERROR
             
             if (response["status"] == "NXDOMAIN"):
                 # We can assume the domain is available
-                #return True
                 return DNS_RECORDS.NXDOMAIN
             
             if (response["status"] == "SERVFAIL"):
                 # We got a SERVFAIL, could not determine if domain is available
-                #return False
                 return DNS_RECORDS.SERVFAIL
         else:
             # Print an error message if the command failed
@@ -258,49 +214,42 @@ def dns_nxdomain(domain):
             raise Exception("Command failed with return code:", result.returncode)
         # print exit code
     except Exception as e:
+        if (e.args[0] == 2):
+            globals.TEMINATE = True
+            print(Fore.RED + "ZDNS could not be found." + Style.RESET_ALL)
         raise e
 
-def isValidUrl(url):
-    domain_parts = tldextract.extract(url)
+# https://datatracker.ietf.org/doc/html/rfc8056
+# Returns a bunch of stuff (i hate this)
+def rdap_analysis(domain):
+    try:
+        ret = rdap(domain)
 
-    
-    
-    #client.get_domain(client, 'www.google.com')
-    
-    # Denna e lite skum
-    # https://plus => domain_parts.domain är tom medan domain_parts.suffix == plus
-    # Behöver därmed kolla båda
-    
-    # Disallowed suffixes to prevent false positives
-    # E.x, adense. google returns NXDOMAIN as it is not used but it is not allowed to be purchased for obvious reasons
-    disallowedSuffixes = ["google"]
-    
-    
-    # Filter our invalid urls, e.x https://www.ads or https://a
-    # Filter out invalid / disallowed suffixes
-    # This is horrendus but it works
-    if domain_parts.domain == "www" or domain_parts.suffix in disallowedSuffixes or domain_parts.suffix == "" or domain_parts.domain == "":
-        #raise Exception("No suffix found for domain: %s" % domain_parts.domain)
-        return False
-    
-    #print("Valid domain: " + str(url))
-    return True
+        if len(ret) == 0:
+            return None, None, None, None
+        
+        rdap_dump = json.dumps(ret).replace("'", "''")
+        expiration_date = None
+        available_date = None
+        deleted_date = None
+
+        if ret and 'events' in ret:
+            for event in ret['events']:
+                if ('eventAction' in event and 'eventDate' in event):
+                    if event['eventAction'] == 'expiration': 
+                        expiration_date = datetime.fromisoformat(event['eventDate'])
+                    if event['eventAction'] == 'auto renew period':
+                        available_date = datetime.fromisoformat(event['eventDate'])
+                    if event['eventAction'] == 'pending delete':
+                        deleted_date = datetime.fromisoformat(event['eventDate'])
+        return (rdap_dump, expiration_date, available_date, deleted_date)
+    except Exception as e:
+        raise Exception("RDAP analysis failed: " + str(e))
 
 # If domain is available, return True
 def domain_analysis(url):
-    
-    #doubleCheck(url)
-
-
-    ## Very early test, promising but need to check if we can use it.
-    
-    try:
-        response = requests.get("https://rdap.org/domain/svt.se")
-    except Exception as e:
-        print(e)
+    print(Fore.RED + "Deprecated" + Style.RESET_ALL)
         
-    print(response)
-    
     #json_response = response.json()
     
     #expiration = json_response["events"]
@@ -317,12 +266,7 @@ def domain_analysis(url):
     
     #print(url)
     
-    if isValidUrl(url) == False:
-        return False, "false", DNS_RECORDS.INVALID
-    
     domain_parts = tldextract.extract(url)
-    
-    
 
     """"     
     if (domain_parts.suffix == "" or domain_parts.domain == ""):
@@ -331,6 +275,38 @@ def domain_analysis(url):
     """
 
     domain = domain_parts.domain + "." + domain_parts.suffix
+
+    # RDAP API
+
+    if domain_parts.suffix in globals.RDAP_TLDS:
+        try:
+            ret = rdap(domain)
+
+            for event in ret:
+                print(event)
+
+            if len(ret) != 0:
+                print("Domain: " + domain)
+                print()
+
+            # # 2024-08-03T04:00:00Z
+            # # check if less than 1 mont of now
+            # expiration_time = datetime.datetime.fromisoformat(ret[:-1])
+            # # print(Style.DIM + str(expiration_time) + Style.RESET_ALL)
+            # if expiration_time < datetime.datetime.now() + datetime.timedelta(days=30):
+            #     print(Style.BRIGHT + Fore.RED + "Domain is expiring soon: " + domain + Style.RESET_ALL)
+            #     print(Style.BRIGHT + Fore.RED + "Expiration date: " + str(expiration_time) + Style.RESET_ALL)
+            #     print(Style.BRIGHT + Fore.RED + "Time until expiration: " + str(expiration_time - datetime.datetime.now()) + Style.RESET_ALL)
+            #     print()
+                        
+        except Exception as e:
+            #print(e)
+            pass
+            
+    else:
+        return False, "false", DNS_RECORDS.NOERROR
+
+    raise Exception("haha nothing")
     
 
     ## domaindb needs to update their stuff...
@@ -358,8 +334,6 @@ def domain_analysis(url):
 
     # If we get here, we could not determine if the domain is available with DNS query   
     
-    
-    
     with globals.checked_domains_lock:
         globals.checked_domains.add(domain)
     try:
@@ -381,21 +355,7 @@ def domain_analysis(url):
 
 if __name__ == "__main__":
 
-    class DummyObject:
-        def __init__(self) -> None:
-            self.crx_path = "DUMMY_PATH"
-        def get_keyword_analysis(self) -> dict:
-            return {
-                "list_of_urls":         [],
-                "list_of_actions":      [],
-                "list_of_common_urls":  []
-            }
-
-    # This is normally done in search.py before creating threads
-    #globals.GODADDY_TLDS = godaddy_get_supported_tlds()
-    #globals.DOMAINSDB_TLDS = domainsdb_get_supported_tlds()
-
-    url_file = "urlList"
+    url_file = "found_domains.txt"
 
     # read file and parse json
     with open(url_file, 'r') as file:
@@ -404,10 +364,25 @@ if __name__ == "__main__":
         lines = file.read().split('\n')
     
 
-        for key in lines:
-            # create dummy object
-            dummy = DummyObject()
-            
-                        
-            #a = domain_analysis(key)
-            #print(a)
+        for full_domain in lines:
+            try:
+                suffix = tldextract.extract(full_domain).suffix
+                if suffix == "io":
+                    continue
+                domain = tldextract.extract(full_domain).domain
+                combined = domain + "." + suffix
+                ret = rdap(combined)
+
+                print(json.dumps(ret, indent=4))
+                continue
+                # 2024-08-03T04:00:00Z
+                # check if less than 1 mont of now
+                expiration_time = datetime.datetime.fromisoformat(ret[:-1])
+                # print(Style.DIM + str(expiration_time) + Style.RESET_ALL)
+                if expiration_time < datetime.datetime.now() + datetime.timedelta(days=30):
+                    print(Style.BRIGHT + Fore.RED + "Domain is expiring soon: " + domain + Style.RESET_ALL)
+                    print(Style.BRIGHT + Fore.RED + "Expiration date: " + str(expiration_time) + Style.RESET_ALL)
+                    print(Style.BRIGHT + Fore.RED + "Time until expiration: " + str(expiration_time - datetime.datetime.now()) + Style.RESET_ALL)
+                    print()
+            except Exception as e:
+                print(e)

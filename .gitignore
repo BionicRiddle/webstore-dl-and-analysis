@@ -185,3 +185,9 @@ available_domains.txt
 failed.txt
 found_domains.txt
 *.db
+esprima_debug_out.txt
+
+# Cache files
+DomainDbCache.txt
+GoDaddyCache.txt
+RDAPCache.txt

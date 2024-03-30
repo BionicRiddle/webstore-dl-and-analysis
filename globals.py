@@ -2,6 +2,9 @@ import os
 import threading
 from enum import Enum
 
+# If True, this signals long running functions to terminate
+TEMINATE = False
+
 #Enums
 class DNS_RECORDS(Enum):
     NOERROR  = "NOERROR"
@@ -19,10 +22,11 @@ RUN_ALL_VERSIONS        = os.getenv('RUN_ALL_VERSIONS'          , False)
 DATE_FORMAT             = os.getenv('DATE_FORMAT'               , "%Y-%m-%d_%H:%M:%S")
 NUM_THREADS             = os.getenv('NUM_THREADS'               , 1)
 STFU_MODE               = os.getenv('STFU_MODE'                 , False)
-DROP_TABLES             = os.getenv('DROP_TABLES'               , True)
+DROP_TABLES             = os.getenv('DROP_TABLES'               , False)
 DEFAULT_EXTENSIONS_PATH = os.getenv('DEFAULT_EXTENSIONS_PATH'   , "extensions/")
 NODE_PATH               = os.getenv("NODE_PATH"                 , "node")
 NODE_APP_PATH           = os.getenv("NODE_APP_PATH"             , './node/app.js')
+RANDOM_EXTENSION_ORDER  = os.getenv("RANDOM_EXTENSION_ORDER"    , False)
 
 DNS_SERVERS = [
     "1.1.1.1",
@@ -43,47 +47,7 @@ DNS_SERVERS = [
 GODADDY_TLDS = []
 DOMAINSDB_TLDS = []
 MISS_TLDS = ["name", "se", "jp", "cn", "ru", "io", "de", "no", "dk", "in", "ae", "eu", "net", "fi", "into", "link", "nu", "org", "com", "bg", "pt", "lv", "ae", "uk", "africa", "co.uk", "club", "co"]
+RDAP_TLDS = []
 
 checked_domains = set()
-
-# add common domains to checked_domains
-checked_domains.add("google.com")
-checked_domains.add("facebook.com")
-checked_domains.add("youtube.com")
-checked_domains.add("yahoo.com")
-checked_domains.add("baidu.com")
-checked_domains.add("wikipedia.org")
-checked_domains.add("reddit.com")
-checked_domains.add("qq.com")
-checked_domains.add("taobao.com")
-checked_domains.add("amazon.com")
-checked_domains.add("twitter.com")
-checked_domains.add("tmall.com")
-checked_domains.add("instagram.com")
-checked_domains.add("live.com")
-checked_domains.add("vk.com")
-checked_domains.add("sohu.com")
-checked_domains.add("jd.com")
-checked_domains.add("sina.com.cn")
-checked_domains.add("weibo.com")
-checked_domains.add("360.cn")
-checked_domains.add("blogspot.com")
-checked_domains.add("linkedin.com")
-checked_domains.add("yandex.ru")
-checked_domains.add("netflix.com")
-checked_domains.add("twitch.tv")
-checked_domains.add("mail.ru")
-checked_domains.add("microsoft.com")
-checked_domains.add("ebay.com")
-checked_domains.add("bing.com")
-checked_domains.add("aliexpress.com")
-checked_domains.add("ok.ru")
-checked_domains.add("apple.com")
-checked_domains.add("xvideos.com")
-checked_domains.add("pinterest.com")
-checked_domains.add("paypal.com")
-checked_domains.add("imdb.com")
-checked_domains.add("adobe.com")
-checked_domains.add("tumblr.com")
-
 checked_domains_lock = threading.Lock()

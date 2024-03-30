@@ -1,6 +1,7 @@
 ## --- IMPORTS ---
 
 # System
+import traceback
 import sys
 import os
 import shutil
@@ -9,6 +10,7 @@ import builtins
 import re
 from datetime import datetime
 import zipfile
+import argparse
 
 # Concurrent threads
 import threading
@@ -63,14 +65,20 @@ class WorkerThread(threading.Thread):
         while not self._stop_event.is_set():
             # Get the work from the queue, if done, terminate thread
             try:
-                extension = self._queue.get(timeout=5)
+                extension = self._queue.get(timeout=3)
             except queue.Empty as e:
                 break
             try:
+                if (globals.TEMINATE):
+                    break
                 analyze_extension(self, extension)
                 self._counter += 1
             except Exception as e:
-                print(Fore.RED + 'Error in thread %d: %s' % (self._thread_id, str(e)) + Style.RESET_ALL)
+                traceback.print_exc()
+                print(Fore.RED + 'Error in thread %d, cannot continue: %s' % (self._thread_id, e) + Style.RESET_ALL)
+                # signal to all threads to terminate
+                globals.TEMINATE = True
+                break
             self._queue.task_done()
         print(Fore.YELLOW + 'Thread %d terminated' % self._thread_id + Style.RESET_ALL)
 
@@ -83,85 +91,71 @@ class WorkerThread(threading.Thread):
     def stop(self):
         self._stop_event.set()
 
+def parse_arguments():
+    parser = argparse.ArgumentParser(
+        description = """
+Extension analyzer
+
+Authors: Samuel Bach, Albin Karlsson 2024
+Chalmers University of Technology, Gothenburg, Sweden
+""", 
+        epilog = '''
+Optional environment variables:
+PRETTY_OUTPUT: True/False (default: False)
+RUN_ALL_VERSIONS: True/False (default: False)
+DATE_FORMAT: %Y-%m-%d_%H:%M:%S
+NUM_THREADS: N (default: 1)
+STFU_MODE: True/False (default: False)
+DROP_TABLES: True/False (default: False)
+DEFAULT_EXTENSIONS_PATH: "PATH" (default: "extensions/")
+NODE_PATH: "PATH" (default: "node")
+NODE_APP_PATH: "PATH" (default: "./node/app.js")
+RANDOM_EXTENSION_ORDER: True/False (default: False)
+    ''',
+    formatter_class = argparse.RawTextHelpFormatter
+    )
+
+    # Optional arguments
+    parser.add_argument('-t', '--threads',          type=int,               help="Number of threads to use",            default=globals.NUM_THREADS)
+    parser.add_argument('-a', '--all',              action='store_true',    help="Run all versions of each extension",  default=globals.RUN_ALL_VERSIONS)
+    parser.add_argument('-p', '--pretty_output',    action='store_true',    help="Pretty print the output",             default=globals.PRETTY_OUTPUT)
+    parser.add_argument('-d', '--date_format',      type=str,               help="Date format for output file",         default=globals.DATE_FORMAT)
+    parser.add_argument('-e', '--extension',        type=str,               help="Run only one extension",              default=None)
+    parser.add_argument('-s', '--stfu',             action='store_true',    help="Silent mode",                         default=globals.STFU_MODE)
+    parser.add_argument('-R', '--reset',            action='store_true',    help="Reset the database",                  default=globals.DROP_TABLES)
+    parser.add_argument('-r', '--random',           action='store_true',    help="Randomize extension order",           default=globals.RANDOM_EXTENSION_ORDER)
+    
+    # Positional argument
+    parser.add_argument('path_to_extensions',       nargs='*',              help="Path to extensions",                  default=[globals.DEFAULT_EXTENSIONS_PATH])    
+    return parser.parse_args()
+
 if __name__ == "__main__":
 
-    extension = None
+    args = parse_arguments()
 
-    # list of args to be removed from when parsing
-    args = sys.argv.copy()
+    # This is a bit stupid, but it works
+    globals.NUM_THREADS = args.threads
+    globals.RUN_ALL_VERSIONS = args.all
+    globals.PRETTY_OUTPUT = args.pretty_output
+    globals.DATE_FORMAT = args.date_format
+    globals.STFU_MODE = args.stfu
+    globals.DROP_TABLES = args.reset
 
-    try:
-        # optional arguments, exit if invalid
-        if len(args) > 1:
-            for arg in args:
-                if arg in ['-t', '--threads']:
-                    globals.NUM_THREADS = args[args.index(arg)+1]
-                    args.remove(arg)
-                    args.remove(globals.NUM_THREADS)
-                if arg in ['-s', '--stfu']:
-                    globals.STFU_MODE = True
-                    args.remove(arg)
-                if arg in ['-a', '--all']:
-                    globals.RUN_ALL_VERSIONS = True
-                    args.remove(arg)
-                if arg in ['-p', '--pretty']:
-                    globals.PRETTY_OUTPUT = True
-                    args.remove(arg)
-                if arg in ['-d', '--date']:
-                    globals.DATE_FORMAT = args[args.index(arg)+1]
-                    args.remove(arg)
-                    args.remove(globals.DATE_FORMAT)
-                if arg in ['-e', '--extension']:
-                    extension = args[args.index(arg)+1]
-                    args.remove(arg)
-                    args.remove(extension)
-                if arg in ['-R', '--reset']:
-                    globals.DROP_TABLES = True
-                    args.remove(arg)
-                if arg in ['-h', '--help']:
-                    # I hate this
-                    print('''
-                          
-                          
-Usage: python3 search.py  [options] [path to extensions...]
-Example: python3 search.py extensions/
+    extensions_paths = args.path_to_extensions
 
-Optional arguments:
--h, --help: show this help message and exit
--t, --threads: number of threads to use
--a, --all: run all versions of each extension
--p, --pretty output: pretty print the output
--d, --date format: date format for output file
--e, --extension: run only one extension
--s, --stfu: silent mode
--R, --reset: reset the database
+    if args.extension is not None:
+        globals.NUM_THREADS = 1
 
-Optional environment variables:
-PRETTY_OUTPUT: True/False
-RUN_ALL_VERSIONS: True/False
-DATE_FORMAT: %Y-%m-%d_%H:%M:%S
-NUM_THREADS: 1
-STFU_MODE: True/False
-DROP_TABLES: True/False
-DEFAULT_EXTENSIONS_PATH: "extensions/"
-NODE_PATH: "node"
-NODE_APP_PATH: "./app.js"
-
-                    ''')
-                    sys.exit(0)
-                try:
-                    globals.NUM_THREADS = int(globals.NUM_THREADS)
-                except:
-                    raise Exception("Invalid number of threads: " + globals.NUM_THREADS)
-
-        for arg in args:
-            if arg[0] == '-':
-                raise Exception("Invalid argument: " + arg)
-
-    except Exception as e:
-        print(Fore.RED + str(e) + Style.RESET_ALL)
+    if not extensions_paths and args.extension is None:
+        print(Fore.RED + 'No extension path' + Style.RESET_ALL)
         sys.exit(1)
-    
+
+    for extensions_path in extensions_paths:
+        if not os.path.isdir(extensions_path):
+            print(extensions_path)
+            print(Fore.RED + 'Invalid path to extensions' + Style.RESET_ALL)
+            sys.exit(1)
+
     # I hate this too
     print(
 """------------ Extension analyzer V 1.0 ------------
@@ -172,23 +166,9 @@ Chalmers University of Technology, Gothenburg, Sweden
 --------------------------------------------------"""
     )
 
-    # Get path to extensions
-    extensions_paths = []
-
-    if extension is None:
-        extensions_paths = [args[-1]] if len(args) > 1 else [globals.DEFAULT_EXTENSIONS_PATH]
-        for extensions_path in extensions_paths:
-            if not os.path.isdir(extensions_path):
-                print(Fore.RED + 'Invalid path to extensions' + Style.RESET_ALL)
-                sys.exit(1)
-    else:
-        globals.NUM_THREADS = 1
-
     # Stuff to do before starting threads
-    
-    # TMP budget caching
-    
-    # Godaddy
+
+    # Godaddy get supported TLDs
     if os.path.exists(os.getcwd() + "/GoDaddyCache.txt"):
         pass
     else:
@@ -196,23 +176,31 @@ Chalmers University of Technology, Gothenburg, Sweden
         f.write(str(godaddy_get_supported_tlds()))
         f.close()
     
-    # DomainDb
+    # DomainDb get supported TLDs
     if os.path.exists(os.getcwd() + "/DomainDbCache.txt"):
         pass
     else:
         f = open("DomainDbCache.txt", "w")
         f.write(str(domainsdb_get_supported_tlds()))
         f.close()
+
+    # RDAP get supported TLDs
+    if os.path.exists(os.getcwd() + "/RDAPCache.txt"):
+        pass
+    else:
+        f = open("RDAPCache.txt", "w")
+        f.write(str(rdap_get_supported_tlds()))
+        f.close()
    
+    # Read the cache files
     godaddy = open(os.getcwd() + "/GoDaddyCache.txt", "r")
     domaindb = open(os.getcwd() + "/DomainDbCache.txt", "r")
+    rdap_tlds = open(os.getcwd() + "/RDAPCache.txt", "r")
     
     globals.GODADDY_TLDS = godaddy.read()
     globals.DOMAINSDB_TLDS = domaindb.read()
-    
-    # Get supported TLDs
-    #globals.GODADDY_TLDS = godaddy_get_supported_tlds()
-    #globals.DOMAINSDB_TLDS = domainsdb_get_supported_tlds()
+    globals.RDAP_TLDS = rdap_tlds.read()
+
     # Create a connection to the database using the SQLWrapper
     sql_w = db.SQLWrapper(DATABASE)
     esprima = Esprima()
@@ -236,6 +224,7 @@ Chalmers University of Technology, Gothenburg, Sweden
 
 
     def exit(int, exception=None):
+        globals.TEMINATE = True
         sql_w.close()
         counters = []
         for t in threads:
@@ -261,21 +250,25 @@ Chalmers University of Technology, Gothenburg, Sweden
     try:
         # Scan and add extensions to thread_queue
         count_extensions = 0
-        if extension is not None:
-            if count_extensions > 9000: ## TEMP Skip
-                thread_queue.put(extension)
+        if args.extension is not None:
+            thread_queue.put(args.extension)
             count_extensions = 1
         else:
             for extensions_path in extensions_paths:
                 # for each dir in extensions_path
-                for dir in os.listdir(extensions_path):
-                    ii = ii + 1
-                    if ii > 1000:
-                        break
+                extension_path_list = os.listdir(extensions_path)
+
+                if (globals.RANDOM_EXTENSION_ORDER):
+                    random.shuffle(extension_path_list)
+
+                for dir in extension_path_list:
+                    # If something is wrong while it is scanning the extensions, it will terminate all threads
+                    if (globals.TEMINATE):
+                        exit(0)
                     versions = sorted([d for d in os.listdir(extensions_path + dir) if d[-4:] == ".crx"])
                     if not versions:
                         # Empty dir
-                        print("[+] Error (get_tmp_path) in {}: {}".format(dir, 'OK') ) # TODO: Check if output format is important
+                        print(Fore.RED + 'No extensions found in %s' % dir + Style.RESET_ALL)
                         continue
 
                     if globals.RUN_ALL_VERSIONS:
@@ -291,6 +284,8 @@ Chalmers University of Technology, Gothenburg, Sweden
             # progress bar using qsize, using alive_bar
             with alive_bar(count_extensions, bar='blocks', spinner='dots_waves', length=40, title='Analyzing extensions', manual=True) as bar:
                 while not thread_queue.empty():
+                    if (globals.TEMINATE):
+                        exit(0)
                     item_progress = 1 - (thread_queue.qsize() / count_extensions)
                     bar(item_progress)
                     time.sleep(1)
@@ -301,10 +296,6 @@ Chalmers University of Technology, Gothenburg, Sweden
 
         # wait for all threads to finish or if the main thread is terminated, if main thread is terminated, terminate all threads
         thread_queue.join()
-
-        # terminate all threads TODO: Kasnke onödig
-        for t in threads:
-            t.stop()
     except KeyboardInterrupt:
         print()
         print('Keyboard interrupt detected - terminating threads')
