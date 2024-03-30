@@ -1,7 +1,7 @@
 version: '3'
 
 services:
-  dl:
+  search:
     build: .
     volumes:
       - .:/app
