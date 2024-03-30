@@ -209,7 +209,6 @@ def read_manifest(crx_path: str) -> dict:
 # It shpuld not return anything, but write to files
 # It may throw exceptions indicating that the extension could not be analyzed
 def analyze_extension(thread, extension_path: str) -> None:
-    print(Fore.YELLOW + 'Analyzing extension %s' % extension_path + Style.RESET_ALL)
     
     # create obj Extension
     try:
@@ -247,9 +246,6 @@ def analyze_extension(thread, extension_path: str) -> None:
         urls = extension.get_keyword_analysis()['list_of_urls']
         actionsList = extension.get_keyword_analysis()['list_of_actions']
         commonUrls = extension.get_keyword_analysis()['list_of_common_urls']
-        
-        #print(type(urls))
-        #print(type(commonUrls))
 
         # --- Static analysis ---1
            

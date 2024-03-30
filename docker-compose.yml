@@ -7,3 +7,4 @@ services:
       - .:/app
     environment:
       - STFU_MODE=false
+      - PYTHONUNBUFFERED=1

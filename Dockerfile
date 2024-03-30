@@ -8,7 +8,7 @@ RUN apt-get update \
 # Set the working directory to /app/node
 WORKDIR /app/node
 
-# Install node packages
+# Install node packages THIS IS BROKEN
 COPY ./node/* /app/node/
 RUN npm install
 

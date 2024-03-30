@@ -30,6 +30,7 @@ def static_analysis(extension, esprima) -> bool:
 
 
 
+                    print("ret")
                     print(ret)
 
                 except Exception as e:

@@ -34,7 +34,7 @@ from analyze import analyze_extension
 from esprima import Esprima
 
 ## --- GLOBALS ---
-
+ii = 0
 # Start time
 start_time = time.time()
 
@@ -186,7 +186,7 @@ Chalmers University of Technology, Gothenburg, Sweden
 
     # Stuff to do before starting threads
     
-        # TMP budget caching
+    # TMP budget caching
     
     # Godaddy
     if os.path.exists(os.getcwd() + "/GoDaddyCache.txt"):
@@ -213,11 +213,9 @@ Chalmers University of Technology, Gothenburg, Sweden
     # Get supported TLDs
     #globals.GODADDY_TLDS = godaddy_get_supported_tlds()
     #globals.DOMAINSDB_TLDS = domainsdb_get_supported_tlds()
-
     # Create a connection to the database using the SQLWrapper
     sql_w = db.SQLWrapper(DATABASE)
     esprima = Esprima()
-
     try:
 
         # Drop tables if DROP_TABLES is set
@@ -271,6 +269,9 @@ Chalmers University of Technology, Gothenburg, Sweden
             for extensions_path in extensions_paths:
                 # for each dir in extensions_path
                 for dir in os.listdir(extensions_path):
+                    ii = ii + 1
+                    if ii > 1000:
+                        break
                     versions = sorted([d for d in os.listdir(extensions_path + dir) if d[-4:] == ".crx"])
                     if not versions:
                         # Empty dir

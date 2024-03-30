@@ -160,6 +160,7 @@ def domainsdb_is_available(domain, max_retries=10):
                     if "domains" in json_response:
                         return False, "None"
                     else:
+                        print("djaskldjkasldjlkas")
                         print(json_response)
                         raise Exception("Stuff broke")
                 except ValueError:
