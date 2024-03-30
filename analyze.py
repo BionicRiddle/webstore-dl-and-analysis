@@ -217,6 +217,7 @@ ii = 0
 # It shpuld not return anything, but write to files
 # It may throw exceptions indicating that the extension could not be analyzed
 def analyze_extension(thread, extension_path: str) -> None:
+    global ii
     ii = ii + 1
 
     # print if ii is divisible by 100 to see progress
