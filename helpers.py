@@ -7,6 +7,7 @@ import globals
 import requests
 import json
 import tldextract
+from datetime import datetime
 
 ## Bara funktioner
 
@@ -14,9 +15,9 @@ def simulate_work(extension):
     time.sleep(random.uniform(0.1, 1))
     print(Style.DIM + ('Analyzed extension %s' % extension) + Style.RESET_ALL)
 
-def print_old(*args, **kwargs):
-    if not globals.STFU_MODE:
-        builtins.print(*args, **kwargs)
+def print(*args, **kwargs):
+    builtins.print(datetime.now(), end=" - ")
+    builtins.print(*args, **kwargs)
 
 #  exit with any args
 def exit(*args, **kwargs):

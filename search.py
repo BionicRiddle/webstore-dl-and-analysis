@@ -157,7 +157,7 @@ if __name__ == "__main__":
             sys.exit(1)
 
     # I hate this too
-    print(
+    builtins.print(
 """------------ Extension analyzer V 1.0 ------------
 
 Authors: Samuel Bach, Albin Karlsson 2024
