@@ -189,23 +189,35 @@ def dns_analysis(domain: str):
         command = ['./zdns/zdns', record_type, '--verbosity', '1']
         result = subprocess.run(command, input=domain, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         # Check if the command was successful
+        
+        if domain == "walmartimages.com":
+            print("HELP ME")
+        
         if result.returncode == 0:
             response = json.loads(result.stdout)
 
             if "status" not in response:
+                if domain == "walmartimages.com":
+                    print("HELP ME #2")
                 raise Exception("Go command failed: " + result.stdout)
 
             if (response["status"] == "NOERROR"):
+                if domain == "walmartimages.com":
+                    print("DNS_RECORDS.NOERROR")
                 #print("NOERROR")
                 # We got a response, no need to continue
                 #return False
                 return DNS_RECORDS.NOERROR
             
             if (response["status"] == "NXDOMAIN"):
+                if domain == "walmartimages.com":
+                    print("DNS_RECORDS.NXDOMAIN")
                 # We can assume the domain is available
                 return DNS_RECORDS.NXDOMAIN
             
             if (response["status"] == "SERVFAIL"):
+                if domain == "walmartimages.com":
+                    print("DNS_RECORDS.SERVFAIL")
                 # We got a SERVFAIL, could not determine if domain is available
                 return DNS_RECORDS.SERVFAIL
         else:
@@ -213,6 +225,10 @@ def dns_analysis(domain: str):
             print(result.stderr)
             raise Exception("Command failed with return code:", result.returncode)
         # print exit code
+        
+        if domain == "walmartimages.com":
+            print("?????????")
+            print(result)
     except Exception as e:
         if (e.args[0] == 2):
             globals.TEMINATE = True

@@ -49,5 +49,9 @@ DOMAINSDB_TLDS = []
 MISS_TLDS = ["name", "se", "jp", "cn", "ru", "io", "de", "no", "dk", "in", "ae", "eu", "net", "fi", "into", "link", "nu", "org", "com", "bg", "pt", "lv", "ae", "uk", "africa", "co.uk", "club", "co"]
 RDAP_TLDS = []
 
+# Domains
 checked_domains = set()
 checked_domains_lock = threading.Lock()
+
+# DNS Records
+dns_records = {}

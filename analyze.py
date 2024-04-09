@@ -271,11 +271,12 @@ def analyze_extension(thread, extension_path: str) -> None:
     # do domain analysis
 
     urls = extension.get_keyword_analysis()['list_of_urls']
-
-    url_dns_record = {}
+    
+    invalidUrls = []
 
     for url, files in urls.items():
-
+        
+            
         if globals.TEMINATE:
             print(Fore.RED + 'TODO: We are currently terminating while a extension is running, we want to add it to failed extension with the reason "stopped early"' + Style.RESET_ALL)
             return
@@ -287,23 +288,35 @@ def analyze_extension(thread, extension_path: str) -> None:
             # tld:      com
             domain, tld = get_valid_domain(url)
             dns_status = None
+                    
+            #print("Url: " + str(url))
+            #print("Domain: " + str(domain))
+            #print("_________________")
 
             # Check if domain is valid
             if domain == None or tld == None:
+                # If invalid, remove from url list - Debate on wheter we should do this
+                invalidUrls.append(url)
                 dns_status = DNS_RECORDS.INVALID
                 #print(Fore.RED + 'Invalid URL:  %s' % url + Style.RESET_ALL)
             else:
-                # Check if domain already tested druing current run
+                # Check if domain already tested during current run
                 do_dns = True
                 with globals.checked_domains_lock:
                     if domain in globals.checked_domains:
                         do_dns = False
                     globals.checked_domains.add(domain)
-
                 if do_dns:
+
+
                     results = dns_analysis(domain)
 
+
                     dns_status = results.value
+                    
+                        
+                    globals.dns_records[domain] = dns_status
+                    
                     rdap_dump = None
                     expiration_date = None
                     available_date = None
@@ -325,13 +338,27 @@ def analyze_extension(thread, extension_path: str) -> None:
                     # TODO: @Samuel, varför är de en lista i en lista?
                     for file in files_something:
                         file_whitout_id = file.split("/", 1)[1]
+                        
                         db.insertDomainTable(thread.sql, domain, extension_path, file_whitout_id)
         except Exception as e:
             failed_extension(extension_path, "Failed to analyze domain", e)
             continue
 
     # DB Stuff
-    #db.insertActionTable(thread.sql, actionsList, url_dns_record)
+
+    
+    #print(globals.dns_records)
+    #print(invalidUrls)
+
+    for action in actionsList:
+        for domain in list(actionsList[action]):
+            if domain in invalidUrls or domain not in urls:
+                #print(domain)
+                del actionsList[action][domain]
+            
+    #print(url_dns_record["github.com"])    
+
+    db.insertActionTable(thread.sql, actionsList, globals.dns_records)
     #db.insertUrlTable(thread.sql, commonUrls, url_dns_record)
     
     
