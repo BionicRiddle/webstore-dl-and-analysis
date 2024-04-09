@@ -35,7 +35,7 @@ class Extension:
             self.dynamic_analysis = {}
             self.domain_analysis = {}
         except Exception as e:
-            reason = "In 'Extension.__init__'"
+            reason = "Error in 'Extension.__init__'"
             failed_extension(crx_path, reason, e)
             raise Exception("Failed to create Extension object")
 
@@ -237,7 +237,18 @@ def analyze_extension(thread, extension_path: str) -> None:
         if extension.get_extracted_path() is None:
             failed_extension(extension_path, "Extension was not extracted properly")
             return
+    except Exception as e:
+        # if any exception during analysis, do a clean up to prevent disk filling up
+        try:
+            extension.clean_up()
+        except:
+            print(Fore.RED + 'Failed to clean up after failed extension: %s' % extension_path + Style.RESET_ALL)
+            pass
+        #Log to file
+        failed_extension(extension_path, "Something went wrong with the file or filesystem", e)
+        return
 
+    try:
         # --- Keyword analysis ---
         
         # Rename analyze
@@ -247,10 +258,9 @@ def analyze_extension(thread, extension_path: str) -> None:
         actionsList = extension.get_keyword_analysis()['list_of_actions']
         commonUrls = extension.get_keyword_analysis()['list_of_common_urls']
 
-        # --- Static analysis ---1
+        # --- Static analysis ---
            
         #static_analysis(extension, thread.esprima)
-
 
         # --- Dynamic analysis ---
 

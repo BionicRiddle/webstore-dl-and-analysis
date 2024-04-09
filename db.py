@@ -171,7 +171,6 @@ def insertUrlTable(sqlobject, urls, dns_record):
                   
 def insertActionTable(sql_object, actionList, dns_record):
     
-    
     # Queries
     select = "SELECT url, type, extension FROM action WHERE url = ? AND type = ? AND extension = ? AND filepath = ?"
     insert = "INSERT INTO action VALUES (?,?,?,?)"
