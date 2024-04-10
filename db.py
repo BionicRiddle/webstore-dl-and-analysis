@@ -11,6 +11,7 @@ import threading
 import sys
 from globals import DNS_RECORDS
 from datetime import datetime
+from helpers import get_valid_domain
 
 if sqlite3.threadsafety == 0:
     raise Exception("sqlite3.threadsafety is 0. Program cannot continue as the sqlite3 module is not thread-safe. Needs to be 1 or 3. Check https://sqlite.org/threadsafe.html for more information.")
@@ -96,6 +97,7 @@ def insertDomainMetaTable(sql_object, domain: str, dns_status: str, expiration_d
     try:
         with sql_object as cursor:
             # Invalid url
+            #print(dns_status)
             cursor.execute(insert, (domain, dns_status, expiration_date, available_date, deleted_date, rdap_dump))
     except sqlite3.Error as e:
         print("Your mom is: " + str(e))
@@ -173,7 +175,7 @@ def insertActionTable(sql_object, actionList, dns_record):
     
     # Queries
     select = "SELECT url, type, extension FROM action WHERE url = ? AND type = ? AND extension = ? AND filepath = ?"
-    insert = "INSERT INTO action VALUES (?,?,?,?)"
+    insert = "INSERT INTO action VALUES (?,?,?,?,?)"
     
     # Go through each action type (href, fetch, etc)
     
@@ -184,8 +186,10 @@ def insertActionTable(sql_object, actionList, dns_record):
             # Entry: Each indidual domain
             
             # Den får inget dns record, varför
-            
-            if dns_record[entry] is not DNS_RECORDS.INVALID:
+            domain, tld = get_valid_domain(entry)
+            #if domain == "walmartimages.com":
+                #print(entry)
+            if dns_record[domain] is not DNS_RECORDS.INVALID:
                 for extension in actionList[action][entry]:
                 # actionList[action][entry]: List of extension(s) the domain resided in
                     try:
@@ -207,7 +211,7 @@ def insertActionTable(sql_object, actionList, dns_record):
                             exists = cursor.fetchone()
                             # If entry does not exist
                             if exists == None:
-                                cursor.execute(insert, (entry, action, extension_id, filePath))
+                                cursor.execute(insert, (entry, action, extension_id, filePath, datetime.now()))
                     except sqlite3.Error as er:
                         print('SQLite error: %s' % (' '.join(er.args)))
 
