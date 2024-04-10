@@ -191,3 +191,6 @@ esprima_debug_out.txt
 DomainDbCache.txt
 GoDaddyCache.txt
 RDAPCache.txt
+
+# Runtime stuff
+*.pkl
