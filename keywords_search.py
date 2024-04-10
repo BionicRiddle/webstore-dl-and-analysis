@@ -15,9 +15,6 @@ import json
 import random
 
 # get environment variables
-PRETTY_OUTPUT = os.getenv('PRETTY_OUTPUT', True)
-RUN_ALL_VERSIONS = os.getenv('RUN_ALL_VERSIONS', False)
-SKIP_TO = os.getenv('SKIP_TO', 0)
 
 DATE_FORMAT = os.getenv('DATE_FORMAT')
 if os.getenv('WSL_DISTRO_NAME'):
@@ -350,9 +347,6 @@ def analyze(extension, isInternal, single_extension=None):
     
     
     #extension = os.listdir(str(extensions_path))
-    # skipTo can by used to skip the first n extensions, does nothing if running a single extension is specified
-    skipTo = SKIP_TO
-    i = 0
     
     #print("--- Exists: ---- : " + str(extensions))
 

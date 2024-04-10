@@ -211,18 +211,17 @@ def read_manifest(crx_path: str) -> dict:
             
 
 ## ------------------------------
-ii = 0
+
 # This is the main function that is called from search.py
 # It is called with a path to a crx file
 # It shpuld not return anything, but write to files
 # It may throw exceptions indicating that the extension could not be analyzed
 def analyze_extension(thread, extension_path: str) -> None:
-    global ii
-    ii = ii + 1
+    globals.extension_counter = globals.extension_counter + 1
 
-    # print if ii is divisible by 100 to see progress
-    if ii % 100 == 0:
-        print(ii)
+    # print if globals.extension_counter is divisible by 500 to see progress
+    if globals.extension_counter % 500 == 0:
+        print(globals.extension_counter)
 
     # create obj Extension
     try:

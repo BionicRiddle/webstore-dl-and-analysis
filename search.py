@@ -36,7 +36,7 @@ from analyze import analyze_extension
 from esprima import Esprima
 
 ## --- GLOBALS ---
-ii = 0
+extension_counter = 0
 # Start time
 start_time = time.time()
 
@@ -101,7 +101,6 @@ Chalmers University of Technology, Gothenburg, Sweden
 """, 
         epilog = '''
 Optional environment variables:
-PRETTY_OUTPUT: True/False (default: False)
 RUN_ALL_VERSIONS: True/False (default: False)
 DATE_FORMAT: %Y-%m-%d_%H:%M:%S
 NUM_THREADS: N (default: 1)
@@ -118,12 +117,12 @@ RANDOM_EXTENSION_ORDER: True/False (default: False)
     # Optional arguments
     parser.add_argument('-t', '--threads',          type=int,               help="Number of threads to use",            default=globals.NUM_THREADS)
     parser.add_argument('-a', '--all',              action='store_true',    help="Run all versions of each extension",  default=globals.RUN_ALL_VERSIONS)
-    parser.add_argument('-p', '--pretty_output',    action='store_true',    help="Pretty print the output",             default=globals.PRETTY_OUTPUT)
     parser.add_argument('-d', '--date_format',      type=str,               help="Date format for output file",         default=globals.DATE_FORMAT)
     parser.add_argument('-e', '--extension',        type=str,               help="Run only one extension",              default=None)
-    parser.add_argument('-s', '--stfu',             action='store_true',    help="Silent mode",                         default=globals.STFU_MODE)
+    parser.add_argument('-s', '--stfu',             action='store_true',    help="Disable Progress Bar",                default=globals.STFU_MODE)
     parser.add_argument('-R', '--reset',            action='store_true',    help="Reset the database",                  default=globals.DROP_TABLES)
     parser.add_argument('-r', '--random',           action='store_true',    help="Randomize extension order",           default=globals.RANDOM_EXTENSION_ORDER)
+    parser.add_argument('-p', '--pickle',           action='store_true',    help="Resume last state",                   default=False)
     
     # Positional argument
     parser.add_argument('path_to_extensions',       nargs='*',              help="Path to extensions",                  default=[globals.DEFAULT_EXTENSIONS_PATH])    
@@ -136,10 +135,11 @@ if __name__ == "__main__":
     # This is a bit stupid, but it works
     globals.NUM_THREADS = args.threads
     globals.RUN_ALL_VERSIONS = args.all
-    globals.PRETTY_OUTPUT = args.pretty_output
     globals.DATE_FORMAT = args.date_format
     globals.STFU_MODE = args.stfu
     globals.DROP_TABLES = args.reset
+    globals.RANDOM_EXTENSION_ORDER = args.random
+    globals.PICKLE_FILE = args.pickle
 
     extensions_paths = args.path_to_extensions
 
@@ -259,6 +259,7 @@ Chalmers University of Technology, Gothenburg, Sweden
                 extension_path_list = os.listdir(extensions_path)
 
                 if (globals.RANDOM_EXTENSION_ORDER):
+                    import random
                     random.shuffle(extension_path_list)
 
                 for dir in extension_path_list:

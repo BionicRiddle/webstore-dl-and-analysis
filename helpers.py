@@ -8,6 +8,7 @@ import requests
 import json
 import tldextract
 from datetime import datetime
+import pickle
 
 ## Bara funktioner
 
@@ -70,6 +71,21 @@ def rdap_get_supported_tlds():
             if rem[j]["title"] == "RDAP Service":
                 tlds.append(data["domainSearchResults"][i]["ldhName"])
     return tlds
+
+# Pickle save
+def save_object(obj, filename):
+    with open(filename, 'wb') as f:
+        pickle.dump(obj, f)
+
+# Pickle load
+def load_object(filename):
+    with open(filename, 'rb') as f:
+        return pickle.load(f)
+
+# Pickle Object
+class SaveObject:
+    def __init__(self, data):
+        self.data = data
 
 
 def get_valid_domain(url):

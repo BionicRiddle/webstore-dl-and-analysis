@@ -5,6 +5,9 @@ from enum import Enum
 # If True, this signals long running functions to terminate
 TEMINATE = False
 
+# Counter for the number of extensions that have been analyzed
+extension_counter = 0
+
 #Enums
 class DNS_RECORDS(Enum):
     NOERROR  = "NOERROR"
@@ -17,7 +20,6 @@ class DNS_RECORDS(Enum):
 # Bara globala variabler
 
 # Environment variables
-PRETTY_OUTPUT           = os.getenv('PRETTY_OUTPUT'             , False)
 RUN_ALL_VERSIONS        = os.getenv('RUN_ALL_VERSIONS'          , False)
 DATE_FORMAT             = os.getenv('DATE_FORMAT'               , "%Y-%m-%d_%H:%M:%S")
 NUM_THREADS             = os.getenv('NUM_THREADS'               , 1)
@@ -27,6 +29,7 @@ DEFAULT_EXTENSIONS_PATH = os.getenv('DEFAULT_EXTENSIONS_PATH'   , "extensions/")
 NODE_PATH               = os.getenv("NODE_PATH"                 , "node")
 NODE_APP_PATH           = os.getenv("NODE_APP_PATH"             , './node/app.js')
 RANDOM_EXTENSION_ORDER  = os.getenv("RANDOM_EXTENSION_ORDER"    , False)
+PICKLE_FILE             = os.getenv("PICKLE_FILE"               , "search.pkl")
 
 DNS_SERVERS = [
     "1.1.1.1",
