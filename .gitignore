@@ -194,3 +194,6 @@ RDAPCache.txt
 
 # Runtime stuff
 *.pkl
+
+# Ignore chrome stuff
+chromedriver/
