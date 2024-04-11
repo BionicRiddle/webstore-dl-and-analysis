@@ -215,8 +215,12 @@ Chalmers University of Technology, Gothenburg, Sweden
 
     if globals.PICKLE_LOAD:
         print('Loading pickle file...')
-        thread_queue.load(load_object(globals.PICKLE_FILE))
-        print('Pickle file loaded')
+        try:
+            thread_queue.load(load_object(globals.PICKLE_FILE))
+            print('Pickle file loaded')
+        except:
+            print(Fore.RED + 'Could not load pickle file' + Style.RESET_ALL)
+            globals.PICKLE_LOAD = False
     
     globals.GODADDY_TLDS = godaddy.read()
     globals.DOMAINSDB_TLDS = domaindb.read()
