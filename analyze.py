@@ -235,7 +235,7 @@ def analyze_extension(thread, extension_path: str) -> None:
         # if found, do keyword_analysis()
         if extension.get_extracted_path() is None:
             failed_extension(extension_path, "Extension was not extracted properly")
-            return
+            return True
     except Exception as e:
         # if any exception during analysis, do a clean up to prevent disk filling up
         try:
@@ -245,7 +245,7 @@ def analyze_extension(thread, extension_path: str) -> None:
             pass
         #Log to file
         failed_extension(extension_path, "Something went wrong with the file or filesystem", e)
-        return
+        return True
 
     try:
         # --- Keyword analysis ---
@@ -272,7 +272,7 @@ def analyze_extension(thread, extension_path: str) -> None:
         extension.clean_up()
         #Log to file
         failed_extension(extension_path, "Something went wrong when analyzing the extension source code", e)
-        return
+        return True
 
     # --- Clean up ---
     extension.clean_up()
@@ -287,8 +287,8 @@ def analyze_extension(thread, extension_path: str) -> None:
         
             
         if globals.TEMINATE:
-            print(Fore.RED + 'TODO: We are currently terminating while a extension is running, we want to add it to failed extension with the reason "stopped early"' + Style.RESET_ALL)
-            return
+            # Will return False to indicate that the thread was terminated before finishing
+            return False
         if len(url) == 0:
             print(Fore.RED + 'Possible error: Empty URL' + Style.RESET_ALL)
             continue
@@ -369,6 +369,8 @@ def analyze_extension(thread, extension_path: str) -> None:
 
     db.insertActionTable(thread.sql, actionsList, globals.dns_records)
     #db.insertUrlTable(thread.sql, commonUrls, url_dns_record)
+
+    return True
     
     
 

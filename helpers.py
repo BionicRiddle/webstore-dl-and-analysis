@@ -9,6 +9,7 @@ import json
 import tldextract
 from datetime import datetime
 import pickle
+import threading
 
 ## Bara funktioner
 
@@ -87,6 +88,61 @@ class SaveObject:
     def __init__(self, data):
         self.data = data
 
+# Thread safe Unique Queue
+class UniqueQueue:
+    def __init__(self):
+        self.queue = queue.Queue()
+        self.unique_items = set()
+        self.lock = threading.Lock()
+
+    def save(self):
+        not_done_items = []
+        while not self.queue.empty():
+            not_done_items.append(self.queue.get())
+
+        return SaveObject([not_done_items, self.unique_items])
+
+    def load(self, save):
+        not_done_items = save.data[0]
+        
+        for item in not_done_items:
+            self.put(item)
+        
+        # This will replace the unique items with the ones from the save
+        self.unique_items = save.data[1]
+
+    def put(self, item):
+        with self.lock:
+            if item not in self.unique_items:
+                self.queue.put(item)
+                self.unique_items.add(item)
+
+    def get(self, block=True, timeout=None):
+        with self.lock:
+            item = self.queue.get(block, timeout)
+            return item
+
+    def empty(self):
+        with self.lock:
+            return self.queue.empty()
+
+    def qsize(self):
+        try:
+            return self.queue.qsize()
+        except:
+            print("Could not get qsize")
+            return -1
+
+    def task_done(self):
+        self.queue.task_done()
+
+    def join(self):
+        self.queue.join()
+
+    def __len__(self):
+        with self.lock:
+            return len(self.queue)
+
 
 def get_valid_domain(url):
     """
@@ -119,5 +175,29 @@ def get_valid_domain(url):
 
     return ((domain + "." + suffix).lower(), suffix.lower())
 
+import queue
 if __name__ == "__main__":
     raise Exception("This file is not meant to be run directly")
+
+    def producer(q):
+        for i in range(10):
+            q.put(i)
+
+    def consumer(q, id):
+        while not q.empty():
+            item = q.get()
+            print("Consumer %d got %d" % (id, item))
+
+    q = UniqueQueue()
+
+    producer_thread = threading.Thread(target=producer, args=(q,))
+    consumer_thread = threading.Thread(target=consumer, args=(q,1))
+    consumer_thread2 = threading.Thread(target=consumer, args=(q,2))
+
+    producer_thread.start()
+    consumer_thread.start()
+    consumer_thread2.start()
+
+    producer_thread.join()
+    consumer_thread.join()
+    consumer_thread2.join()

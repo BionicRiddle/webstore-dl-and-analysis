@@ -41,7 +41,7 @@ extension_counter = 0
 start_time = time.time()
 
 # Create queue for threads
-thread_queue = queue.Queue()
+thread_queue = UniqueQueue()
 
 # Create a connection to the database
 DATABASE = 'thesis.db'
@@ -56,11 +56,18 @@ class WorkerThread(threading.Thread):
         self._thread_id = thread_id
         self._stop_event = threading.Event()
         self._counter = 0
+        self._current_extension = None
 
         self.sql = sql
         self.esprima = esprima      
 
     def run(self):
+
+        # Wait for work to be added to the queue
+        while self._queue.empty():
+            if globals.TEMINATE:
+                break
+            time.sleep(1)
        
         while not self._stop_event.is_set():
             # Get the work from the queue, if done, terminate thread
@@ -71,7 +78,12 @@ class WorkerThread(threading.Thread):
             try:
                 if (globals.TEMINATE):
                     break
-                analyze_extension(self, extension)
+                self._current_extension = extension
+                done = analyze_extension(self, extension)
+                if not done:
+                    # If the extension exited early, we need to put it back in the queue
+                    self._queue.put(extension)
+                self._current_extension = None
                 self._counter += 1
             except Exception as e:
                 traceback.print_exc()
@@ -86,7 +98,10 @@ class WorkerThread(threading.Thread):
         return self._thread_id
 
     def get_counter(self):
-        return self._counter        
+        return self._counter
+
+    def get_current_extension(self):
+        return self._current_extension   
 
     def stop(self):
         self._stop_event.set()
@@ -110,6 +125,7 @@ DEFAULT_EXTENSIONS_PATH: "PATH" (default: "extensions/")
 NODE_PATH: "PATH" (default: "node")
 NODE_APP_PATH: "PATH" (default: "./node/app.js")
 RANDOM_EXTENSION_ORDER: True/False (default: False)
+PICKLE_FILE: "PATH" (default: "search.pkl")
     ''',
     formatter_class = argparse.RawTextHelpFormatter
     )
@@ -139,7 +155,7 @@ if __name__ == "__main__":
     globals.STFU_MODE = args.stfu
     globals.DROP_TABLES = args.reset
     globals.RANDOM_EXTENSION_ORDER = args.random
-    globals.PICKLE_FILE = args.pickle
+    globals.PICKLE_LOAD = args.pickle
 
     extensions_paths = args.path_to_extensions
 
@@ -196,6 +212,11 @@ Chalmers University of Technology, Gothenburg, Sweden
     godaddy = open(os.getcwd() + "/GoDaddyCache.txt", "r")
     domaindb = open(os.getcwd() + "/DomainDbCache.txt", "r")
     rdap_tlds = open(os.getcwd() + "/RDAPCache.txt", "r")
+
+    if globals.PICKLE_LOAD:
+        print('Loading pickle file...')
+        thread_queue.load(load_object(globals.PICKLE_FILE))
+        print('Pickle file loaded')
     
     globals.GODADDY_TLDS = godaddy.read()
     globals.DOMAINSDB_TLDS = domaindb.read()
@@ -237,9 +258,17 @@ Chalmers University of Technology, Gothenburg, Sweden
                 print(Fore.RED + ('Could not get counter from crashed thread %d' % t.get_thread_id() ) + Style.RESET_ALL)
         print('Threads terminated')
         print()
-        print('Closing Esprima process...', end=' ')
+
+        print('Closing Esprima process')
         esprima.close_process()
-        print('Done')
+        print('Esprima process closed')
+        print()
+
+        print('Saving Queue state')
+        save_object(thread_queue.save(), globals.PICKLE_FILE)
+        print('Queue state saved')
+        print()
+
         print(sum(counters), 'extensions analyzed')
         elapsed = time.time() - start_time
         print('Elapsed time: %s' % time.strftime("%H:%M:%S", time.gmtime(elapsed)))

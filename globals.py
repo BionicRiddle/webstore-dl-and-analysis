@@ -5,6 +5,9 @@ from enum import Enum
 # If True, this signals long running functions to terminate
 TEMINATE = False
 
+# If True, this signals the program to load the pickle file
+PICKLE_LOAD = False
+
 # Counter for the number of extensions that have been analyzed
 extension_counter = 0
 
