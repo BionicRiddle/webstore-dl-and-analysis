@@ -1,45 +1,35 @@
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
 import os
+import time
 
-# Set path to chrome/chromedriver as per your configuration
-root_dir = os.path.dirname(os.path.abspath(__file__))
-chromedriver_path = os.path.join(root_dir, "chromedriver/chromedriver-linux64/chromedriver")
-chrome_path = os.path.join(root_dir, "chromedriver/chrome-linux64/chrome")
+try: 
+    chrome_options = webdriver.ChromeOptions()
 
+    EXTENSION_PATH = '/mnt/c/Users/riddle/Documents/webstore-dl-and-analysis/extensions/hdokiejnpimakedhajhdlcegeplioahd/HDOKIEJNPIMAKEDHAJHDLCEGEPLIOAHD_4_125_0_4.crx' # LastPass
 
+    PROXY_HOST = "http://127.0.0.1"
+    PROXY_PORT = 8080
 
-# --enable-features=ConversionMeasurement,AttributionReportingCrossAppWeb
+    PROXY = PROXY_HOST + ":" + str(PROXY_PORT)
 
-# Setup chrome options
-options = webdriver.ChromeOptions()
-options.binary_location = chrome_path
-options.add_argument("--headless") # Ensure GUI is off
-#options.add_argument("--no-sandbox")
-#options.add_argument('--proxy-server=127.0.0.1:8080')
-#options.add_argument('--allow-running-insecure-content')
-#options.add_argument('--ignore-certificate-errors')
-#options.add_extension('/mnt/c/Users/Riddle/Documents/webstore-dl-and-analysis/extensions/fngmehpgladkgnmkinabkikbmhjmkigj/FNGMEHPGLADKGNMKINABKIKBMHJMKIGJ_1_0_0_0.crx')
+    chrome_options.add_extension(EXTENSION_PATH) 
+    chrome_options.add_argument('--proxy-server=' + PROXY)
+    chrome_options.add_argument('--ignore-certificate-errors')
+    chrome_options.add_argument('--allow-running-insecure-content')
+        #chrome_options.add_argument('--headless')
+        #chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--window-size=640,480")
 
-webdriver_service = Service(chromedriver_path)
+    driver = webdriver.Chrome(options=chrome_options)
 
-print("Launching Browser")
-# Choose Chrome Browser
-browser = webdriver.Chrome(service=webdriver_service, options=options)
-#browser = webdriver.Chrome(service=webdriver_service, options=options)
-print("Browser launched")
+    driver.get("chrome://extensions/")
+    #driver.get("https://albinkarlsson.se/")
 
-#driver.get("chrome://extensions/")
-browser.get("https://riddle.nu/")
+    time.sleep(60)
 
-
-
-
-
-
-
-
-
-
-
-
+except KeyboardInterrupt:
+    driver.close()
+driver.close()
