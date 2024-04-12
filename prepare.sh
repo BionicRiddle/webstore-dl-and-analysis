@@ -55,3 +55,6 @@ cd zdns
 # Build the project
 go build
 cd ..
+
+# Install the python dependencies
+pip3 install -r requirements.txt
