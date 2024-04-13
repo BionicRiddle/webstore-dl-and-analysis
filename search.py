@@ -126,6 +126,7 @@ NODE_PATH: "PATH" (default: "node")
 NODE_APP_PATH: "PATH" (default: "./node/app.js")
 RANDOM_EXTENSION_ORDER: True/False (default: False)
 PICKLE_FILE: "PATH" (default: "search.pkl")
+DISPLAY_PORT: N (default: 99)
     ''',
     formatter_class = argparse.RawTextHelpFormatter
     )

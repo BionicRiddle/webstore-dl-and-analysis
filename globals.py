@@ -33,6 +33,9 @@ NODE_PATH               = os.getenv("NODE_PATH"                 , "node")
 NODE_APP_PATH           = os.getenv("NODE_APP_PATH"             , './node/app.js')
 RANDOM_EXTENSION_ORDER  = os.getenv("RANDOM_EXTENSION_ORDER"    , False)
 PICKLE_FILE             = os.getenv("PICKLE_FILE"               , "search.pkl")
+DISPLAY_PORT            = os.getenv("DISPLAY_PORT"              , 99)
+
+MITM_PROXY_START_PORT   = 22300
 
 DNS_SERVERS = [
     "1.1.1.1",
@@ -61,3 +64,8 @@ checked_domains_lock = threading.Lock()
 
 # DNS Records
 dns_records = {}
+
+# Environment variables for dynamic analysis
+
+
+os.environ['DISPLAY'] = f":{DISPLAY_PORT}"
