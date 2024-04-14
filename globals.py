@@ -65,7 +65,10 @@ checked_domains_lock = threading.Lock()
 # DNS Records
 dns_records = {}
 
-# Environment variables for dynamic analysis
+# Variables for the static analysis
+STATIC_ENABLE = os.getenv('STATIC_ENABLE', False)
 
-
+# Variables and Environment variables for dynamic analysis
+# TEMP
+DYNAMIC_ENABLED = os.getenv('DYNAMIC_ENABLED', True)
 os.environ['DISPLAY'] = f":{DISPLAY_PORT}"

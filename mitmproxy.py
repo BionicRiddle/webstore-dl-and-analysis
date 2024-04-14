@@ -1,8 +1,10 @@
 import socket
 import ssl
 import threading
+from enum import Enum
 
 def handle_client(client_socket, magic_object):
+
     # Receive the client's request
     request = client_socket.recv(4096)
     print("Request:")
@@ -36,6 +38,12 @@ def handle_client(client_socket, magic_object):
             temp = url
         else:
             temp = url[(http_pos + 3):]
+
+        # log url
+
+        with magic_object.pipe_list_lock:
+            print(temp)
+            magic_object.pipe_list.append(temp)
 
         port_pos = temp.find(":")
         webserver_pos = temp.find("/")
@@ -72,34 +80,74 @@ def relay(socket1, socket2):
     socket1.close()
     socket2.close()
 
-def MITM_t(port):
+class MITM_STATE(Enum):
+    IDLE = 0
+    RUNNING = 1
+    ENDING = 2
+    WAITING = 3
 
-    if port == None:
-        raise Exception("Port is required")
-        
-    # Set up the listening socket
-    listen_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    listen_socket.bind(('127.0.0.1', port))
-    listen_socket.listen(5)
 
-    # Init list of some sort ??
-    magic_object = {}
+class MITM_link:
+    '''
+    Class to handle the MITM proxy and communication with the proxy
+    '''
 
-    while True:
-        client_socket, addr = listen_socket.accept()
-        print("Received connection from:", addr)
-        client_handler = threading.Thread(target=handle_client, args=(client_socket,magic_object,))
-        client_handler.start()
+    def __init__(self, port):
+        self.active = False
+        self.port = port
 
-def MITM(num_clients):
+        # Start the MITM proxy
+        self.listen_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.listen_socket.bind(('127.0.0.1', port))
+        self.listen_socket.listen(5)
 
-    for i in range(num_clients):
-        port = globals.MITM_PROXY_START_PORT + i
-        client = threading.Thread(target=MITM_t, args=(port,))
-        client.start()
+        self.pipe_list_lock = threading.Lock()
+        self.pipe_list = []
+
+        self.running = threading.Lock()
+
+        self.state = MITM_STATE.IDLE
+    
+    def stop(self):
+        self.active = False
+
+    def start(self):
+        self.active = True
+        thread = threading.Thread(target=lambda: self._handle_connections())
+        self.state = MITM_STATE.RUNNING
+        thread.start()
+
+    def _handle_connections(self):
+        while True:
+            client_socket, addr = self.listen_socket.accept()
+            print("Received connection from:", addr)
+            client_handler = threading.Thread(target=self.handle_client, args=(client_socket,self,))
+            client_handler.start()
+            if self.state == MITM_STATE.ENDING:
+                break
+        self.state = MITM_STATE.WAITING
+    
+    def end(self):
+        self.active = False
+        # Wait for the thread to finish
+        with self.running:
+            with self.pipe_list_lock:
+                return_list = self.pipe_list
+
+
+    def terminate(self):
+        # Close the listening socket
+        self.listen_socket.close()
 
 if __name__ == "__main__":
 
 
-    MITM(22300)
+    l = MITM_link(22300)
+
+    l.start()
+
+    # do stuff
+
+    l.stop()
+    l.get_pipe_list()

@@ -259,7 +259,8 @@ def analyze_extension(thread, extension_path: str) -> None:
 
         # --- Static analysis ---
            
-        #static_analysis(extension, thread.esprima)
+        if globals.STATIC_ENABLE:
+            static_analysis(extension, thread.esprima)
 
         # --- Dynamic analysis ---
 

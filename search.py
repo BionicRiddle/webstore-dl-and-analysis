@@ -59,7 +59,7 @@ class WorkerThread(threading.Thread):
         self._current_extension = None
 
         self.sql = sql
-        self.esprima = esprima      
+        self.esprima = esprima
 
     def run(self):
 
@@ -229,7 +229,9 @@ Chalmers University of Technology, Gothenburg, Sweden
 
     # Create a connection to the database using the SQLWrapper
     sql_w = db.SQLWrapper(DATABASE)
-    esprima = Esprima()
+    esprima = None
+    if globals.STATIC_ENABLE:
+        esprima = Esprima()
     try:
 
         # Drop tables if DROP_TABLES is set
@@ -246,7 +248,8 @@ Chalmers University of Technology, Gothenburg, Sweden
             t.start()
             threads.append(t)
     except (Exception, KeyboardInterrupt) as e:
-        esprima.close_process()
+        if globals.STATIC_ENABLE:
+            esprima.close_process()
 
 
     def exit(int, exception=None):
@@ -264,10 +267,11 @@ Chalmers University of Technology, Gothenburg, Sweden
         print('Threads terminated')
         print()
 
-        print('Closing Esprima process')
-        esprima.close_process()
-        print('Esprima process closed')
-        print()
+        if globals.STATIC_ENABLE:
+            print('Closing Esprima process')
+            esprima.close_process()
+            print('Esprima process closed')
+            print()
 
         print('Saving Queue state')
         save_object(thread_queue.save(), globals.PICKLE_FILE)
