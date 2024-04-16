@@ -35,8 +35,6 @@ RANDOM_EXTENSION_ORDER  = os.getenv("RANDOM_EXTENSION_ORDER"    , False)
 PICKLE_FILE             = os.getenv("PICKLE_FILE"               , "search.pkl")
 DISPLAY_PORT            = os.getenv("DISPLAY_PORT"              , 99)
 
-MITM_PROXY_START_PORT   = 22300
-
 DNS_SERVERS = [
     "1.1.1.1",
     "1.0.0.1",

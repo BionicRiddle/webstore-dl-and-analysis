@@ -1,84 +1,27 @@
+# NOT USED
+
 import socket
 import ssl
 import threading
 from enum import Enum
-
-def handle_client(client_socket, magic_object):
-
-    # Receive the client's request
-    request = client_socket.recv(4096)
-    print("Request:")
-    print(request.decode())
-
-    first_line = request.decode().split('\n')[0]
-    method = first_line.split(' ')[0]
-
-    # Check if it's a CONNECT request
-    if method == "CONNECT":
-        # Extract the host and port from the CONNECT request
-        url = first_line.split(' ')[1]
-        target_host, target_port = url.split(':')
-        target_port = int(target_port)
-
-        # Establish a connection to the target server
-        target_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        target_socket.connect((target_host, target_port))
-
-        # Send a successful response to the client
-        response = "HTTP/1.1 200 OK\n\n"
-        client_socket.send(response.encode())
-
-        # Start relaying data between the client and server
-        relay(client_socket, target_socket)
-    else:
-        # Extract the host and port from the request
-        url = first_line.split(' ')[1]
-        http_pos = url.find("://")
-        if http_pos == -1:
-            temp = url
-        else:
-            temp = url[(http_pos + 3):]
-
-        # log url
-
-        with magic_object.pipe_list_lock:
-            print(temp)
-            magic_object.pipe_list.append(temp)
-
-        port_pos = temp.find(":")
-        webserver_pos = temp.find("/")
-        if webserver_pos == -1:
-            webserver_pos = len(temp)
-        webserver = ""
-        port = -1
-        if port_pos == -1 or webserver_pos < port_pos:
-            port = 80
-            webserver = temp[:webserver_pos]
-        else:
-            port = int((temp[(port_pos + 1):])[:webserver_pos - port_pos - 1])
-            webserver = temp[:port_pos]
-
-        # Create a socket to connect to the web server
-        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_socket.connect((webserver, port))
-        server_socket.send(request)
-
-        # Start relaying data between the client and server
-        relay(client_socket, server_socket)
-
+import time
 
 def relay(socket1, socket2):
     while True:
         # Receive data from socket1 and send it to socket2
         data = socket1.recv(4096)
+        print(len(data))
         if data:
             socket2.send(data)
         else:
             break
 
     # Close both sockets
+    print("Closing sockets")
     socket1.close()
+    print("Closed Client socket")
     socket2.close()
+    print("Closed Server socket")
 
 class MITM_STATE(Enum):
     IDLE = 0
@@ -100,17 +43,14 @@ class MITM_link:
         self.listen_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.listen_socket.bind(('127.0.0.1', port))
-        self.listen_socket.listen(5)
-
+        self.listen_socket.listen(10)
+        
         self.pipe_list_lock = threading.Lock()
         self.pipe_list = []
 
         self.running = threading.Lock()
 
         self.state = MITM_STATE.IDLE
-    
-    def stop(self):
-        self.active = False
 
     def start(self):
         self.active = True
@@ -122,32 +62,84 @@ class MITM_link:
         while True:
             client_socket, addr = self.listen_socket.accept()
             print("Received connection from:", addr)
-            client_handler = threading.Thread(target=self.handle_client, args=(client_socket,self,))
+            client_handler = threading.Thread(target=self.handle_client, args=(client_socket,))
             client_handler.start()
             if self.state == MITM_STATE.ENDING:
                 break
         self.state = MITM_STATE.WAITING
     
-    def end(self):
-        self.active = False
+    def end(self) -> list:
+        self.state = MITM_STATE.ENDING
         # Wait for the thread to finish
         with self.running:
-            with self.pipe_list_lock:
+            with self.pipe_list_lock: # should not be needed
                 return_list = self.pipe_list
-
+                self.pipe_list = []
+                return return_list
 
     def terminate(self):
         # Close the listening socket
         self.listen_socket.close()
 
+    def handle_client(self, client_socket):
+        request = client_socket.recv(4096).decode('utf-8')
+        print(request)
+        first_line = request.split('\n')[0]
+        url = first_line.split(' ')[1]
+
+        host = url.split(':')[0]
+        port = int(url.split(':')[1])
+
+        # add to pipe list
+        with self.pipe_list_lock:
+            print("Adding to pipe list")
+            self.pipe_list.append(host)
+
+
+        print(f"Received request for: {host}")
+
+        remote_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        remote_socket.connect((host, port))
+        ssl_socket = ssl.wrap_socket(remote_socket)
+
+        ssl_socket.sendall(request.encode())
+
+        while True:
+            data = ssl_socket.recv(4096)
+            if len(data) > 0:
+                client_socket.send(data)
+            else:
+                break
+
+        ssl_socket.close()
+        client_socket.close()
+
 if __name__ == "__main__":
+    # NOT USED
+
+    try:
 
 
-    l = MITM_link(22300)
+        l = MITM_link(22300)
 
-    l.start()
+        l.start()
+        print("Started")
 
-    # do stuff
+        # do stuff
+        time.sleep(60)
 
-    l.stop()
-    l.get_pipe_list()
+        output = l.end()
+
+        print(output)
+
+    
+    except KeyboardInterrupt:
+
+        output = l.end()
+
+        print(len(output))
+        print(output)
+
+        print("Terminating...")
+        l.terminate()
+        print("Exiting...")

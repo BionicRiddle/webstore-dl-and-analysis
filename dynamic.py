@@ -1,10 +1,16 @@
 from selenium import webdriver
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 import os
 import time
 import psutil
+import json
+
+# Global variables and settings
+import globals
+from helpers import *
 
 def is_display_running(port):
     for proc in psutil.process_iter(['pid', 'cmdline']):
@@ -15,64 +21,21 @@ def is_display_running(port):
             pass
     return False
 
-def none():
-    chrome_options = webdriver.ChromeOptions()
-
-    EXTENSION_PATH = '/mnt/c/Users/riddle/Documents/webstore-dl-and-analysis/extensions/hdokiejnpimakedhajhdlcegeplioahd/HDOKIEJNPIMAKEDHAJHDLCEGEPLIOAHD_4_125_0_4.crx' # LastPass
-
-    PROXY_HOST = "http://127.0.0.1"
-    PROXY_PORT = 8080
-
-    # Check if there is a display on :99
-    DISPLAY_PORT = 99
-    if not is_display_running(DISPLAY_PORT):
-        print(f"No display is running on port :{DISPLAY_PORT}. Starting a display on port :{DISPLAY_PORT}.")
-        # Start a display on port :99
-        os.system(f"Xvfb :{DISPLAY_PORT} -ac &> /dev/null &")
-
-    # set DISPLAY variable to avoid crash
-    os.environ['DISPLAY'] = f":{DISPLAY_PORT}"
-
-    PROXY = PROXY_HOST + ":" + str(PROXY_PORT)
-
-    chrome_options.add_extension(EXTENSION_PATH) 
-    chrome_options.add_argument('--proxy-server=' + PROXY)
-    chrome_options.add_argument('--ignore-certificate-errors')
-    chrome_options.add_argument('--allow-running-insecure-content')
-        #chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--window-size=640,480")
-
-
-    driver = webdriver.Chrome(options=chrome_options)
-
-    try: 
-        driver.get("chrome://extensions/")
-        #driver.get("https://albinkarlsson.se/")
-
-        time.sleep(60)
-
-    except KeyboardInterrupt:
-        driver.close()
-    driver.close()    
-
 def dynamic_analysis(thread, extension):
 
-    EXTENSION_PATH = extension.get_crx_path()
-
-    PROXY_HOST = "http://127.0.0.1"
-    PROXY_PORT = globals.MITM_PROXY_START_PORT + thread.get_thread_id()
-
-    PROXY = PROXY_HOST + ":" + str(PROXY_PORT)
+    #EXTENSION_PATH = extension.get_crx_path()
 
     # Check if proxy started???
     #...
 
-    chrome_options.add_extension(EXTENSION_PATH) 
-    chrome_options.add_argument('--proxy-server=' + PROXY)
+    chrome_options = webdriver.ChromeOptions()
+
+    #chrome_options.add_extension(EXTENSION_PATH) 
     chrome_options.add_argument('--ignore-certificate-errors')
     chrome_options.add_argument('--allow-running-insecure-content')
         #chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--window-size=640,480")
+    chrome_options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
 
     driver = webdriver.Chrome(options=chrome_options)
 
@@ -80,10 +43,62 @@ def dynamic_analysis(thread, extension):
     # Prepare proxy
 
     try:
-        driver.get("chrome://extensions/")
-        time.sleep(60)
+        #driver.get("chrome://extensions/")
+        driver.get("https://albinkarlsson.se/picture.webp")
+        logs = driver.get_log('performance')
+        time.sleep(5)
+        # driver.get("https://gp.se/")
+        # time.sleep(5)
+        # driver.get("https://google.se/")
+        # time.sleep(5)
+        # driver.get("https://www.svt.se/")
+        # time.sleep(5)
+        # driver.get("https://www.aftonbladet.se/")
+        # time.sleep(5)
+        # driver.get("https://www.expressen.se/")
+        # time.sleep(5)
+        # driver.get("https://www.svd.se/")
+        # time.sleep(5)
+        # driver.get("https://www.di.se/")
+        # time.sleep(5)
+        # driver.get("https://www.dn.se/")
+        # time.sleep(5)
+        # driver.get("https://www.metro.se/")
+        # time.sleep(5)
+        # driver.get("https://www.hd.se/")
+        # time.sleep(5)
+        # driver.get("https://www.sydsvenskan.se/")
+        # time.sleep(5)
+        #time.sleep(60)
 
-    except e as Exception:
+        # Filter logs for network entries
+        network_logs = [log for log in logs if 'Network.requestWillBeSent' in log['message']]
+
+        # Print URLs accessed along with their methods
+        for entry in network_logs:
+            try:
+                level = entry['level']
+                log = (json.loads(entry['message']))
+                url = log['message']['params']['request']['url']
+                print(url)
+                #method = message['method']
+                #print(f"URL: {url}, Method: {method}")
+            except Exception as e:
+                print(e)
+                pass
+
+        # for each line in logs:
+        # remove file if exists
+        if os.path.exists("log.txt"):
+            os.remove("log.txt")
+
+        for log in logs:
+            json_s = log.get("message")
+            with open("log.txt", "a") as f:
+                f.write(json_s + "\n")
+
+
+    except Exception as e:
         print(e)
         driver.close()
         raise e
@@ -99,4 +114,5 @@ def dynamic_analysis(thread, extension):
 
 
 if __name__ == "__main__":
-    pass
+    dynamic_analysis = dynamic_analysis(1, None)
+    print(dynamic_analysis)
