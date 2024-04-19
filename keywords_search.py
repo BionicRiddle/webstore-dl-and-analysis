@@ -57,7 +57,7 @@ def getUrl(data, patterns):
     # Did we find a url?
     if len(url) > 0:
         ## Check if valid url
-        return url[0]
+        return url
    
     return 'No url(s) found'
 
@@ -131,7 +131,8 @@ def getActions(data, filePath, urlPattern):
             #If a url is found, store it in association with the action
         
             # Very much test
-            url = getUrl(data[endIndex:endIndex+100], urlPattern)
+            urls = getUrl(data[endIndex:endIndex+100], urlPattern)
+
             
             # If beginning of url is matched too far away ahead, it is likely not part of the action
             # src="/img/list.png"></a> <div class="dropdown-content"> <a target="blank" href="https://www.w3techic.co
@@ -140,32 +141,32 @@ def getActions(data, filePath, urlPattern):
             
             # Check that the url begins within the first 30 characters
             #print(data[startIndex:endIndex])
-            
-            if url in data[endIndex+30:endIndex+100]:
-                continue
-                        
-            
-            #print(data[startIndex:endIndex+100])
-            #print(url not in data[startIndex:endIndex+50])
-            
-            # Check if action has already been added
-            #print("url: " + str(url))
-            #print("Actiontype: " + str(actionType))
-            #print("")
-            
-            if actionType in actionUrlMap:
-                # Check if domain has already been added
-                if url in actionUrlMap[actionType]:
-                    if filePath not in actionUrlMap[actionType][url]:
-                        #print("Appending to:")
-                        #print(str(actionUrlMap[actionType][url]))
-                        actionUrlMap[actionType][url].append(filePath)
+            for url in urls:
+                if url in data[endIndex+30:endIndex+100]:
+                    continue
+                            
+                
+                #print(data[startIndex:endIndex+100])
+                #print(url not in data[startIndex:endIndex+50])
+                
+                # Check if action has already been added
+                #print("url: " + str(url))
+                #print("Actiontype: " + str(actionType))
+                #print("")
+                
+                if actionType in actionUrlMap:
+                    # Check if domain has already been added
+                    if url in actionUrlMap[actionType]:
+                        if filePath not in actionUrlMap[actionType][url]:
+                            #print("Appending to:")
+                            #print(str(actionUrlMap[actionType][url]))
+                            actionUrlMap[actionType][url].append(filePath)
+                    else:
+                        # Action has been added but the url has not
+                        actionUrlMap[actionType][url] = [filePath]
                 else:
-                    # Action has been added but the url has not
+                    #print("Url: " + url)
                     actionUrlMap[actionType][url] = [filePath]
-            else:
-                #print("Url: " + url)
-                actionUrlMap[actionType][url] = [filePath]
 
     return actionUrlMap
 
@@ -234,14 +235,17 @@ def analyze_data(path, extensions_path):
                         # Otherwise seems to be working just fine.
                         
                         # Starting with https or http
-                        httpPattern = 'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+' 
+                       
+                        httpPattern = 'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+(?:[/][A-Za-z0-9-_.?=&]*)*'
+                        #httpPattern = 'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+(?:[/][A-Za-z0-9]*)*(?:.[A-Za-z0-9]*)?' 
 
                         # Not starting with http or https (e.x, website.com, www.website.com, pizzabakery.net etc)
                         # Not detecting anything it seems, potentially due to not being any "www.example.com" only links present, only ones starting with https / http, need to test
-                        wwwPattern = "^[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$"
+                        wwwPattern = "^[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$(?:[/][A-Za-z0-9-_.?=]*)*"
 
 
                         patterns = [httpPattern, wwwPattern]
+                        #patterns = [httpPattern]
                         
                         # Determine path (I do not like this but I hope it is better performance than doing os.walk or something simmilar again)
                         split = dirpath.split("/")
