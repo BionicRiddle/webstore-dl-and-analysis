@@ -169,12 +169,15 @@ def get_valid_domain(url):
     """
 
     domain_parts = tldextract.extract(url)
-    domain = pyunycode.convert(domain_parts.domain)
-    suffix = pyunycode.convert(domain_parts.suffix)
+    domain = domain_parts.domain
+    suffix = domain_parts.suffix
     disallowed_suffixes = ["google"]
     
     if domain == "www" or suffix in disallowed_suffixes or suffix == "" or domain == "":
         return None, None
+
+    domain_puny = pyunycode.convert(domain)
+    suffix_puny = pyunycode.convert(suffix)
 
     return ((domain + "." + suffix).lower(), suffix.lower())
 
@@ -186,9 +189,11 @@ if __name__ == "__main__":
     test3 = "https://www.яндекс.рф"
     # chinese url
     test4 = "https://www.百度.中国"
+    test5 = "dhjwkad"
 
 
     print(test1 + " " + str(get_valid_domain(test1)))
     print(test2 + " " + str(get_valid_domain(test2)))
     print(test3 + " " + str(get_valid_domain(test3)))
     print(test4 + " " + str(get_valid_domain(test4)))
+    print(test5 + " " + str(get_valid_domain(test5)))
