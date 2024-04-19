@@ -10,6 +10,8 @@ import tldextract
 from datetime import datetime
 import pickle
 import threading
+import pyunycode
+
 
 ## Bara funktioner
 
@@ -146,7 +148,7 @@ class UniqueQueue:
 
 def get_valid_domain(url):
     """
-    Extracts the valid domain from a given URL.
+    Extracts the valid domain from a given URL. If non-ascii characters are present in the URL, they are converted to punycode.
 
     This function uses the tldextract library to extract the domain and suffix from the URL.
     It then checks if the domain or suffix is valid according to certain rules.
@@ -165,9 +167,10 @@ def get_valid_domain(url):
     >>> get_valid_domain("https://www.ads")
     False
     """
+
     domain_parts = tldextract.extract(url)
-    domain = domain_parts.domain
-    suffix = domain_parts.suffix
+    domain = pyunycode.convert(domain_parts.domain)
+    suffix = pyunycode.convert(domain_parts.suffix)
     disallowed_suffixes = ["google"]
     
     if domain == "www" or suffix in disallowed_suffixes or suffix == "" or domain == "":
@@ -177,27 +180,15 @@ def get_valid_domain(url):
 
 import queue
 if __name__ == "__main__":
-    raise Exception("This file is not meant to be run directly")
+    test1 = "riddle.nu"
+    test2 = "https://www.google.com"
+    # url in russian
+    test3 = "https://www.яндекс.рф"
+    # chinese url
+    test4 = "https://www.百度.中国"
 
-    def producer(q):
-        for i in range(10):
-            q.put(i)
 
-    def consumer(q, id):
-        while not q.empty():
-            item = q.get()
-            print("Consumer %d got %d" % (id, item))
-
-    q = UniqueQueue()
-
-    producer_thread = threading.Thread(target=producer, args=(q,))
-    consumer_thread = threading.Thread(target=consumer, args=(q,1))
-    consumer_thread2 = threading.Thread(target=consumer, args=(q,2))
-
-    producer_thread.start()
-    consumer_thread.start()
-    consumer_thread2.start()
-
-    producer_thread.join()
-    consumer_thread.join()
-    consumer_thread2.join()
+    print(test1 + " " + str(get_valid_domain(test1)))
+    print(test2 + " " + str(get_valid_domain(test2)))
+    print(test3 + " " + str(get_valid_domain(test3)))
+    print(test4 + " " + str(get_valid_domain(test4)))

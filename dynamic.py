@@ -28,6 +28,13 @@ def dynamic_analysis(thread, extension):
     # Check if proxy started???
     #...
 
+    #TEMP
+    # check if display is running on :99
+    if not is_display_running(99):
+        os.system("Xvfb :99 -ac &")
+        os.environ['DISPLAY'] = ":99"
+        print("Display started")
+
     chrome_options = webdriver.ChromeOptions()
 
     #chrome_options.add_extension(EXTENSION_PATH) 
@@ -74,29 +81,36 @@ def dynamic_analysis(thread, extension):
         # Filter logs for network entries
         network_logs = [log for log in logs if 'Network.requestWillBeSent' in log['message']]
 
+        with open("log2.txt", "w") as f:
+            s = ""
+            for entry in network_logs:
+                s = s + str(entry) + "\n\n"
+            f.write(s)
+
         # Print URLs accessed along with their methods
         for entry in network_logs:
+               
+            url     = ""
+            method  = ""
+
             try:
-                level = entry['level']
                 log = (json.loads(entry['message']))
-                url = log['message']['params']['request']['url']
-                print(url)
-                #method = message['method']
-                #print(f"URL: {url}, Method: {method}")
+                request = log['message']['params']['request']
+                url = request['url']
+                method = request['method']
+
+                # Filter favicon.ico
+                if "/favicon.ico" in url:
+                    print("Skip")
+                    print(url)
+                    continue
+
+                output = method + " " + url
+                with open("log.txt", "w") as f:
+                    f.write(output + "\n" + str(entry) + "\n")
+
             except Exception as e:
-                print(e)
                 pass
-
-        # for each line in logs:
-        # remove file if exists
-        if os.path.exists("log.txt"):
-            os.remove("log.txt")
-
-        for log in logs:
-            json_s = log.get("message")
-            with open("log.txt", "a") as f:
-                f.write(json_s + "\n")
-
 
     except Exception as e:
         print(e)
