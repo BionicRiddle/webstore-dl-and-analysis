@@ -168,10 +168,16 @@ def get_valid_domain(url):
     False
     """
 
-    domain_parts = tldextract.extract(url)
+    # add support for wildcard tlds, these are not actually valid tlds
+    # and should be filtered out, but it is not a bad idea to keep for further analysis
+    extract = tldextract.TLDExtract(extra_suffixes=["wildcardtld"])
+
+    domain_parts = extract(url)
     domain = domain_parts.domain
     suffix = domain_parts.suffix
-    disallowed_suffixes = ["google"]
+
+    # Here we filter out wildcards tlds and other invalid tlds
+    disallowed_suffixes = ["google", "wildcardtld"]
     
     if domain == "www" or suffix in disallowed_suffixes or suffix == "" or domain == "":
         return None, None

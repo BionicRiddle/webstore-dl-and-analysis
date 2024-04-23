@@ -7,6 +7,7 @@ import random
 from keywords_search import analyze
 from domain_analysis import dns_analysis, rdap_analysis
 from static_analysis import static_analysis
+from manifest import manifest_analysis
 import os
 import time
 import shutil
@@ -248,6 +249,10 @@ def analyze_extension(thread, extension_path: str) -> None:
         return True
 
     try:
+        # --- Read Manifest ---
+
+        manifest_urls = manifest_analysis(extension.get_manifest())
+
         # --- Keyword analysis ---
         
         # Rename analyze
@@ -256,6 +261,11 @@ def analyze_extension(thread, extension_path: str) -> None:
         urls = extension.get_keyword_analysis()['list_of_urls']
         actionsList = extension.get_keyword_analysis()['list_of_actions']
         commonUrls = extension.get_keyword_analysis()['list_of_common_urls']
+
+        # merge manifest_urls with urls
+        for url in manifest_urls:
+            if url not in urls:
+                urls.append(url)
 
         # --- Static analysis ---
            
@@ -278,10 +288,6 @@ def analyze_extension(thread, extension_path: str) -> None:
     # --- Clean up ---
     extension.clean_up()
 
-    # do domain analysis
-
-    urls = extension.get_keyword_analysis()['list_of_urls']
-    
     invalidUrls = []
 
     for url, files in urls.items():
