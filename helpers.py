@@ -185,7 +185,7 @@ def get_valid_domain(url):
     domain_puny = pyunycode.convert(domain)
     suffix_puny = pyunycode.convert(suffix)
 
-    return ((domain + "." + suffix).lower(), suffix.lower())
+    return ((domain_puny + "." + suffix_puny).lower(), suffix_puny.lower())
 
 import queue
 if __name__ == "__main__":
@@ -197,9 +197,12 @@ if __name__ == "__main__":
     test4 = "https://www.百度.中国"
     test5 = "dhjwkad"
 
+    fuked = "телеока.рф"
+
 
     print(test1 + " " + str(get_valid_domain(test1)))
     print(test2 + " " + str(get_valid_domain(test2)))
     print(test3 + " " + str(get_valid_domain(test3)))
     print(test4 + " " + str(get_valid_domain(test4)))
     print(test5 + " " + str(get_valid_domain(test5)))
+    print(fuked + " " + str(get_valid_domain(fuked)))
