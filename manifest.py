@@ -74,8 +74,12 @@ FILTER_PERMISSIONS = [
 # This function will sometimes return a wildcard tld, these are not actually valid tlds
 # and should be filtered out, but it is not a bad idea to keep for further analysis
 def wildcard_to_normal(wildcard):
+    if wildcard == "<all_urls>":
+        return "https://wildcard.wildcardtld/"
+
     if not "*" in wildcard:
         return wildcard
+
     ret = wildcard
     # replace "*://" with "https://"
     ret = ret.replace("*://", "https://")
@@ -140,7 +144,8 @@ def manifest_analysis(manifest):
             for match in content_scripts_matches:
                 urls.append(wildcard_to_normal(match))
     
-    return urls
+    # remove duplicates
+    return list(set(urls))
 
 if __name__ == '__main__':
     manifest = '''
