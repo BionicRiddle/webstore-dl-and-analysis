@@ -175,7 +175,7 @@ def insertActionTable(sql_object, actionList, dns_record):
     
     # Queries
     select = "SELECT url, type, extension FROM action WHERE url = ? AND type = ? AND extension = ? AND filepath = ?"
-    insert = "INSERT INTO action VALUES (?,?,?,?,?)"
+    insert = "INSERT INTO action VALUES (?,?,?,?,?,?,?)"
     
     # Go through each action type (href, fetch, etc)
     
@@ -190,30 +190,40 @@ def insertActionTable(sql_object, actionList, dns_record):
             #if domain == "walmartimages.com":
                 #print(entry)
             if dns_record[domain] is not DNS_RECORDS.INVALID:
-                for extension in actionList[action][entry]:
-                # actionList[action][entry]: List of extension(s) the domain resided in
-                    try:
-                        with sql_object as cursor:
-                            # Check if domain already exists 
-                            
-                            # --- This may not be necessary --- #
-                            # This check should already be done in each thread during keywordsearch and extension is unqieue per thread
-                            # Will leave this here for now but might look back and reconsider later
-                            
-                            #print(extension)
-                            split = extension.split("/")
-                            #print(split)
-                            extension_id = split[0]
-                            filePath = extension.replace(extension_id, '')
-                            
-                            #print(filePath)
-                            cursor.execute(select, (entry, action, extension_id, filePath))
-                            exists = cursor.fetchone()
-                            # If entry does not exist
-                            if exists == None:
-                                cursor.execute(insert, (entry, action, extension_id, filePath, datetime.now()))
-                    except sqlite3.Error as er:
-                        print('SQLite error: %s' % (' '.join(er.args)))
+                #print(actionList[action][entry])
+            #for extension in actionList[action][entry]:
+            # actionList[action][entry]: List of extension(s) the domain resided in
+                try:
+                    with sql_object as cursor:
+                        # Check if domain already exists 
+                        
+                        # --- This may not be necessary --- #
+                        # This check should already be done in each thread during keywordsearch and extension is unqieue per thread
+                        # Will leave this here for now but might look back and reconsider later
+                        
+                        #print("Url: " + str(entry))
+                        #print("Data: " + str(actionList[action][entry]))
+                        #print()
+                        #print(extension[1])
+                        #print("________________________")
+                        split = actionList[action][entry][0].split("/")
+                        #print(split)
+                        extension_id = split[0]
+                        filePath = actionList[action][entry][0].replace(extension_id, '')
+                        
+                        context = actionList[action][entry][1]
+                        
+                        #print("Filepath: " + str(filePath))
+                        #print("Context: " + str(context))
+                        
+                        #print(filePath)
+                        cursor.execute(select, (entry, action, extension_id, filePath))
+                        exists = cursor.fetchone()
+                        # If entry does not exist
+                        if exists == None:
+                            cursor.execute(insert, (entry, action, extension_id, filePath, domain, context, datetime.now()))
+                except sqlite3.Error as er:
+                    print('SQLite error: %s' % (' '.join(er.args)))
 
 ## Setup tables
 
@@ -231,7 +241,7 @@ def create_table(sql_object):
         # Actions List
         # Components:
         # Action, Domain, Extension, (Domain should be primary)
-        cursor.execute("CREATE TABLE IF NOT EXISTS action (url TEXT NOT NULL, type TEXT NOT NULL, extension TEXT NOT NULL, filepath TEXT NOT NULL, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (type, url, extension, filepath))")
+        cursor.execute("CREATE TABLE IF NOT EXISTS action (url TEXT NOT NULL, type TEXT NOT NULL, extension TEXT NOT NULL, filepath TEXT NOT NULL, domain TEXT NOT NULL, codeBefore TEXT NOT NULL, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (type, url, extension, filepath), FOREIGN KEY (domain) REFERENCES domain(domain) )")
 
 def drop_all_tables(sql_object):
     print("Dropping tables")

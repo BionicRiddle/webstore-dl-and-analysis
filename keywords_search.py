@@ -98,6 +98,7 @@ def getActions(data, filePath, urlPattern):
 
     #Mapping actions (see pattern dict below) to a url and the extension file it resides in
     actionUrlMap = defaultdict(dict)
+    #contextMap   = defaultdict(dict)
 
     #Actions of interest - To be expanded
     pattern = ['fetch', 'post', 'get', 'href', 'xhttp','src', 'FETCH', 'POST', 'GET', 'HREF', 'XHTTP', 'SRC']
@@ -115,10 +116,10 @@ def getActions(data, filePath, urlPattern):
         #print(data[ind.end(0)])
     #Loop through each action
     for action in actions:
-        # Start of supposed url
+        # Start of supposed action
         startIndex = action[0]     
         
-        #End of supposed url
+        #End of supposed action
         endIndex = action[1]
         
         #Action runs from indexes action[0] -> action[1]
@@ -146,27 +147,40 @@ def getActions(data, filePath, urlPattern):
                     continue
                             
                 
-                #print(data[startIndex:endIndex+100])
-                #print(url not in data[startIndex:endIndex+50])
+                # Retrieve context for action
+                # Check if context check is possible
+                if startIndex - 40 >= 0:
+                    context = data[startIndex-40:startIndex]
+                elif startIndex - 30 >= 0:
+                    context = data[startIndex-30:startIndex]
+                elif startIndex - 20 >= 0:
+                    context = data[startIndex-20:startIndex]
+                else:
+                    context = "No context available" 
                 
-                # Check if action has already been added
-                #print("url: " + str(url))
-                #print("Actiontype: " + str(actionType))
-                #print("")
+                urlAndContext = []
                 
                 if actionType in actionUrlMap:
                     # Check if domain has already been added
                     if url in actionUrlMap[actionType]:
                         if filePath not in actionUrlMap[actionType][url]:
-                            #print("Appending to:")
-                            #print(str(actionUrlMap[actionType][url]))
-                            actionUrlMap[actionType][url].append(filePath)
+
+                            urlAndContext = [filePath, context]
+                            actionUrlMap[actionType][url].append(urlAndContext)
+                            
                     else:
                         # Action has been added but the url has not
-                        actionUrlMap[actionType][url] = [filePath]
+                        urlAndContext = [filePath, context]
+                        actionUrlMap[actionType][url] = urlAndContext
+
                 else:
                     #print("Url: " + url)
-                    actionUrlMap[actionType][url] = [filePath]
+                    urlAndContext = [filePath, context]
+                    actionUrlMap[actionType][url] = urlAndContext
+                    
+                    #print(str(actionUrlMap[actionType][url]))
+                    
+                urlAndContext = []
 
     return actionUrlMap
 
@@ -236,12 +250,15 @@ def analyze_data(path, extensions_path):
                         
                         # Starting with https or http
                        
-                        httpPattern = 'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+(?:[/][A-Za-z0-9-_.?=&]*)*'
-                        #httpPattern = 'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+(?:[/][A-Za-z0-9]*)*(?:.[A-Za-z0-9]*)?' 
-
+                        #httpPattern = 'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+(?:[/][A-Za-z0-9-_.?=&]*)*'
+                        
+                        httpPattern = 'https?://(?:www\\.)?[a-zA-Z0-9./]+' #TMP - TESTING
+                        
                         # Not starting with http or https (e.x, website.com, www.website.com, pizzabakery.net etc)
                         # Not detecting anything it seems, potentially due to not being any "www.example.com" only links present, only ones starting with https / http, need to test
-                        wwwPattern = "^[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$(?:[/][A-Za-z0-9-_.?=]*)*"
+                        #wwwPattern = "^[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$(?:[/][A-Za-z0-9-_.?=]*)*"
+                        
+                        wwwPattern = 'https?://(?:www\\.)?[a-zA-Z0-9./]+' #TMP - TESTING
 
 
                         patterns = [httpPattern, wwwPattern]
@@ -279,7 +296,11 @@ def analyze_data(path, extensions_path):
 
                                 # Provides information about where the url is found (extension(s) and filenames(s))
                                 urlList[url].append(extensionId + filePath + filename)
+                                
+                        # Remove duplicates
                         
+                        
+                        """""
                         for action in actions:
                             #print("Action: " + str(actions[action]))
                             if len(action) > 0 and actions[action] != 'No url(s) found':
@@ -287,19 +308,38 @@ def analyze_data(path, extensions_path):
                                 
                                 # Check if entry of action already exist
                                 if actionsList[action]:
-                                    
+                                    #print(str(actionsList[action]))
+                                    #print()
                                     # For each url
                                     for entry in actions[action]:
+                                        #print(entry)
+                                        #print("Url: " + str(entry))
+                                        #print("Filepath: " + str(actions[action][entry][0]))
+                                        #print("Context: " + str(actions[action][entry][1]))
+                                        #print()
                                         # Is the url already entered in actionsList?
-                                        if entry in actionsList[action]:
-                                            actionsList[action][entry].append(actions[action][entry][0])
-                                        else:
+                                        #print(actions[action][entry])
+                                        #print(actionsList[action][entry])
+                                        
+                                        if actions[action][entry] != actionsList[action][entry]:
+                                            #print(entry)
+                                            #print(actionsList[action][entry][0])
+                                            #actionsList[action][entry].append(actions[action][entry][0])
+                                            #print(actionsList[action][entry])
+                                            #print(actionsList[action][entry])
                                             actionsList[action][entry] = actions[action][entry]
                                 else:
                                     actionsList[action] = actions[action]
+                                """
                                 
                                 #tmpDict = actions[action], dirpath + "/" + filename
                                 #actionsList[action].append(tmpDict)
+                        actionsList = actions
+                        
+                        for action in actionsList:
+                            #print(actionsList[action])
+                            #print()
+                            pass
                         
                         dict(urlList)
 
