@@ -52,8 +52,10 @@ def get_tmp_path(version, extension_path, dirpath=""):
 
 def getUrl(data, patterns):
     pattern = re.compile(r'\b(' + '|'.join(patterns) + r')\b')
-    url = re.findall(pattern, data.lower())
-
+    
+    #print(data.lower())
+    
+    url = re.findall(pattern, "data.lower()")
     # Did we find a url?
     if len(url) > 0:
         ## Check if valid url
@@ -258,8 +260,8 @@ def analyze_data(path, extensions_path):
                         # Not detecting anything it seems, potentially due to not being any "www.example.com" only links present, only ones starting with https / http, need to test
                         #wwwPattern = "^[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$(?:[/][A-Za-z0-9-_.?=]*)*"
                         
-                        wwwPattern = 'https?://(?:www\\.)?[a-zA-Z0-9./]+' #TMP - TESTING
-
+                        #wwwPattern = '(?:\w+\.)*\w+\.[a-zA-Z0-9./]+' #TMP - TESTING
+                        wwwPattern = '(?:www)\.[a-zA-Z0-9./]+'
 
                         patterns = [httpPattern, wwwPattern]
                         #patterns = [httpPattern]
@@ -297,43 +299,7 @@ def analyze_data(path, extensions_path):
                                 # Provides information about where the url is found (extension(s) and filenames(s))
                                 urlList[url].append(extensionId + filePath + filename)
                                 
-                        # Remove duplicates
                         
-                        
-                        """""
-                        for action in actions:
-                            #print("Action: " + str(actions[action]))
-                            if len(action) > 0 and actions[action] != 'No url(s) found':
-                                
-                                
-                                # Check if entry of action already exist
-                                if actionsList[action]:
-                                    #print(str(actionsList[action]))
-                                    #print()
-                                    # For each url
-                                    for entry in actions[action]:
-                                        #print(entry)
-                                        #print("Url: " + str(entry))
-                                        #print("Filepath: " + str(actions[action][entry][0]))
-                                        #print("Context: " + str(actions[action][entry][1]))
-                                        #print()
-                                        # Is the url already entered in actionsList?
-                                        #print(actions[action][entry])
-                                        #print(actionsList[action][entry])
-                                        
-                                        if actions[action][entry] != actionsList[action][entry]:
-                                            #print(entry)
-                                            #print(actionsList[action][entry][0])
-                                            #actionsList[action][entry].append(actions[action][entry][0])
-                                            #print(actionsList[action][entry])
-                                            #print(actionsList[action][entry])
-                                            actionsList[action][entry] = actions[action][entry]
-                                else:
-                                    actionsList[action] = actions[action]
-                                """
-                                
-                                #tmpDict = actions[action], dirpath + "/" + filename
-                                #actionsList[action].append(tmpDict)
                         actionsList = actions
                         
                         for action in actionsList:
