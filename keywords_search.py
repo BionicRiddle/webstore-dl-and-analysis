@@ -297,43 +297,7 @@ def analyze_data(path, extensions_path):
                                 # Provides information about where the url is found (extension(s) and filenames(s))
                                 urlList[url].append(extensionId + filePath + filename)
                                 
-                        # Remove duplicates
                         
-                        
-                        """""
-                        for action in actions:
-                            #print("Action: " + str(actions[action]))
-                            if len(action) > 0 and actions[action] != 'No url(s) found':
-                                
-                                
-                                # Check if entry of action already exist
-                                if actionsList[action]:
-                                    #print(str(actionsList[action]))
-                                    #print()
-                                    # For each url
-                                    for entry in actions[action]:
-                                        #print(entry)
-                                        #print("Url: " + str(entry))
-                                        #print("Filepath: " + str(actions[action][entry][0]))
-                                        #print("Context: " + str(actions[action][entry][1]))
-                                        #print()
-                                        # Is the url already entered in actionsList?
-                                        #print(actions[action][entry])
-                                        #print(actionsList[action][entry])
-                                        
-                                        if actions[action][entry] != actionsList[action][entry]:
-                                            #print(entry)
-                                            #print(actionsList[action][entry][0])
-                                            #actionsList[action][entry].append(actions[action][entry][0])
-                                            #print(actionsList[action][entry])
-                                            #print(actionsList[action][entry])
-                                            actionsList[action][entry] = actions[action][entry]
-                                else:
-                                    actionsList[action] = actions[action]
-                                """
-                                
-                                #tmpDict = actions[action], dirpath + "/" + filename
-                                #actionsList[action].append(tmpDict)
                         actionsList = actions
                         
                         for action in actionsList:
