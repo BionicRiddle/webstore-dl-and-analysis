@@ -68,5 +68,5 @@ STATIC_ENABLE = os.getenv('STATIC_ENABLE', False)
 
 # Variables and Environment variables for dynamic analysis
 # TEMP
-DYNAMIC_ENABLED = os.getenv('DYNAMIC_ENABLED', True)
+DYNAMIC_ENABLE = os.getenv('DYNAMIC_ENABLE', False)
 os.environ['DISPLAY'] = f":{DISPLAY_PORT}"

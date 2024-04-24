@@ -21,12 +21,9 @@ def is_display_running(port):
             pass
     return False
 
-def dynamic_analysis(thread, extension):
+def dynamic_analysis(extension):
 
-    #EXTENSION_PATH = extension.get_crx_path()
-
-    # Check if proxy started???
-    #...
+    EXTENSION_PATH = extension.get_crx_path()
 
     #TEMP
     # check if display is running on :99
@@ -37,7 +34,7 @@ def dynamic_analysis(thread, extension):
 
     chrome_options = webdriver.ChromeOptions()
 
-    #chrome_options.add_extension(EXTENSION_PATH) 
+    chrome_options.add_extension(EXTENSION_PATH) 
     chrome_options.add_argument('--ignore-certificate-errors')
     chrome_options.add_argument('--allow-running-insecure-content')
         #chrome_options.add_argument("--no-sandbox")
@@ -50,42 +47,20 @@ def dynamic_analysis(thread, extension):
     # Prepare proxy
 
     try:
-        #driver.get("chrome://extensions/")
-        driver.get("https://albinkarlsson.se/picture.webp")
-        logs = driver.get_log('performance')
-        time.sleep(5)
-        # driver.get("https://gp.se/")
-        # time.sleep(5)
-        # driver.get("https://google.se/")
-        # time.sleep(5)
-        # driver.get("https://www.svt.se/")
-        # time.sleep(5)
-        # driver.get("https://www.aftonbladet.se/")
-        # time.sleep(5)
-        # driver.get("https://www.expressen.se/")
-        # time.sleep(5)
-        # driver.get("https://www.svd.se/")
-        # time.sleep(5)
-        # driver.get("https://www.di.se/")
-        # time.sleep(5)
-        # driver.get("https://www.dn.se/")
-        # time.sleep(5)
-        # driver.get("https://www.metro.se/")
-        # time.sleep(5)
-        # driver.get("https://www.hd.se/")
-        # time.sleep(5)
-        # driver.get("https://www.sydsvenskan.se/")
-        # time.sleep(5)
-        #time.sleep(60)
+        start_time = time.time()
+        driver.get("chrome://extensions/")
+        #driver.get("https://albinkarlsson.se/")
+
+        WAIT_TIME = 60
+
+        chrome_logs = driver.get_log('performance')
+        #time.sleep(5)
+        time.sleep(60)
 
         # Filter logs for network entries
-        network_logs = [log for log in logs if 'Network.requestWillBeSent' in log['message']]
+        network_logs = [chrome_log for chrome_log in chrome_logs if 'Network.requestWillBeSent' in chrome_log['message']]
 
-        with open("log2.txt", "w") as f:
-            s = ""
-            for entry in network_logs:
-                s = s + str(entry) + "\n\n"
-            f.write(s)
+        log = []
 
         # Print URLs accessed along with their methods
         for entry in network_logs:
@@ -94,20 +69,27 @@ def dynamic_analysis(thread, extension):
             method  = ""
 
             try:
-                log = (json.loads(entry['message']))
-                request = log['message']['params']['request']
+                chrome_log = (json.loads(entry['message']))
+                request = chrome_log['message']['params']['request']
                 url = request['url']
-                method = request['method']
+                method = request['method']s
 
                 # Filter favicon.ico
                 if "/favicon.ico" in url:
-                    print("Skip")
-                    print(url)
                     continue
 
-                output = method + " " + url
-                with open("log.txt", "w") as f:
-                    f.write(output + "\n" + str(entry) + "\n")
+                # filter out data:image/png;base64
+                if "data:image/png;base64" in url:
+                    continue
+                
+                #filter if "chrome://" in beginning of url
+                if "chrome://" == url[:9]:
+                    continue
+
+                log.append({
+                    "url": url,
+                    "method": method
+                })
 
             except Exception as e:
                 pass
@@ -119,10 +101,8 @@ def dynamic_analysis(thread, extension):
 
     driver.close()
 
-    # TEST END
-    # get proxy data
-
-    
+    # Save
+    extension.set_dynamic_analysis(log)
 
     return True
 
