@@ -52,8 +52,10 @@ def get_tmp_path(version, extension_path, dirpath=""):
 
 def getUrl(data, patterns):
     pattern = re.compile(r'\b(' + '|'.join(patterns) + r')\b')
-    url = re.findall(pattern, data.lower())
-
+    
+    #print(data.lower())
+    
+    url = re.findall(pattern, "data.lower()")
     # Did we find a url?
     if len(url) > 0:
         ## Check if valid url
@@ -258,8 +260,8 @@ def analyze_data(path, extensions_path):
                         # Not detecting anything it seems, potentially due to not being any "www.example.com" only links present, only ones starting with https / http, need to test
                         #wwwPattern = "^[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$(?:[/][A-Za-z0-9-_.?=]*)*"
                         
-                        wwwPattern = 'https?://(?:www\\.)?[a-zA-Z0-9./]+' #TMP - TESTING
-
+                        #wwwPattern = '(?:\w+\.)*\w+\.[a-zA-Z0-9./]+' #TMP - TESTING
+                        wwwPattern = '(?:www)\.[a-zA-Z0-9./]+'
 
                         patterns = [httpPattern, wwwPattern]
                         #patterns = [httpPattern]
