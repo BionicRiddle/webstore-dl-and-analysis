@@ -304,8 +304,6 @@ def analyze_data(path, extensions_path):
                             #print(actionsList[action])
                             #print()
                             pass
-                        
-                        dict(urlList)
 
                         ### Legacy, maybe remove, will look into further on
                         #hits.append( [word + ':  ' + chunk, dirpath + "/" + filename] )
@@ -401,7 +399,8 @@ def analyze(extension, isInternal, single_extension=None):
                 commonUrls[url] = 1
 
         for url in urlAndExtensions:
-            urlList[url].append(urlAndExtensions[url])
+            for entry in urlAndExtensions[url]:
+                urlList[url].append(entry)
             
         #print("Returned actions: ")
         #print(str(actionsList))

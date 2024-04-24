@@ -23,14 +23,16 @@ import traceback
 class Extension:
     def __init__(self, crx_path: str) -> None:
         try: 
+            self.creation_time = time.time()
             self.crx_path = crx_path
             self.manifest = read_manifest(crx_path)
+            self.id = crx_path.split('/')[-2]
             
             self.extracted_path = ""
             self.keyword_analysis = {
-                "list_of_urls": [],
-                "list_of_actions": [],
-                "list_of_common_urls": []
+                "list_of_urls": None,
+                "list_of_actions": None,
+                "list_of_common_urls": None
             }
             self.static_analysis = {}
             self.dynamic_analysis = {}
@@ -109,6 +111,12 @@ class Extension:
 
     def get_extracted_files(self) -> list:
         pass
+
+    def get_id(self) -> str:
+        return self.id
+
+    def age(self) -> float:
+        return time.time() - self.creation_time
     
     def __str__(self) -> str:
         return self.crx_path
@@ -118,6 +126,7 @@ unknown_file_ext_lock = threading.Lock()
 failed_lock = threading.Lock()
 failed_run_lock = threading.Lock()
 domain_found_lock = threading.Lock()
+time_lock = threading.Lock()
 
 FILE_EXTENSIONS_SKIP = ["JPG", "PNG", "ICO", "GIF", "SVG", "TTF", "WOFF", "WOFF2", "EOT", "MD", "DS_STORE"]
 FILE_EXTENSIONS_TEXT = ["JS", "CSS", "HTML", "JSON", "TXT", "XML", "YML", "TS", "CFG", "CONF"]
@@ -224,6 +233,8 @@ def analyze_extension(thread, extension_path: str) -> None:
     if globals.extension_counter % 500 == 0:
         print(globals.extension_counter)
 
+    start_time = time.time()
+
     # create obj Extension
     try:
         extension = Extension(extension_path)
@@ -248,10 +259,15 @@ def analyze_extension(thread, extension_path: str) -> None:
         failed_extension(extension_path, "Something went wrong with the file or filesystem", e)
         return True
 
+    # Save time
+    extraction_time = time.time() - start_time
+
     try:
         # --- Read Manifest ---
 
         manifest_urls = manifest_analysis(extension.get_manifest())
+
+        manifest_time = time.time() - start_time
 
         # --- Keyword analysis ---
         
@@ -259,20 +275,30 @@ def analyze_extension(thread, extension_path: str) -> None:
         analyze(extension, False, extension)
 
         urls = extension.get_keyword_analysis()['list_of_urls']
+
         actionsList = extension.get_keyword_analysis()['list_of_actions']
         commonUrls = extension.get_keyword_analysis()['list_of_common_urls']
 
-        # merge manifest_urls with urls
         for url in manifest_urls:
-            if url not in urls:
-                urls.append(url)
+            path = extension.get_id() + "/manifest.json"
+            if url in urls:
+                if path not in urls[url]:
+                    urls[url].append(path)
+            else:
+                urls[url] = [path]
+
+        keyword_time = time.time() - start_time
 
         # --- Static analysis ---
            
         if globals.STATIC_ENABLE:
             static_analysis(extension, thread.esprima)
 
+        static_time = time.time() - start_time
+
         # --- Dynamic analysis ---
+
+        dynamic_time = time.time() - start_time
 
         # --- Write to file ---
         # write keyword search stuff to file
@@ -287,6 +313,8 @@ def analyze_extension(thread, extension_path: str) -> None:
 
     # --- Clean up ---
     extension.clean_up()
+
+    cleanup_time = time.time() - start_time
 
     invalidUrls = []
 
@@ -350,15 +378,15 @@ def analyze_extension(thread, extension_path: str) -> None:
                     db.insertDomainMetaTable(thread.sql, domain, dns_status, expiration_date, available_date, deleted_date, rdap_dump)
                 # We always want to do this even if we skipped dns
                 # We want a rectord for each file the url is in
-                for files_something in files:
-                    # TODO: @Samuel, varför är de en lista i en lista?
-                    for file in files_something:
-                        file_whitout_id = file.split("/", 1)[1]
-                        
-                        db.insertDomainTable(thread.sql, domain, extension_path, file_whitout_id)
+                for file in files:
+                    file_whitout_id = file.split("/", 1)[1]
+                    
+                    db.insertDomainTable(thread.sql, domain, extension_path, file_whitout_id)
         except Exception as e:
             failed_extension(extension_path, "Failed to analyze domain", e)
             continue
+
+    dns_time = time.time() - start_time
 
     # DB Stuff
 
@@ -376,6 +404,23 @@ def analyze_extension(thread, extension_path: str) -> None:
 
     db.insertActionTable(thread.sql, actionsList, globals.dns_records)
     #db.insertUrlTable(thread.sql, commonUrls, url_dns_record)
+
+    db_time = time.time() - start_time
+
+    # --- Write time to time file ---
+    with time_lock:
+        with open('time.txt', 'a') as f:
+            fromated = '''Extension: %s
+            Start time: %s
+            Extraction time: %s
+            Manifest time: %s
+            Keyword time: %s
+            Static time: %s
+            Dynamic time: %s
+            Cleanup time: %s
+            DNS time: %s
+            DB time: %s\n''' % (extension_path, start_time, extraction_time, manifest_time, keyword_time, static_time, dynamic_time, cleanup_time, dns_time, db_time)
+            f.write(fromated)
 
     return True
     
