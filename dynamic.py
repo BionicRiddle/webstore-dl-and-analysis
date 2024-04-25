@@ -48,12 +48,15 @@ def dynamic_analysis(extension):
 
     try:
         start_time = time.time()
+        print("Start Time: ", start_time)
+        
         driver.get("chrome://extensions/")
         #driver.get("https://albinkarlsson.se/")
 
         WAIT_TIME = 60
 
         chrome_logs = driver.get_log('performance')
+        
         #time.sleep(5)
         time.sleep(60)
 
@@ -72,7 +75,8 @@ def dynamic_analysis(extension):
                 chrome_log = (json.loads(entry['message']))
                 request = chrome_log['message']['params']['request']
                 url = request['url']
-                method = request['method']s
+                method = request['method']
+                time_after_start = start_time - entry['timestamp']/1000
 
                 # Filter favicon.ico
                 if "/favicon.ico" in url:
@@ -88,7 +92,8 @@ def dynamic_analysis(extension):
 
                 log.append({
                     "url": url,
-                    "method": method
+                    "method": method,
+                    "time_after_start": time_after_start
                 })
 
             except Exception as e:
