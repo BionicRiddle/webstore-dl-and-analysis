@@ -189,6 +189,7 @@ def get_valid_domain(url):
 
         return ((domain_puny + "." + suffix_puny).lower(), suffix_puny.lower())
     except Exception as e:
+        import traceback
         # print traceback
         print(e)
         print(traceback.format_exc())
@@ -207,6 +208,9 @@ if __name__ == "__main__":
     test4 = "https://www.百度.中国"
     test5 = "dhjwkad"
 
+    test6 = "https://www.google.com/as_asd"
+    test7 = "https://www.goo_gle.com"
+
     fuked = "телеока.рф"
 
     reverse = "xn--80ajaudty.xn--p1ai"
@@ -217,6 +221,8 @@ if __name__ == "__main__":
     print(test3 + " " + str(get_valid_domain(test3)))
     print(test4 + " " + str(get_valid_domain(test4)))
     print(test5 + " " + str(get_valid_domain(test5)))
+    print(test6 + " " + str(get_valid_domain(test6)))
+    print(test7 + " " + str(get_valid_domain(test7)))
     print(fuked + " " + str(get_valid_domain(fuked)))
 
     assert get_valid_domain(reverse)[0] == reverse
