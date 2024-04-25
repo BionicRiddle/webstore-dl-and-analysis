@@ -55,7 +55,7 @@ def getUrl(data, patterns):
     
     #print(data.lower())
     
-    url = re.findall(pattern, "data.lower()")
+    url = re.findall(pattern, data.lower())
     # Did we find a url?
     if len(url) > 0:
         ## Check if valid url
@@ -147,20 +147,37 @@ def getActions(data, filePath, urlPattern):
             for url in urls:
                 if url in data[endIndex+30:endIndex+100]:
                     continue
+
+                
+                
+                try:
+                    urlStart = data[endIndex:endIndex+100].lower().index(url) + endIndex
+                except Exception as e:     
+                    print(data[endIndex:endIndex+100].lower())
+                    print(url)
+                    print("Error: " + str(e))
+                    print()
                             
                 
                 # Retrieve context for action
                 # Check if context check is possible
                 if startIndex - 40 >= 0:
-                    context = data[startIndex-40:startIndex]
+                    context = data[startIndex-40:urlStart]
                 elif startIndex - 30 >= 0:
-                    context = data[startIndex-30:startIndex]
+                    context = data[startIndex-30:urlStart]
                 elif startIndex - 20 >= 0:
-                    context = data[startIndex-20:startIndex]
+                    context = data[startIndex-20:urlStart]
                 else:
                     context = "No context available" 
                 
                 urlAndContext = []
+                
+                print("Url: " + str(url))
+                print("Context: " + str(context))
+                print("Data: " + str(data[endIndex:endIndex+100]))
+                print("Url Start: " + str(urlStart - endIndex))
+                print("Start: " + data[urlStart:urlStart+15])
+                print()
                 
                 if actionType in actionUrlMap:
                     # Check if domain has already been added
@@ -254,14 +271,14 @@ def analyze_data(path, extensions_path):
                        
                         #httpPattern = 'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+(?:[/][A-Za-z0-9-_.?=&]*)*'
                         
-                        httpPattern = 'https?://(?:www\\.)?[a-zA-Z0-9./]+' #TMP - TESTING
+                        httpPattern = 'https?://(?:www\\.)?[a-zA-Z0-9-_#=./]+' #TMP - TESTING
                         
                         # Not starting with http or https (e.x, website.com, www.website.com, pizzabakery.net etc)
                         # Not detecting anything it seems, potentially due to not being any "www.example.com" only links present, only ones starting with https / http, need to test
                         #wwwPattern = "^[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$(?:[/][A-Za-z0-9-_.?=]*)*"
                         
                         #wwwPattern = '(?:\w+\.)*\w+\.[a-zA-Z0-9./]+' #TMP - TESTING
-                        wwwPattern = '(?:www)\.[a-zA-Z0-9./]+'
+                        wwwPattern = '(?:www)\.[a-zA-Z0-9-_#=./]+'
 
                         patterns = [httpPattern, wwwPattern]
                         #patterns = [httpPattern]
@@ -301,11 +318,6 @@ def analyze_data(path, extensions_path):
                                 
                         
                         actionsList = actions
-                        
-                        for action in actionsList:
-                            #print(actionsList[action])
-                            #print()
-                            pass
 
                         ### Legacy, maybe remove, will look into further on
                         #hits.append( [word + ':  ' + chunk, dirpath + "/" + filename] )
