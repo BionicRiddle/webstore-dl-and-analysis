@@ -7,6 +7,7 @@ import random
 from keywords_search import analyze
 from domain_analysis import dns_analysis, rdap_analysis
 from static_analysis import static_analysis
+from dynamic import dynamic_analysis
 from manifest import manifest_analysis
 import os
 import time
@@ -35,7 +36,7 @@ class Extension:
                 "list_of_common_urls": None
             }
             self.static_analysis = {}
-            self.dynamic_analysis = {}
+            self.dynamic_analysis = []
             self.domain_analysis = {}
         except Exception as e:
             reason = "Error in 'Extension.__init__'"
@@ -297,6 +298,10 @@ def analyze_extension(thread, extension_path: str) -> None:
         static_time = time.time() - start_time
 
         # --- Dynamic analysis ---
+
+        if globals.DYNAMIC_ENABLE:
+            dynamic_analysis(extension)
+            print(extension.get_dynamic_analysis())
 
         dynamic_time = time.time() - start_time
 
