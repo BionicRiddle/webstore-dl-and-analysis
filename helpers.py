@@ -168,24 +168,34 @@ def get_valid_domain(url):
     False
     """
 
-    # add support for wildcard tlds, these are not actually valid tlds
-    # and should be filtered out, but it is not a bad idea to keep for further analysis
-    extract = tldextract.TLDExtract(extra_suffixes=["wildcardtld"])
+    try:
+            
+        # add support for wildcard tlds, these are not actually valid tlds
+        # and should be filtered out, but it is not a bad idea to keep for further analysis
+        extract = tldextract.TLDExtract(extra_suffixes=["wildcardtld"])
 
-    domain_parts = extract(url)
-    domain = domain_parts.domain
-    suffix = domain_parts.suffix
+        domain_parts = extract(url)
+        domain = domain_parts.domain
+        suffix = domain_parts.suffix
 
-    # Here we filter out wildcards tlds and other invalid tlds
-    disallowed_suffixes = ["google", "wildcardtld"]
-    
-    if domain == "www" or suffix in disallowed_suffixes or suffix == "" or domain == "":
-        return None, None
+        # Here we filter out wildcards tlds and other invalid tlds
+        disallowed_suffixes = ["google", "wildcardtld"]
+        
+        if domain == "www" or suffix in disallowed_suffixes or suffix == "" or domain == "":
+            return None, None
 
-    domain_puny = punycode.convert(domain, True)
-    suffix_puny = punycode.convert(suffix, True)
+        domain_puny = punycode.convert(domain, True)
+        suffix_puny = punycode.convert(suffix, True)
 
-    return ((domain_puny + "." + suffix_puny).lower(), suffix_puny.lower())
+        return ((domain_puny + "." + suffix_puny).lower(), suffix_puny.lower())
+    except Exception as e:
+        # print traceback
+        print(e)
+        print(traceback.format_exc())
+        print("Could not get valid domain for url: ")
+        print(url)
+        print()
+        raise e
 
 import queue
 if __name__ == "__main__":
