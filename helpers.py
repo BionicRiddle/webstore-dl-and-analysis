@@ -10,7 +10,7 @@ import tldextract
 from datetime import datetime
 import pickle
 import threading
-import pyunycode
+import punycode
 
 
 ## Bara funktioner
@@ -182,8 +182,8 @@ def get_valid_domain(url):
     if domain == "www" or suffix in disallowed_suffixes or suffix == "" or domain == "":
         return None, None
 
-    domain_puny = pyunycode.convert(domain)
-    suffix_puny = pyunycode.convert(suffix)
+    domain_puny = punycode.convert(domain, True)
+    suffix_puny = punycode.convert(suffix, True)
 
     return ((domain_puny + "." + suffix_puny).lower(), suffix_puny.lower())
 
@@ -199,6 +199,8 @@ if __name__ == "__main__":
 
     fuked = "телеока.рф"
 
+    reverse = "xn--80ajaudty.xn--p1ai"
+
 
     print(test1 + " " + str(get_valid_domain(test1)))
     print(test2 + " " + str(get_valid_domain(test2)))
@@ -206,3 +208,10 @@ if __name__ == "__main__":
     print(test4 + " " + str(get_valid_domain(test4)))
     print(test5 + " " + str(get_valid_domain(test5)))
     print(fuked + " " + str(get_valid_domain(fuked)))
+
+    assert get_valid_domain(reverse)[0] == reverse
+    assert get_valid_domain(reverse)[1] == "xn--p1ai"
+    assert get_valid_domain(test4)[0] != test4
+    assert get_valid_domain(test1)[0] == "riddle.nu"
+
+    print("All tests passed")
