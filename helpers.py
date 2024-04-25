@@ -11,6 +11,7 @@ from datetime import datetime
 import pickle
 import threading
 import punycode
+import traceback
 
 
 ## Bara funktioner
@@ -184,19 +185,22 @@ def get_valid_domain(url):
         if domain == "www" or suffix in disallowed_suffixes or suffix == "" or domain == "":
             return None, None
 
+        invalid_chars = ["_", ";", ":", " ", "!", "$", "%", "^", "&", "*", "(", ")", "+", "=", "[", "]", "{", "}", "\\", "|", "<", ">", ",", "`", "~", "'", "£"]
+        for char in invalid_chars:
+            if char in domain:
+                print("Domain contains invalid char: " + domain)
+                return None, None
+
         domain_puny = punycode.convert(domain, True)
         suffix_puny = punycode.convert(suffix, True)
 
         return ((domain_puny + "." + suffix_puny).lower(), suffix_puny.lower())
     except Exception as e:
-        import traceback
-        # print traceback
         print(e)
         print(traceback.format_exc())
-        print("Could not get valid domain for url: ")
-        print(url)
+        print("Could not get valid domain for url: " + url)
         print()
-        raise e
+        return None, None
 
 import queue
 if __name__ == "__main__":
@@ -207,11 +211,14 @@ if __name__ == "__main__":
     # chinese url
     test4 = "https://www.百度.中国"
     test5 = "dhjwkad"
+    test6 = "телеока.рф"
 
-    test6 = "https://www.google.com/as_asd"
-    test7 = "https://www.goo_gle.com"
+    test7 = "https://www.google.com/as_asd"
+    test8 = "https://www.goo_gle.com"
+    test9 = "https://www.goo;gle.com"
+    test10 = "https://www.goo gle.com"
+    test11 = "https://www.goo,gle.com"
 
-    fuked = "телеока.рф"
 
     reverse = "xn--80ajaudty.xn--p1ai"
 
@@ -223,7 +230,10 @@ if __name__ == "__main__":
     print(test5 + " " + str(get_valid_domain(test5)))
     print(test6 + " " + str(get_valid_domain(test6)))
     print(test7 + " " + str(get_valid_domain(test7)))
-    print(fuked + " " + str(get_valid_domain(fuked)))
+    print(test8 + " " + str(get_valid_domain(test8)))
+    print(test9 + " " + str(get_valid_domain(test9)))
+    print(test10 + " " + str(get_valid_domain(test10)))
+    print(test11 + " " + str(get_valid_domain(test11)))
 
     assert get_valid_domain(reverse)[0] == reverse
     assert get_valid_domain(reverse)[1] == "xn--p1ai"
