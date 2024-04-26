@@ -170,33 +170,39 @@ def getActions(data, filePath, urlPattern):
                 else:
                     context = "No context available" 
                 
-                urlAndContext = []
-                
-                # print("Url: " + str(url))
-                # print("Context: " + str(context))
-                # print("Data: " + str(data[endIndex:endIndex+100]))
-                # print("Url Start: " + str(urlStart - endIndex))
-                # print("Start: " + data[urlStart:urlStart+15])
-                # print()
+
+                ## actionType: E.x {post, fetch, href, src etc}
+                ## url: https://www.google.com or simmilar
+
                 
                 if actionType in actionUrlMap:
                     # Check if domain has already been added
                     if url in actionUrlMap[actionType]:
                         if filePath not in actionUrlMap[actionType][url]:
 
-                            urlAndContext = [filePath, context]
+                            urlAndContext = {
+                                "filePath": filePath,
+                                "context": context
+                            }
                             actionUrlMap[actionType][url].append(urlAndContext)
                             
                     else:
                         # Action has been added but the url has not
-                        urlAndContext = [filePath, context]
-                        actionUrlMap[actionType][url] = urlAndContext
+                        urlAndContext = {
+                            "filePath": filePath,
+                            "context": context
+                        }
+                        actionUrlMap[actionType][url] = [urlAndContext]
 
                 else:
                     #print("Url: " + url)
-                    urlAndContext = [filePath, context]
-                    actionUrlMap[actionType][url] = urlAndContext
+                    urlAndContext = {
+                        "filePath": filePath,
+                        "context": context
+                    }
+                    actionUrlMap[actionType][url] = [urlAndContext]
                     
+                #print(urlAndContext)
                     #print(str(actionUrlMap[actionType][url]))
                     
                 urlAndContext = []
@@ -295,10 +301,10 @@ def analyze_data(path, extensions_path):
                             filePath = filePath + "/"
                         
                         # Actions and any associated url's
-                        
-                        extensionId = extensions_path.split("/")[1]
-                        
-                        actions = getActions(data, extensionId + filePath + filename, patterns)
+
+                        file_path_with_file = filePath + filename
+                                                
+                        actions = getActions(data, file_path_with_file, patterns)
                         
                         #print("Dirpath: " + dirpath + "/" + filename)
 
@@ -452,7 +458,9 @@ def analyze(extension, isInternal, single_extension=None):
             #print(extension, hits)
 
     except Exception as e:
-        #print("Error on ", extension, ": ", str(e))
+        print("Error on ", extension, ": ", str(e))
+        import traceback
+        traceback.print_exc()
         input("(Paused on error) Enter to continue...")
 
     #try:

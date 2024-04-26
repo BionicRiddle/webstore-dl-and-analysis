@@ -23,7 +23,7 @@ from datetime import datetime
 
 GODADDY_TLDS = []
 
-def godaddy_is_available(domain, max_retries=10):
+def godaddy_is_available(domain, max_retries=3):
     #print(Style.DIM + 'Checking domain %s with GoDaddy' % domain + Style.RESET_ALL)
     DOMAIN_API = "https://api.godaddy.com/v1/domains/available?domain="
     API_KEY = "h1JgSaN2VmpJ_TTiof91Kw8iqsSz67S8kRq"
@@ -68,13 +68,13 @@ def godaddy_is_available(domain, max_retries=10):
 
     raise Exception(f"Failed to get response after {max_retries} attempts")
 
-def rdap(domain, max_retries=10):
+def rdap(domain, max_retries=3):
     #print(Style.DIM + 'Checking domain %s with GoDaddy' % domain + Style.RESET_ALL)
     DOMAIN_API = "https://rdap.org/domain/"
     
     request_url = DOMAIN_API + domain
 
-    RATE_PER_MINUTE = 10000
+    RATE_PER_MINUTE = 5000 # 10000 får biland ratelimit
 
     for attempt in range(max_retries):
         try:
@@ -88,12 +88,12 @@ def rdap(domain, max_retries=10):
             elif response.status_code == 400:
                 raise Exception("Invalid request (malformed path, unsupported object type, invalid IP address, etc)")
             elif response.status_code == 403:
-                print(f"Blocked due to abuse or other misbehaviour? Retrying in 1 second (Attempt {attempt + 1}/{max_retries})")
+                print(f"(403) Blocked due to abuse or other misbehaviour? Retrying in 1 second (Attempt {attempt + 1}/{max_retries}) for {domain}")
                 time.sleep(1)
             elif response.status_code == 404:
                 return {"Status": "TLD_NOT_SUPPORTED_OR_DOMAIN_NOT_FOUND"}
             elif response.status_code == 429:
-                print(f"RDAP Rate limit exceeded. Retrying in 1 second (Attempt {attempt + 1}/{max_retries})")
+                print(f"(429) RDAP Rate limit exceeded. Retrying in 1 second (Attempt {attempt + 1}/{max_retries}) for {domain}")
                 time.sleep(1)
             elif response.status_code == 500:
                 raise Exception("RDAP is broken")
@@ -108,7 +108,7 @@ def rdap(domain, max_retries=10):
 
     raise Exception(f"Failed to get response after {max_retries} attempts")
 
-def domainsdb_is_available(domain, max_retries=10):
+def domainsdb_is_available(domain, max_retries=3):
     #print(Style.DIM + 'Checking domain %s with DomainsDB' % domain + Style.RESET_ALL)
     DOMAIN_API = "https://api.domainsdb.info/v1/domains/search?domain="
     request_url = DOMAIN_API + domain

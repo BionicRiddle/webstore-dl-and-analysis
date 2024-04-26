@@ -28,6 +28,7 @@ class Extension:
             self.crx_path = crx_path
             self.manifest = read_manifest(crx_path)
             self.id = crx_path.split('/')[-2]
+            self.version = ".".join(crx_path.split('.')[0].split('_')[-4:])
             
             self.extracted_path = ""
             self.keyword_analysis = {
@@ -93,6 +94,9 @@ class Extension:
     
     def get_crx_path(self) -> str:
         return self.crx_path
+
+    def get_version(self) -> str:
+        return self.version
     
     def get_manifest(self) -> dict:
         return self.manifest
@@ -278,7 +282,7 @@ def analyze_extension(thread, extension_path: str) -> None:
         urls = extension.get_keyword_analysis()['list_of_urls']
 
         actionsList = extension.get_keyword_analysis()['list_of_actions']
-        commonUrls = extension.get_keyword_analysis()['list_of_common_urls']
+        #commonUrls = extension.get_keyword_analysis()['list_of_common_urls']
 
         for url in manifest_urls:
             path = extension.get_id() + "/manifest.json"
@@ -380,13 +384,13 @@ def analyze_extension(thread, extension_path: str) -> None:
                             # If RDAP is not supported by TLD
                             rdap_dump = '{"STATUS": "RDAP_NOT_SUPPORTED"}'
                     # We only want this to run if we just did dns (and rdap)
-                    db.insertDomainMetaTable(thread.sql, domain, dns_status, expiration_date, available_date, deleted_date, rdap_dump)
+                    db.insertDomainMetaTable(extension, thread.sql, domain, dns_status, expiration_date, available_date, deleted_date, rdap_dump)
                 # We always want to do this even if we skipped dns
                 # We want a rectord for each file the url is in
                 for file in files:
                     file_whitout_id = file.split("/", 1)[1]
                     
-                    db.insertDomainTable(thread.sql, domain, extension_path, file_whitout_id)
+                    db.insertDomainTable(extension, thread.sql, domain, extension_path, file_whitout_id)
         except Exception as e:
             failed_extension(extension_path, "Failed to analyze domain", e)
             continue
@@ -407,8 +411,11 @@ def analyze_extension(thread, extension_path: str) -> None:
             
     #print(url_dns_record["github.com"])    
 
-    db.insertActionTable(thread.sql, actionsList, globals.dns_records)
+    db.insertActionTable(extension, thread.sql, actionsList, globals.dns_records)
     #db.insertUrlTable(thread.sql, commonUrls, url_dns_record)
+
+    if globals.DYNAMIC_ENABLE:
+        db.insertDynamicTable(extension, thread.sql, extension.get_dynamic_analysis())
 
     db_time = time.time() - start_time
 

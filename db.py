@@ -90,7 +90,7 @@ class SQLWrapper():
 
 ## Inserts
 
-def insertDomainMetaTable(sql_object, domain: str, dns_status: str, expiration_date: datetime, available_date: datetime, deleted_date: datetime, rdap_dump: str):
+def insertDomainMetaTable(extension, sql_object, domain: str, dns_status: str, expiration_date: datetime, available_date: datetime, deleted_date: datetime, rdap_dump: str):
     #print("Inserting into domain_meta")
     insert = "INSERT INTO domain_meta (domain, status, expired, available, remove, raw_json) VALUES (?,?,?,?,?,?)"
 
@@ -100,25 +100,25 @@ def insertDomainMetaTable(sql_object, domain: str, dns_status: str, expiration_d
             #print(dns_status)
             cursor.execute(insert, (domain, dns_status, expiration_date, available_date, deleted_date, rdap_dump))
     except sqlite3.Error as e:
-        print("Your mom is: " + str(e))
+        print("(insertDomainMetaTable) SQLite error: " + str(e))
 
-def insertDomainTable(sql_object, url,  extension_path, file_path="Funkar inte ATM"):
+def insertDomainTable(extension, sql_object, url,  extension_path, file_path="Funkar inte ATM"):
     
-    insert = "INSERT OR IGNORE INTO domain (domain, extension, filepath) VALUES (?, ?, ?)"
+    insert = "INSERT OR IGNORE INTO domain (domain, extension, version, filepath) VALUES (?, ?, ?, ?)"
 
-    split = extension_path.split("/")
-    extension_id = split[-1].replace(".crx", "") # Ta bort .crx
+    extension_id = extension.get_id()
+    version = extension.get_version()
 
     try:
         with sql_object as cursor:
-            cursor.execute(insert, (url, extension_id, file_path))
+            cursor.execute(insert, (url, extension_id, version, file_path))
     except sqlite3.IntegrityError as er:
         print("This should not happen because of the IGNORE statement")
     except sqlite3.Error as er:
-        print("SQLite error: %s" % (' '.join(er.args)))
+        print("(insertDomainTable) SQLite error: %s" % (' '.join(er.args)))
         raise er
 
-def insertUrlTable(sqlobject, urls, dns_record): 
+def insertUrlTable(extension, sqlobject, urls, dns_record): 
     # Insert the url & the times it is encountered into the database
     insert = "INSERT INTO common VALUES(?,?)"
     
@@ -143,7 +143,7 @@ def insertUrlTable(sqlobject, urls, dns_record):
                     cursor.execute(select, (url,))
                     exists = cursor.fetchone()
             except sqlite3.Error as er:
-                print('SQLite error1: %s' % (' '.join(er.args)))
+                print('(insertUrlTable) SQLite error 1: %s' % (' '.join(er.args)))
             
             # URL has already been added. Increment the existing one instead
             if exists:
@@ -153,14 +153,14 @@ def insertUrlTable(sqlobject, urls, dns_record):
                         cursor.execute(getUrlCount, (url,))
                         count = cursor.fetchone()         
                 except sqlite3.Error as er:
-                    print('SQLite error2: %s' % (' '.join(er.args)))
+                    print('(insertUrlTable) SQLite error 2: %s' % (' '.join(er.args)))
                 
                 # Update
                 try:
                     with sqlobject as cursor:
                         cursor.execute(update, (int(count[0]+1), url))
                 except sqlite3.Error as er:
-                    print('SQLite error3: %s' % (' '.join(er.args)))
+                    print('(insertUrlTable) SQLite error 3: %s' % (' '.join(er.args)))
                 continue
                 
             else:
@@ -169,13 +169,13 @@ def insertUrlTable(sqlobject, urls, dns_record):
                         cursor.execute(insert, (str(url), urls[url]))
                         
                 except sqlite3.Error as er:
-                    print('SQLite error4: %s' % (' '.join(er.args)))
+                    print('(insertUrlTable) SQLite error 4: %s' % (' '.join(er.args)))
                   
-def insertActionTable(sql_object, actionList, dns_record):
+def insertActionTable(extension, sql_object, actionList, dns_record):
     
     # Queries
-    select = "SELECT url, type, extension FROM action WHERE url = ? AND type = ? AND extension = ? AND filepath = ?"
-    insert = "INSERT INTO action VALUES (?,?,?,?,?,?,?)"
+    select = "SELECT url, type, extension FROM action WHERE url = ? AND type = ? AND extension = ? AND version = ? AND filepath = ?"
+    insert = "INSERT INTO action (url, type, extension, version, filepath, domain, codeBefore) VALUES (?,?,?,?,?,?,?)"
     
     # Go through each action type (href, fetch, etc)
     
@@ -194,54 +194,60 @@ def insertActionTable(sql_object, actionList, dns_record):
             #for extension in actionList[action][entry]:
             # actionList[action][entry]: List of extension(s) the domain resided in
                 try:
-                    with sql_object as cursor:
-                        # Check if domain already exists 
+                    # Check if domain already exists 
+                    
+                    # --- This may not be necessary --- #
+                    # This check should already be done in each thread during keywordsearch and extension is unqieue per thread
+                    # Will leave this here for now but might look back and reconsider later
+                    
+                    extension_id = extension.get_id()
+                    version = extension.get_version()
+
+                    for action_for_url in actionList[action][entry]:
+                        filePath = action_for_url["filePath"]
                         
-                        # --- This may not be necessary --- #
-                        # This check should already be done in each thread during keywordsearch and extension is unqieue per thread
-                        # Will leave this here for now but might look back and reconsider later
-                        
-                        #print("Url: " + str(entry))
-                        #print("Data: " + str(actionList[action][entry]))
-                        #print()
-                        #print(extension[1])
-                        #print("________________________")
-                        split = actionList[action][entry][0].split("/")
-                        #print(split)
-                        extension_id = split[0]
-                        filePath = actionList[action][entry][0].replace(extension_id, '')
-                        
-                        context = actionList[action][entry][1]
-                        
+                        context = action_for_url["context"]
+
                         #print("Filepath: " + str(filePath))
                         #print("Context: " + str(context))
-                        
-                        #print(filePath)
-                        cursor.execute(select, (entry, action, extension_id, filePath))
-                        exists = cursor.fetchone()
-                        # If entry does not exist
-                        if exists == None:
-                            cursor.execute(insert, (entry, action, extension_id, filePath, domain, context, datetime.now()))
+                        with sql_object as cursor: # TODO: flytta in
+                            cursor.execute(select, (entry, action, extension_id, version, filePath))
+                            exists = cursor.fetchone()
+                            # If entry does not exist
+                            if exists == None:
+                                cursor.execute(insert, (entry, action, extension_id, version, filePath, domain, context))
                 except sqlite3.Error as er:
-                    print('SQLite error: %s' % (' '.join(er.args)))
+                    print('(insertActionTable) SQLite error: %s' % (' '.join(er.args)))
+
+def insertDynamicTable(extension, sql_object, dynamicList):
+    with sql_object as cursor:
+        insert = "INSERT INTO dynamic VALUES (?,?,?,?,?)"
+        for entry in dynamicList:
+            try:
+                cursor.execute(insert, (entry["url"], entry["method"], entry["time_after_start"], extension.get_id(), extension.get_version()))
+            except sqlite3.Error as er:
+                print('(insertDynamicTable) SQLite error: %s' % (' '.join(er.args)))
 
 ## Setup tables
 
 def create_table(sql_object):
     with sql_object as cursor:
         #Domain Table
-        cursor.execute("CREATE TABLE IF NOT EXISTS domain (domain TEXT NOT NULL, extension TEXT NOT NULL, filepath TEXT NOT NULL, PRIMARY KEY (domain,extension,filepath))")
+        cursor.execute("CREATE TABLE IF NOT EXISTS domain (domain TEXT NOT NULL, extension TEXT NOT NULL, version TEXT NOT NULL, filepath TEXT NOT NULL, PRIMARY KEY (domain,extension,version,filepath))")
 
         #Domain Meta Table
         cursor.execute("CREATE TABLE IF NOT EXISTS domain_meta (domain TEXT NOT NULL, status TEXT, expired DATETIME, available DATETIME, remove DATETIME, raw_json TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (timestamp,domain))")
         
         # Common Url Table
         cursor.execute("CREATE TABLE IF NOT EXISTS common (url TEXT NOT NULL, count INTEGER NOT NULL, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (url))")
+
+        # Dynamic Table
+        cursor.execute("CREATE TABLE IF NOT EXISTS dynamic (url TEXT NOT NULL, method TEXT NOT NULL, time_after_start FLOAT NOT NULL, extension TEXT NOT NULL, version TEXT NOT NULL, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (url, method, extension, version))")
         
         # Actions List
         # Components:
         # Action, Domain, Extension, (Domain should be primary)
-        cursor.execute("CREATE TABLE IF NOT EXISTS action (url TEXT NOT NULL, type TEXT NOT NULL, extension TEXT NOT NULL, filepath TEXT NOT NULL, domain TEXT NOT NULL, codeBefore TEXT NOT NULL, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (type, url, extension, filepath), FOREIGN KEY (domain) REFERENCES domain(domain) )")
+        cursor.execute("CREATE TABLE IF NOT EXISTS action (url TEXT NOT NULL, type TEXT NOT NULL, extension TEXT NOT NULL, version TEXT NOT NULL, filepath TEXT NOT NULL, domain TEXT NOT NULL, codeBefore TEXT NOT NULL, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (type, url, extension, version, filepath), FOREIGN KEY (domain) REFERENCES domain(domain) )")
 
 def drop_all_tables(sql_object):
     print("Dropping tables")
@@ -249,7 +255,8 @@ def drop_all_tables(sql_object):
         TABLES = ["domain",
                   "domain_meta",
                   "common",
-                  "action"]
+                  "action",
+                  "dynamic",]
         for table in TABLES:
             cursor.execute("DROP TABLE IF EXISTS " + table)    
 
