@@ -11,6 +11,7 @@ import re
 from datetime import datetime
 import zipfile
 import argparse
+import signal
 
 # Concurrent threads
 import threading
@@ -45,6 +46,13 @@ thread_queue = UniqueQueue()
 
 # Create a connection to the database
 DATABASE = 'thesis.db'
+
+def handle_sigterm(*args):
+    print('SIGTERM detected - terminating threads')
+    globals.TEMINATE = True
+    raise KeyboardInterrupt()
+
+signal.signal(signal.SIGTERM, handle_sigterm)
 
 # Worker Thread
 class WorkerThread(threading.Thread):
