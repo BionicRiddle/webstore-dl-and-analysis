@@ -186,6 +186,7 @@ failed.txt
 found_domains.txt
 *.db
 esprima_debug_out.txt
+time.txt
 
 # Cache files
 DomainDbCache.txt

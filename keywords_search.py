@@ -172,12 +172,12 @@ def getActions(data, filePath, urlPattern):
                 
                 urlAndContext = []
                 
-                print("Url: " + str(url))
-                print("Context: " + str(context))
-                print("Data: " + str(data[endIndex:endIndex+100]))
-                print("Url Start: " + str(urlStart - endIndex))
-                print("Start: " + data[urlStart:urlStart+15])
-                print()
+                # print("Url: " + str(url))
+                # print("Context: " + str(context))
+                # print("Data: " + str(data[endIndex:endIndex+100]))
+                # print("Url Start: " + str(urlStart - endIndex))
+                # print("Start: " + data[urlStart:urlStart+15])
+                # print()
                 
                 if actionType in actionUrlMap:
                     # Check if domain has already been added
