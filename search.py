@@ -50,6 +50,10 @@ DATABASE = 'thesis.db'
 def handle_sigterm(*args):
     print('SIGTERM detected - terminating threads')
     globals.TEMINATE = True
+    print('Saving Queue state')
+    save_object(thread_queue.save(), globals.PICKLE_FILE)
+    print('Queue state saved')
+    print()
     raise KeyboardInterrupt()
 
 signal.signal(signal.SIGTERM, handle_sigterm)

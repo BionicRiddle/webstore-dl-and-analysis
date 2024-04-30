@@ -187,13 +187,9 @@ def insertActionTable(extension, sql_object, actionList, dns_record):
             
             # Den får inget dns record, varför
             domain, tld = get_valid_domain(entry)
-            #if domain == "walmartimages.com":
-                #print(entry)
-            if dns_record[domain] is not DNS_RECORDS.INVALID:
-                #print(actionList[action][entry])
-            #for extension in actionList[action][entry]:
-            # actionList[action][entry]: List of extension(s) the domain resided in
-                try:
+
+            try:
+                if dns_record[domain] is not DNS_RECORDS.INVALID:
                     # Check if domain already exists 
                     
                     # --- This may not be necessary --- #
@@ -216,8 +212,8 @@ def insertActionTable(extension, sql_object, actionList, dns_record):
                             # If entry does not exist
                             if exists == None:
                                 cursor.execute(insert, (entry, action, extension_id, version, filePath, domain, context))
-                except sqlite3.Error as er:
-                    print('(insertActionTable) SQLite error: %s' % (' '.join(er.args)))
+            except sqlite3.Error as er:
+                print('(insertActionTable) SQLite error: %s' % (' '.join(er.args)))
 
 def insertDynamicTable(extension, sql_object, dynamicList):
     with sql_object as cursor:
