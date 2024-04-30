@@ -36,4 +36,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 ENV NUM_THREADS 1
 
 # Run main.py when the container launches
-CMD ["python", "./search.py", "-R", "-p", "-s", "/app/extensions/"]
+CMD ["python", "./search.py", "-p", "-s", "/app/extensions/"]
