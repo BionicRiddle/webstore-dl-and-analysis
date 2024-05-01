@@ -12,6 +12,7 @@ import sys
 from globals import DNS_RECORDS
 from datetime import datetime
 from helpers import get_valid_domain
+import traceback
 
 if sqlite3.threadsafety == 0:
     raise Exception("sqlite3.threadsafety is 0. Program cannot continue as the sqlite3 module is not thread-safe. Needs to be 1 or 3. Check https://sqlite.org/threadsafe.html for more information.")
@@ -214,6 +215,9 @@ def insertActionTable(extension, sql_object, actionList, dns_record):
                                 cursor.execute(insert, (entry, action, extension_id, version, filePath, domain, context))
             except sqlite3.Error as er:
                 print('(insertActionTable) SQLite error: %s' % (' '.join(er.args)))
+            except Exception as e:
+                print("Error in insertActionTable: " + str(e))
+                traceback.print_exc()
 
 def insertDynamicTable(extension, sql_object, dynamicList):
     with sql_object as cursor:
