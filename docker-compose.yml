@@ -8,3 +8,4 @@ services:
     environment:
       - STFU_MODE=false
       - PYTHONUNBUFFERED=1
+    command: ["DYNAMIC"]  # "SEARCH" or "DYNAMIC"

@@ -22,7 +22,6 @@ def is_display_running(port):
     return False
 
 def dynamic_analysis(extension):
-
     EXTENSION_PATH = extension.get_crx_path()
 
     #TEMP
@@ -48,7 +47,6 @@ def dynamic_analysis(extension):
 
     try:
         start_time = time.time()
-        print("Start Time: ", start_time)
         
         driver.get("chrome://extensions/")
         #driver.get("https://albinkarlsson.se/")
@@ -56,9 +54,9 @@ def dynamic_analysis(extension):
         WAIT_TIME = 60
 
         chrome_logs = driver.get_log('performance')
-        
+
         #time.sleep(5)
-        time.sleep(60)
+        time.sleep(10)
 
         # Filter logs for network entries
         network_logs = [chrome_log for chrome_log in chrome_logs if 'Network.requestWillBeSent' in chrome_log['message']]

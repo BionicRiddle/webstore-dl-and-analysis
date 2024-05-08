@@ -6,11 +6,11 @@ RUN apt-get update \
     && apt-get install -y nodejs npm
 
 # Set the working directory to /app/node
-WORKDIR /app/node
+#WORKDIR /app/node
 
 # Install node packages THIS IS BROKEN
-COPY ./node/* /app/node/
-RUN npm install
+#COPY ./node/* /app/node/
+#RUN npm install
 
 # Set the working directory to /app
 WORKDIR /app
@@ -35,5 +35,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Define environment variable
 ENV NUM_THREADS 1
 
-# Run main.py when the container launches
-CMD ["python", "./search.py", "-p", "-s", "/app/extensions/"]
+# This is stupid, I know
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+COPY *.py /app/
+
+# Make sure the script is executable
+RUN chmod +x /app/docker-entrypoint.sh
+
+# Run docker-entrypoint.sh when the container launches
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
+CMD ["SEARCH"]
