@@ -7,5 +7,5 @@ if [ "$1" = 'SEARCH' ]; then
     python ./search.py -p -s /app/extensions/
 elif [ "$1" = 'DYNAMIC' ]; then
     echo "DYNAMIC"
-    python /dynamic_standalone.py /app/extensions/
+    python ./dynamic_standalone.py /app/extensions/
 fi
