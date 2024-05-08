@@ -95,7 +95,6 @@ class WorkerThread(threading.Thread):
 
 class Extension:
     def __init__(self, crx_path: str) -> None:
-        print(Fore.GREEN + 'Creating Extension object for %s' % crx_path + Style.RESET_ALL)
         try: 
             self.creation_time = time.time()
             self.crx_path = crx_path
