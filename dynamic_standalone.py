@@ -189,7 +189,6 @@ if __name__ == "__main__":
     for extension_id in extension_ids:
         id = extension_id[0]
         extension_path = root_path + id
-        print(extension_path)
         for crx in os.listdir(extension_path):
             if crx.endswith(".crx"):
                 extension_paths.append(extension_path + '/' + crx)
