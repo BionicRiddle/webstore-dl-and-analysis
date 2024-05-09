@@ -125,16 +125,14 @@ def dynamic_analysis(extension):
 
     except Exception as e:
         print(e)
+        driver.close()
         if globals.IN_DOCKER:
             requests.delete(f"http://selenium-hub:4444/session/{session}")
-        else:
-            driver.close()
         raise e
 
+    driver.close()
     if globals.IN_DOCKER:
         requests.delete(f"http://selenium-hub:4444/session/{session}")
-    else:
-        driver.close()
 
     # Save
     extension.set_dynamic_analysis(log)
