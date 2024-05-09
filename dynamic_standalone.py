@@ -107,7 +107,6 @@ class Extension:
             self.crx_path = crx_path
             self.id = crx_path.split('/')[-2]
             self.version = ".".join(crx_path.split('.')[-2].split('_')[-4:])
-            print(self.version)
       
             self.dynamic_analysis = []
         except Exception as e:
