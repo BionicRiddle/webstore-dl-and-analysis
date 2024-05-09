@@ -67,11 +67,17 @@ class WorkerThread(threading.Thread):
                 for entry in dynamic_analysis_results:
                     with self.sql as c:
                         try:
-                            c.execute("INSERT INTO dynamic (url, method, time_after_start, extension, version) VALUES ", (entry['url'], entry['method'], entry['time_after_start'], self._current_extension.get_id(), self._current_extension.get_version()))
+                            c.execute("INSERT INTO dynamic (url, method, time_after_start, extension, version) VALUES (?,?,?,?,?) ", (entry['url'], entry['method'], entry['time_after_start'], self._current_extension.get_id(), self._current_extension.get_version()))
+
                         except sqlite3.IntegrityError as e:
-                            print("INSERT INTO dynamic (url, method, time_after_start, extension, version) VALUES ", (entry['url'], entry['method'], entry['time_after_start'], self._current_extension.get_id(), self._current_extension.get_version()))
+                            print("INSERT INTO dynamic (url, method, time_after_start, extension, version) VALUES (?,?,?,?,?) ", (entry['url'], entry['method'], entry['time_after_start'], self._current_extension.get_id(), self._current_extension.get_version()))
+
                             print(Fore.RED + 'Error in inserting dynamic analysis results: %s' % e + Style.RESET_ALL)
                             pass
+                        except Exception as e:
+                            print("INSERT INTO dynamic (url, method, time_after_start, extension, version) VALUES (?,?,?,?,?) ", (entry['url'], entry['method'], entry['time_after_start'], self._current_extension.get_id(), self._current_extension.get_version()))
+                            print(Fore.RED + 'Error in inserting dynamic analysis results: %s' % e + Style.RESET_ALL)
+                            raise e
 
 
                 if not done:
