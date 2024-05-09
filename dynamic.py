@@ -54,7 +54,7 @@ def dynamic_analysis(extension):
     else:
         # check if display is running on :99
         if not is_display_running(99):
-            #os.system("Xvfb :99 -ac &")
+            os.system("Xvfb :99 -ac &")
             os.environ['DISPLAY'] = ":99"
             print("Display started")
 

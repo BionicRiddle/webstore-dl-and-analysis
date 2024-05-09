@@ -1,9 +1,9 @@
 # Use an official Python runtime as a parent image
 FROM python:3.12-slim
 
-# Install xvfb, Node.js and npm using apt
+# Install Node.js and npm using apt
 RUN apt-get update \
-    && apt-get install -y nodejs npm xvfb
+    && apt-get install -y nodejs npm
 
 # Set the working directory to /app/node
 #WORKDIR /app/node
