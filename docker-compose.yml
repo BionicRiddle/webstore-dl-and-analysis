@@ -8,6 +8,7 @@ services:
     environment:
       - STFU_MODE=false
       - PYTHONUNBUFFERED=1
+      - NUM_THREADS=5
     command: ["DYNAMIC"]  # "SEARCH" or "DYNAMIC"
 
   chrome0:
