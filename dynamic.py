@@ -7,6 +7,8 @@ import os
 import time
 import psutil
 import json
+import requests
+
 
 # Global variables and settings
 import globals
@@ -24,23 +26,48 @@ def is_display_running(port):
 def dynamic_analysis(extension):
     EXTENSION_PATH = extension.get_crx_path()
 
-    #TEMP
-    # check if display is running on :99
-    if not is_display_running(99):
-        os.system("Xvfb :99 -ac &")
-        os.environ['DISPLAY'] = ":99"
-        print("Display started")
+    driver = None
+    session = None
 
-    chrome_options = webdriver.ChromeOptions()
+    # Check if running in docker
+    if globals.IN_DOCKER:
 
-    chrome_options.add_extension(EXTENSION_PATH) 
-    chrome_options.add_argument('--ignore-certificate-errors')
-    chrome_options.add_argument('--allow-running-insecure-content')
-        #chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--window-size=640,480")
-    chrome_options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
+        # Specify the URL of the Selenium Grid server
+        grid_url = 'http://localhost:4444/wd/hub'
 
-    driver = webdriver.Chrome(options=chrome_options)
+        chrome_options = webdriver.ChromeOptions()
+
+        chrome_options.add_extension(EXTENSION_PATH) 
+        chrome_options.add_argument('--ignore-certificate-errors')
+        chrome_options.add_argument('--allow-running-insecure-content')
+            #chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--window-size=640,480")
+        chrome_options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
+        
+        chrome_options.set_capability("browserVersion", "124.0");
+        chrome_options.set_capability("browserName", "chrome");
+
+        driver = webdriver.Remote(command_executor=grid_url, options=chrome_options)
+        session = driver.session_id
+        print("Session ID: ", session)
+    
+    else:
+        # check if display is running on :99
+        if not is_display_running(99):
+            #os.system("Xvfb :99 -ac &")
+            os.environ['DISPLAY'] = ":99"
+            print("Display started")
+
+        chrome_options = webdriver.ChromeOptions()
+
+        chrome_options.add_extension(EXTENSION_PATH) 
+        chrome_options.add_argument('--ignore-certificate-errors')
+        chrome_options.add_argument('--allow-running-insecure-content')
+            #chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--window-size=640,480")
+        chrome_options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
+
+        driver = webdriver.Chrome(options=chrome_options)
 
     # TEST START
     # Prepare proxy
@@ -51,12 +78,11 @@ def dynamic_analysis(extension):
         driver.get("chrome://extensions/")
         #driver.get("https://albinkarlsson.se/")
 
-        WAIT_TIME = 60
+        WAIT_TIME = 30
 
         chrome_logs = driver.get_log('performance')
 
-        #time.sleep(5)
-        time.sleep(10)
+        time.sleep(WAIT_TIME)
 
         # Filter logs for network entries
         network_logs = [chrome_log for chrome_log in chrome_logs if 'Network.requestWillBeSent' in chrome_log['message']]
@@ -99,10 +125,16 @@ def dynamic_analysis(extension):
 
     except Exception as e:
         print(e)
-        driver.close()
+        if globals.IN_DOCKER:
+            requests.delete(f"http://localhost:4444/session/{session}")
+        else:
+            driver.close()
         raise e
 
-    driver.close()
+    if globals.IN_DOCKER:
+        requests.delete(f"http://localhost:4444/session/{session}")
+    else:
+        driver.close()
 
     # Save
     extension.set_dynamic_analysis(log)

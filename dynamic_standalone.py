@@ -65,7 +65,12 @@ class WorkerThread(threading.Thread):
                 dynamic_analysis_results = self._current_extension.get_dynamic_analysis()
 
                 for entry in dynamic_analysis_results:
-                    c.execute("INSERT INTO dynamic (url, method, time_after_start, extension, version) VALUES (?,?,?,?,?)", (entry['url'], entry['method'], entry['time_after_start'], self._current_extension.get_id(), self._current_extension.get_version()))
+                    with self.sql as c:
+                        try:
+                            c.execute("INSERT INTO dynamic (url, method, time_after_start, extension, version) VALUES (?,?,?,?,?)", (entry['url'], entry['method'], entry['time_after_start'], self._current_extension.get_id(), self._current_extension.get_version()))
+                        except sqlite3.IntegrityError as e:
+                            pass
+
 
                 if not done:
                     # If the extension exited early
@@ -165,7 +170,7 @@ if __name__ == "__main__":
     globals.STFU_MODE = args.stfu
 
     # load DB thesis.db
-    conn = sqlite3.connect('thesis.db')
+    conn = sqlite3.connect('thesis.db', check_same_thread=False)
     c = conn.cursor()
 
     # Get all extension paths

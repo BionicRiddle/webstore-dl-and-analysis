@@ -34,6 +34,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Define environment variable
 ENV NUM_THREADS 1
+ENV IN_DOCKER True
 
 # This is stupid, I know
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
