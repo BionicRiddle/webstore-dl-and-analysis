@@ -33,7 +33,7 @@ def dynamic_analysis(extension):
     if globals.IN_DOCKER:
 
         # Specify the URL of the Selenium Grid server
-        grid_url = 'http://localhost:4444/wd/hub'
+        grid_url = 'http://selenium-hub:4444/wd/hub'
 
         chrome_options = webdriver.ChromeOptions()
 
@@ -126,13 +126,13 @@ def dynamic_analysis(extension):
     except Exception as e:
         print(e)
         if globals.IN_DOCKER:
-            requests.delete(f"http://localhost:4444/session/{session}")
+            requests.delete(f"http://selenium-hub:4444/session/{session}")
         else:
             driver.close()
         raise e
 
     if globals.IN_DOCKER:
-        requests.delete(f"http://localhost:4444/session/{session}")
+        requests.delete(f"http://selenium-hub:4444/session/{session}")
     else:
         driver.close()
 
