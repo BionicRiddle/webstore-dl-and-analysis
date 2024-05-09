@@ -137,6 +137,7 @@ def dynamic_analysis(extension):
         driver.close()
 
     # Save
+    print(len(log))
     extension.set_dynamic_analysis(log)
 
     return True
