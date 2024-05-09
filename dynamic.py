@@ -88,6 +88,7 @@ def dynamic_analysis(extension):
         network_logs = [chrome_log for chrome_log in chrome_logs if 'Network.requestWillBeSent' in chrome_log['message']]
 
         log = []
+        print("Network logs: ", len(network_logs))
 
         # Print URLs accessed along with their methods
         for entry in network_logs:
@@ -137,6 +138,7 @@ def dynamic_analysis(extension):
         driver.close()
 
     # Save
+    print(log)
     extension.set_dynamic_analysis(log)
 
     return True
