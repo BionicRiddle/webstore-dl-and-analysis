@@ -67,9 +67,9 @@ class WorkerThread(threading.Thread):
                 for entry in dynamic_analysis_results:
                     with self.sql as c:
                         try:
-                            print("INSERT INTO dynamic (url, method, time_after_start, extension, version) VALUES (?,?,?,?,?)", (entry['url'], entry['method'], entry['time_after_start'], self._current_extension.get_id(), self._current_extension.get_version()))
-                            c.execute("INSERT INTO dynamic (url, method, time_after_start, extension, version) VALUES (?,?,?,?,?)", (entry['url'], entry['method'], entry['time_after_start'], self._current_extension.get_id(), self._current_extension.get_version()))
+                            c.execute("INSERT INTO dynamic (url, method, time_after_start, extension, version) VALUES ", (entry['url'], entry['method'], entry['time_after_start'], self._current_extension.get_id(), self._current_extension.get_version()))
                         except sqlite3.IntegrityError as e:
+                            print("INSERT INTO dynamic (url, method, time_after_start, extension, version) VALUES ", (entry['url'], entry['method'], entry['time_after_start'], self._current_extension.get_id(), self._current_extension.get_version()))
                             print(Fore.RED + 'Error in inserting dynamic analysis results: %s' % e + Style.RESET_ALL)
                             pass
 
@@ -106,7 +106,8 @@ class Extension:
             self.creation_time = time.time()
             self.crx_path = crx_path
             self.id = crx_path.split('/')[-2]
-            self.version = ".".join(crx_path.split('.')[0].split('_')[-4:])
+            self.version = ".".join(crx_path.split('.')[-2].split('_')[-4:])
+            print(self.version)
       
             self.dynamic_analysis = []
         except Exception as e:
