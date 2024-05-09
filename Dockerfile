@@ -33,7 +33,7 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Define environment variable
-ENV NUM_THREADS 1
+ENV NUM_THREADS 4
 ENV IN_DOCKER True
 
 # This is stupid, I know
