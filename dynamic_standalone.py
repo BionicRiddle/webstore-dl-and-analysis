@@ -182,10 +182,14 @@ if __name__ == "__main__":
     extension_ids = c.fetchall()
     conn.close()
 
+    print(Fore.GREEN + 'Found %d extensions' % len(extension_ids) + Style.RESET_ALL)
+
     root_path = "./extensions/"
 
-    for extension_id in extension_ids[0]:
-        extension_path = root_path + extension_id
+    for extension_id in extension_ids:
+        id = extension_id[0]
+        extension_path = root_path + id
+        print(extension_path)
         for crx in os.listdir(extension_path):
             if crx.endswith(".crx"):
                 extension_paths.append(extension_path + '/' + crx)
