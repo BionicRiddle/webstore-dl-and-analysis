@@ -8,7 +8,7 @@ services:
     environment:
       - STFU_MODE=false
       - PYTHONUNBUFFERED=1
-      - NUM_THREADS=5
+      - NUM_THREADS=3
     command: ["DYNAMIC"]  # "SEARCH" or "DYNAMIC"
 
   chrome0:
@@ -32,26 +32,6 @@ services:
       - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
   
   chrome2:
-    image: selenium/node-chrome:4.20.0-20240505
-    shm_size: 2gb
-    depends_on:
-      - selenium-hub
-    environment:
-      - SE_EVENT_BUS_HOST=selenium-hub
-      - SE_EVENT_BUS_PUBLISH_PORT=4442
-      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
-    
-  chrome3:
-    image: selenium/node-chrome:4.20.0-20240505
-    shm_size: 2gb
-    depends_on:
-      - selenium-hub
-    environment:
-      - SE_EVENT_BUS_HOST=selenium-hub
-      - SE_EVENT_BUS_PUBLISH_PORT=4442
-      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
-
-  chrome4:
     image: selenium/node-chrome:4.20.0-20240505
     shm_size: 2gb
     depends_on:
