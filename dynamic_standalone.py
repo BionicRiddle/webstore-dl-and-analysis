@@ -259,6 +259,7 @@ Chalmers University of Technology, Gothenburg, Sweden
     
     try:
         # add extensions to queue
+        random.shuffle(extension_paths)
         for extension_path in extension_paths:
             thread_queue.put(extension_path)
             count_extensions += 1
