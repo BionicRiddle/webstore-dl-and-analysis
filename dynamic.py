@@ -107,11 +107,14 @@ def dynamic_analysis(extension):
                     continue
 
                 # filter out data:image/png;base64
-                if "data:image/png;base64" in url:
+                if "data:image" in url:
                     continue
                 
                 #filter if "chrome://" in beginning of url
                 if "chrome://" == url[:9]:
+                    continue
+                
+                if "chrome-extension://" == url[:19]:
                     continue
 
                 log.append({
