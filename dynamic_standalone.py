@@ -185,7 +185,8 @@ if __name__ == "__main__":
     extension_paths = []
 
     # load list of NXDOMAIN domains
-    c.execute("SELECT DISTINCT d.extension FROM domain d JOIN domain_meta dm ON d.domain = dm.domain WHERE dm.status = 'NXDOMAIN' ORDER BY d.extension")
+    #c.execute("SELECT DISTINCT d.extension FROM domain d JOIN domain_meta dm ON d.domain = dm.domain WHERE dm.status = 'NXDOMAIN' ORDER BY d.extension")
+    c.execute("SELECT DISTINCT d.extension FROM domain d JOIN domain_meta dm ON d.domain = dm.domain WHERE dm.status = 'NXDOMAIN' AND NOT EXISTS (SELECT 1 FROM dynamic WHERE extension = d.extension) ORDER BY d.extension")
 
     extension_ids = c.fetchall()
     conn.close()

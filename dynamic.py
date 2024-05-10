@@ -107,7 +107,7 @@ def dynamic_analysis(extension):
                     continue
 
                 # filter out data:image/png;base64
-                if "data:image" in url:
+                if "data:image" == url[:10]:
                     continue
                 
                 #filter if "chrome://" in beginning of url
