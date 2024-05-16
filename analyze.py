@@ -269,7 +269,6 @@ def analyze_extension(thread, extension_path: str) -> None:
 
     try:
         # --- Read Manifest ---
-
         manifest_urls = manifest_analysis(extension.get_manifest())
 
         manifest_time = time.time() - start_time

@@ -3,6 +3,7 @@ services:
     build: .
     volumes:
       - .:/app
+      - ./extensions:/extensions
     environment:
       - STFU_MODE=false
       - PYTHONUNBUFFERED=1

@@ -304,6 +304,10 @@ Chalmers University of Technology, Gothenburg, Sweden
                 # for each dir in extensions_path
                 extension_path_list = os.listdir(extensions_path)
 
+                # append "/" if it does not exist
+                if (extensions_path[-1] != "/"):
+                    extensions_path = extensions_path + "/"
+
                 if (globals.RANDOM_EXTENSION_ORDER):
                     import random
                     random.shuffle(extension_path_list)
