@@ -232,7 +232,7 @@ Chalmers University of Technology, Gothenburg, Sweden
     
     globals.GODADDY_TLDS = godaddy.read()
     globals.DOMAINSDB_TLDS = domaindb.read()
-    if RDAP_ENABLE:
+    if globals.RDAP_ENABLE:
         globals.RDAP_TLDS = rdap_tlds.read()
 
     # Create a connection to the database using the SQLWrapper

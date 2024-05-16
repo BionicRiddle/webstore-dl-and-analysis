@@ -375,7 +375,7 @@ def analyze_extension(thread, extension_path: str) -> None:
                     deleted_date = None
 
                     rdap_results = None
-                    if (RDAP_ENABLE):
+                    if (globals.RDAP_ENABLE):
                         if (results == globals.DNS_RECORDS.NXDOMAIN):
                             # i hate this
                             if tld in globals.RDAP_TLDS:
