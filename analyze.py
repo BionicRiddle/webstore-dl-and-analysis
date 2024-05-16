@@ -361,7 +361,6 @@ def analyze_extension(thread, extension_path: str) -> None:
                     globals.checked_domains.add(domain)
                 if do_dns:
 
-
                     results = dns_analysis(domain)
 
 
@@ -376,13 +375,14 @@ def analyze_extension(thread, extension_path: str) -> None:
                     deleted_date = None
 
                     rdap_results = None
-                    if (results == globals.DNS_RECORDS.NXDOMAIN):
-                        # i hate this
-                        if tld in globals.RDAP_TLDS:
-                            rdap_dump, expiration_date, available_date, deleted_date = rdap_analysis(domain)
-                        else:
-                            # If RDAP is not supported by TLD
-                            rdap_dump = '{"STATUS": "RDAP_NOT_SUPPORTED"}'
+                    if (RDAP_ENABLE):
+                        if (results == globals.DNS_RECORDS.NXDOMAIN):
+                            # i hate this
+                            if tld in globals.RDAP_TLDS:
+                                rdap_dump, expiration_date, available_date, deleted_date = rdap_analysis(domain)
+                            else:
+                                # If RDAP is not supported by TLD
+                                rdap_dump = '{"STATUS": "RDAP_NOT_SUPPORTED"}'
                     # We only want this to run if we just did dns (and rdap)
                     db.insertDomainMetaTable(extension, thread.sql, domain, dns_status, expiration_date, available_date, deleted_date, rdap_dump)
                 # We always want to do this even if we skipped dns

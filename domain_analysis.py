@@ -249,6 +249,7 @@ def rdap_analysis(domain):
         raise Exception("RDAP analysis failed: " + str(e))
 
 # If domain is available, return True
+# not used
 def domain_analysis(url):
     print(Fore.RED + "Deprecated" + Style.RESET_ALL)
         

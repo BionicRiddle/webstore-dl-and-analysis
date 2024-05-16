@@ -68,6 +68,9 @@ dns_records = {}
 # Variables for the static analysis
 STATIC_ENABLE = os.getenv('STATIC_ENABLE', False)
 
+# Variables for RDAP
+RDAP_ENABLE = os.getenv('RDAP_ENABLE', False)
+
 # Variables and Environment variables for dynamic analysis
 # TEMP
 DYNAMIC_ENABLE = os.getenv('DYNAMIC_ENABLE', False)
