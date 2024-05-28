@@ -192,6 +192,23 @@ Chalmers University of Technology, Gothenburg, Sweden
 
     # Stuff to do before starting threads
 
+    # Remove the runtime files if DROP_TABLES is set
+    if globals.DROP_TABLES:
+        if os.path.exists("time.txt"):
+            os.remove("time.txt")
+        if os.path.exists("GoDaddyCache.txt"):
+            #os.remove("GoDaddyCache.txt")
+        if os.path.exists("DomainDbCache.txt"):
+            #os.remove("DomainDbCache.txt")
+        if os.path.exists("RDAPCache.txt"):
+            #os.remove("RDAPCache.txt")
+        if os.path.exists("failed.txt"):
+            os.remove("failed.txt")
+        if os.path.exists("unknown-ext.txt"):
+            os.remove("unknown-ext.txt")
+        if os.path.exists("search.pkl"):
+            os.remove("search.pkl")
+
     # Godaddy get supported TLDs
     if os.path.exists(os.getcwd() + "/GoDaddyCache.txt"):
         pass
@@ -245,7 +262,7 @@ Chalmers University of Technology, Gothenburg, Sweden
         # Drop tables if DROP_TABLES is set
         if globals.DROP_TABLES:
             db.drop_all_tables(sql_w)
-        
+
         # Create tables if they don't exist
         db.create_table(sql_w)
 
