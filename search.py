@@ -190,6 +190,13 @@ Chalmers University of Technology, Gothenburg, Sweden
 --------------------------------------------------"""
     )
 
+    # Print enabled and disabled features
+    print('Enabled features:')
+    print('DNS:              %s' % ('Enabled' if globals.DNS_ENABLE else 'Disabled'))
+    print('Static analysis:  %s' % ('Enabled' if globals.STATIC_ENABLE else 'Disabled'))
+    print('RDAP:             %s' % ('Enabled' if globals.RDAP_ENABLE else 'Disabled'))
+    print('Dynamic analysis: %s' % ('Enabled' if globals.DYNAMIC_ENABLE else 'Disabled'))
+
     # Stuff to do before starting threads
 
     # Remove the runtime files if DROP_TABLES is set
@@ -197,10 +204,13 @@ Chalmers University of Technology, Gothenburg, Sweden
         if os.path.exists("time.txt"):
             os.remove("time.txt")
         if os.path.exists("GoDaddyCache.txt"):
+            pass
             #os.remove("GoDaddyCache.txt")
         if os.path.exists("DomainDbCache.txt"):
+            pass
             #os.remove("DomainDbCache.txt")
         if os.path.exists("RDAPCache.txt"):
+            pass
             #os.remove("RDAPCache.txt")
         if os.path.exists("failed.txt"):
             os.remove("failed.txt")
