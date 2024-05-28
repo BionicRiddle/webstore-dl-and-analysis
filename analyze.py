@@ -353,39 +353,45 @@ def analyze_extension(thread, extension_path: str) -> None:
                 #print(Fore.RED + 'Invalid URL:  %s' % url + Style.RESET_ALL)
             else:
                 # Check if domain already tested during current run
-                do_dns = True
-                with globals.checked_domains_lock:
-                    if domain in globals.checked_domains:
-                        do_dns = False
-                    globals.checked_domains.add(domain)
-                if do_dns:
+                if globals.DNS_ENABLE:
 
-                    results = dns_analysis(domain)
+                    do_dns = True
+                    with globals.checked_domains_lock:
+                        if domain in globals.checked_domains:
+                            do_dns = False
+                        globals.checked_domains.add(domain)
+
+                    if do_dns:
+
+                        results = dns_analysis(domain)
 
 
-                    dns_status = results.value
-                    
+                        dns_status = results.value
                         
-                    globals.dns_records[domain] = dns_status
-                    
-                    rdap_dump = None
-                    expiration_date = None
-                    available_date = None
-                    deleted_date = None
+                            
+                        globals.dns_records[domain] = dns_status
+                        
+                        rdap_dump = None
+                        expiration_date = None
+                        available_date = None
+                        deleted_date = None
 
-                    rdap_results = None
-                    if (globals.RDAP_ENABLE):
-                        if (results == globals.DNS_RECORDS.NXDOMAIN):
-                            # i hate this
-                            if tld in globals.RDAP_TLDS:
-                                rdap_dump, expiration_date, available_date, deleted_date = rdap_analysis(domain)
-                            else:
-                                # If RDAP is not supported by TLD
-                                rdap_dump = '{"STATUS": "RDAP_NOT_SUPPORTED"}'
-                    # We only want this to run if we just did dns (and rdap)
-                    db.insertDomainMetaTable(extension, thread.sql, domain, dns_status, expiration_date, available_date, deleted_date, rdap_dump)
-                # We always want to do this even if we skipped dns
-                # We want a rectord for each file the url is in
+                        rdap_results = None
+                        if (globals.RDAP_ENABLE):
+                            if (results == globals.DNS_RECORDS.NXDOMAIN):
+                                # i hate this
+                                if tld in globals.RDAP_TLDS:
+                                    rdap_dump, expiration_date, available_date, deleted_date = rdap_analysis(domain)
+                                else:
+                                    # If RDAP is not supported by TLD
+                                    rdap_dump = '{"STATUS": "RDAP_NOT_SUPPORTED"}'
+                        # We only want this to run if we just did dns (and rdap)
+                        db.insertDomainMetaTable(extension, thread.sql, domain, dns_status, expiration_date, available_date, deleted_date, rdap_dump)
+
+                        # We always want to do this even if we skipped dns
+                        # We want a rectord for each file the url is in
+
+
                 for file in files:
                     file_whitout_id = file.split("/", 1)[1]
                     

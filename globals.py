@@ -65,6 +65,9 @@ checked_domains_lock = threading.Lock()
 # DNS Records
 dns_records = {}
 
+# Variables for the DNS analysis
+DNS_ENABLE = os.getenv('DNS_ENABLE', True)
+
 # Variables for the static analysis
 STATIC_ENABLE = os.getenv('STATIC_ENABLE', False)
 
