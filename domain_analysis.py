@@ -13,21 +13,13 @@ from helpers import *
 import db
 from datetime import datetime
 
-
-#Unoffcial API KEY (Samuel)
-#Key: h1Jo22moy2n4_Wqi1sKQDBAzRYbPKDYuaoM
-#Secret: QGRs57FnetX9qQsNVbXKeL
-
-# curl -X 'GET' 'https://api.godaddy.com/v1/domains/available?domain=npms.io&checkType=FAST&forTransfer=true'  -H 'accept: application/json'   -H 'Authorization: sso-key h1Jo22moy2n4_Wqi1sKQDBAzRYbPKDYuaoM:QGRs57FnetX9qQsNVbXKeL'
-
-
 GODADDY_TLDS = []
 
 def godaddy_is_available(domain, max_retries=3):
     #print(Style.DIM + 'Checking domain %s with GoDaddy' % domain + Style.RESET_ALL)
     DOMAIN_API = "https://api.godaddy.com/v1/domains/available?domain="
-    API_KEY = "h1JgSaN2VmpJ_TTiof91Kw8iqsSz67S8kRq"
-    API_SECRET = "W9MoHC9NakTKG4ZdQJkLV1"
+    API_KEY = "0000000000000000"
+    API_SECRET = "00000000000"
     
     request_url = DOMAIN_API + domain
 

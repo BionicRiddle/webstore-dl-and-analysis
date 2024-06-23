@@ -32,8 +32,8 @@ def exit(*args, **kwargs):
 
 def godaddy_get_supported_tlds():
     
-    API_KEY = "h1JgSaN2VmpJ_TTiof91Kw8iqsSz67S8kRq"
-    API_SECRET = "W9MoHC9NakTKG4ZdQJkLV1"
+    API_KEY = "0000000000000000"
+    API_SECRET = "00000000000"
     DOMAIN_API = "https://api.godaddy.com/v1/domains/tlds"
 
     response = requests.get(DOMAIN_API, headers = {
