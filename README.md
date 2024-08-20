@@ -1,3 +1,5 @@
+## Needs updating
+
 # webstore-dl-and-analysis
 Download extensions by running: (You can ctrl+c or kill at process at any time and restart without losing progress) You can also increase number of threads around line 219
 
