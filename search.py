@@ -12,6 +12,7 @@ from datetime import datetime
 import zipfile
 import argparse
 import signal
+import random
 
 # Concurrent threads
 import threading
@@ -37,7 +38,6 @@ from analyze import analyze_extension
 from esprima import Esprima
 
 ## --- GLOBALS ---
-extension_counter = 0
 # Start time
 start_time = time.time()
 
@@ -53,8 +53,19 @@ def handle_sigterm(*args):
 
 signal.signal(signal.SIGTERM, handle_sigterm)
 
+
+def _ensure_cache_file(path: str, fetcher) -> str:
+    """Return cached content from path, creating it via fetcher() if missing."""
+    if not os.path.exists(path):
+        with open(path, 'w') as f:
+            f.write(str(fetcher()))
+    with open(path, 'r') as f:
+        return f.read()
+
+
 # Worker Thread
 class WorkerThread(threading.Thread):
+    """Analyze queued extensions in a dedicated worker thread."""
     def __init__(self, queue, thread_id, sql, esprima):
         print('Starting thread %d' % thread_id)
         threading.Thread.__init__(self)
@@ -72,7 +83,7 @@ class WorkerThread(threading.Thread):
 
         # Wait for work to be added to the queue
         while self._queue.empty():
-            if globals.TEMINATE:
+            if globals.TERMINATE:
                 break
             time.sleep(1)
        
@@ -83,7 +94,7 @@ class WorkerThread(threading.Thread):
             except queue.Empty as e:
                 break
             try:
-                if (globals.TEMINATE):
+                if globals.TERMINATE:
                     break
                 self._current_extension = extension
                 done = analyze_extension(self, extension)
@@ -96,7 +107,7 @@ class WorkerThread(threading.Thread):
                 traceback.print_exc()
                 print(Fore.RED + 'Error in thread %d, cannot continue: %s' % (self._thread_id, e) + Style.RESET_ALL)
                 # signal to all threads to terminate
-                globals.TEMINATE = True
+                globals.TERMINATE = True
                 break
             self._queue.task_done()
         print(Fore.YELLOW + 'Thread %d terminated' % self._thread_id + Style.RESET_ALL)
@@ -114,6 +125,7 @@ class WorkerThread(threading.Thread):
         self._stop_event.set()
 
 def parse_arguments():
+    """Parse CLI arguments and merge them with environment-backed defaults."""
     parser = argparse.ArgumentParser(
         description = """
 Extension analyzer
@@ -134,6 +146,12 @@ NODE_APP_PATH: "PATH" (default: "./node/app.js")
 RANDOM_EXTENSION_ORDER: True/False (default: False)
 PICKLE_FILE: "PATH" (default: "search.pkl")
 DISPLAY_PORT: N (default: 99)
+COMMON_URLS_ENABLE: True/False (default: False)
+PRETTY_OUTPUT: True/False (default: False)
+DYNAMIC_WAIT_TIME: N (default: 30)
+STATIC_ENABLE: True/False (default: False)
+DYNAMIC_ENABLE: True/False (default: False)
+RDAP_ENABLE: True/False (default: False)
     ''',
     formatter_class = argparse.RawTextHelpFormatter
     )
@@ -146,6 +164,11 @@ DISPLAY_PORT: N (default: 99)
     parser.add_argument('-s', '--stfu',             action='store_true',    help="Disable Progress Bar",                default=globals.STFU_MODE)
     parser.add_argument('-R', '--reset',            action='store_true',    help="Reset the database",                  default=globals.DROP_TABLES)
     parser.add_argument('-r', '--random',           action='store_true',    help="Randomize extension order",           default=globals.RANDOM_EXTENSION_ORDER)
+    parser.add_argument('--dynamic',                action='store_true',    help="Enable dynamic analysis",             default=globals.DYNAMIC_ENABLE)
+    parser.add_argument('--static',                 action='store_true',    help="Enable static analysis",              default=globals.STATIC_ENABLE)
+    parser.add_argument('--rdap',                   action='store_true',    help="Enable RDAP analysis",                default=globals.RDAP_ENABLE)
+    parser.add_argument('--common-urls',            action='store_true',    help="Enable common URL counting across extensions", default=globals.COMMON_URLS_ENABLE)
+    parser.add_argument('--pretty',                 action='store_true',    help="Pretty-print JSON output files",      default=globals.PRETTY_OUTPUT)
     parser.add_argument('-p', '--pickle',           action='store_true',    help="Resume last state",                   default=False)
     
     # Positional argument
@@ -163,6 +186,11 @@ if __name__ == "__main__":
     globals.STFU_MODE = args.stfu
     globals.DROP_TABLES = args.reset
     globals.RANDOM_EXTENSION_ORDER = args.random
+    globals.DYNAMIC_ENABLE = args.dynamic
+    globals.STATIC_ENABLE = args.static
+    globals.RDAP_ENABLE = args.rdap
+    globals.COMMON_URLS_ENABLE = args.common_urls
+    globals.PRETTY_OUTPUT = args.pretty
     globals.PICKLE_LOAD = args.pickle
 
     extensions_paths = args.path_to_extensions
@@ -219,34 +247,10 @@ Chalmers University of Technology, Gothenburg, Sweden
         if os.path.exists("search.pkl"):
             os.remove("search.pkl")
 
-    # Godaddy get supported TLDs
-    if os.path.exists(os.getcwd() + "/GoDaddyCache.txt"):
-        pass
-    else:
-        f = open("GoDaddyCache.txt", "w")
-        f.write(str(godaddy_get_supported_tlds()))
-        f.close()
-    
-    # DomainDb get supported TLDs
-    if os.path.exists(os.getcwd() + "/DomainDbCache.txt"):
-        pass
-    else:
-        f = open("DomainDbCache.txt", "w")
-        f.write(str(domainsdb_get_supported_tlds()))
-        f.close()
-
-    # RDAP get supported TLDs
-    if os.path.exists(os.getcwd() + "/RDAPCache.txt"):
-        pass
-    else:
-        f = open("RDAPCache.txt", "w")
-        f.write(str(rdap_get_supported_tlds()))
-        f.close()
-   
-    # Read the cache files
-    godaddy = open(os.getcwd() + "/GoDaddyCache.txt", "r")
-    domaindb = open(os.getcwd() + "/DomainDbCache.txt", "r")
-    rdap_tlds = open(os.getcwd() + "/RDAPCache.txt", "r")
+    globals.GODADDY_TLDS = _ensure_cache_file(os.path.join(os.getcwd(), "GoDaddyCache.txt"), godaddy_get_supported_tlds)
+    globals.DOMAINSDB_TLDS = _ensure_cache_file(os.path.join(os.getcwd(), "DomainDbCache.txt"), domainsdb_get_supported_tlds)
+    if globals.RDAP_ENABLE:
+        globals.RDAP_TLDS = _ensure_cache_file(os.path.join(os.getcwd(), "RDAPCache.txt"), rdap_get_supported_tlds)
 
     if globals.PICKLE_LOAD:
         print('Loading pickle file...')
@@ -257,11 +261,6 @@ Chalmers University of Technology, Gothenburg, Sweden
             print(Fore.RED + 'Could not load pickle file' + Style.RESET_ALL)
             globals.PICKLE_LOAD = False
     
-    globals.GODADDY_TLDS = godaddy.read()
-    globals.DOMAINSDB_TLDS = domaindb.read()
-    if globals.RDAP_ENABLE:
-        globals.RDAP_TLDS = rdap_tlds.read()
-
     # Create a connection to the database using the SQLWrapper
     sql_w = db.SQLWrapper(DATABASE)
     esprima = None
@@ -287,8 +286,8 @@ Chalmers University of Technology, Gothenburg, Sweden
             esprima.close_process()
 
 
-    def exit(int, exception=None):
-        globals.TEMINATE = True
+    def _shutdown(code, exception=None):
+        globals.TERMINATE = True
         sql_w.close()
         counters = []
         for t in threads:
@@ -316,9 +315,9 @@ Chalmers University of Technology, Gothenburg, Sweden
         print(sum(counters), 'extensions analyzed')
         elapsed = time.time() - start_time
         print('Elapsed time: %s' % time.strftime("%H:%M:%S", time.gmtime(elapsed)))
-        if exception is not None and int != 0:
+        if exception is not None and code != 0:
             raise exception
-        sys.exit(int)
+        sys.exit(code)
 
     try:
         # Scan and add extensions to thread_queue
@@ -335,14 +334,13 @@ Chalmers University of Technology, Gothenburg, Sweden
                 if (extensions_path[-1] != "/"):
                     extensions_path = extensions_path + "/"
 
-                if (globals.RANDOM_EXTENSION_ORDER):
-                    import random
+                if globals.RANDOM_EXTENSION_ORDER:
                     random.shuffle(extension_path_list)
 
                 for dir in extension_path_list:
                     # If something is wrong while it is scanning the extensions, it will terminate all threads
-                    if (globals.TEMINATE):
-                        exit(0)
+                    if globals.TERMINATE:
+                        _shutdown(0)
                     versions = sorted([d for d in os.listdir(extensions_path + dir) if d[-4:] == ".crx"])
                     if not versions:
                         # Empty dir
@@ -362,8 +360,8 @@ Chalmers University of Technology, Gothenburg, Sweden
             # progress bar using qsize, using alive_bar
             with alive_bar(count_extensions, bar='blocks', spinner='dots_waves', length=40, title='Analyzing extensions', manual=True) as bar:
                 while not thread_queue.empty():
-                    if (globals.TEMINATE):
-                        exit(0)
+                    if globals.TERMINATE:
+                        _shutdown(0)
                     item_progress = 1 - (thread_queue.qsize() / count_extensions)
                     bar(item_progress)
                     time.sleep(1)
@@ -377,4 +375,4 @@ Chalmers University of Technology, Gothenburg, Sweden
     except KeyboardInterrupt:
         print()
         print('Keyboard interrupt detected - terminating threads')
-    exit(0)
+    _shutdown(0)

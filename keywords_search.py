@@ -1,504 +1,187 @@
-import sys
-import time
-from datetime import datetime
-from collections import defaultdict
-import base64
-import zipfile
-import tempfile
-import codecs
+"""Utilities for scanning extracted extension files for URLs and related actions."""
+
 import json
-import re, os, shutil
-from tqdm import tqdm
-import operator
+import os
 import re
-import json
-import random
+from collections import defaultdict
+from datetime import datetime
 
-# get environment variables
+import globals
 
-DATE_FORMAT = os.getenv('DATE_FORMAT')
-if os.getenv('WSL_DISTRO_NAME'):
-    # Running on WSL
+DATE_FORMAT = os.getenv("DATE_FORMAT")
+if os.getenv("WSL_DISTRO_NAME"):
     DATE_FORMAT = DATE_FORMAT or "%Y-%m-%d_%H-%M-%S"
 else:
     DATE_FORMAT = DATE_FORMAT or "%Y-%m-%d_%H:%M:%S"
 
-now = datetime.now()
-start_time = now.strftime(DATE_FORMAT)
+start_time = datetime.now().strftime(DATE_FORMAT)
 
-def get_tmp_path(version, extension_path, dirpath=""):
-    #print("-- Creating tmp path")
-    extension_path = extension_path + "/" + version
-    #print(version, extension_path)
-    if extension_path.endswith('.crx'):
-        # Create temp dir (usually in /tmp)
+NO_URLS_FOUND = "No url(s) found"
+ANALYZE_EXTENSIONS = frozenset(["js", "html", "json", "ts", "es"])
+IGNORE_EXTENSIONS = frozenset(["css", "png", "jpg", "ico", "gif", "svg", "ttf", "woff", "woff2", "eot", "txt", "md"])
+ACTION_PATTERN = re.compile(r"\b(fetch|post|get|href|xhttp|src)\b", re.IGNORECASE)
+_HTTP_PATTERN = re.compile(r"https?://(?:www\.)?[a-zA-Z0-9\-_#=./]+")
+_WWW_PATTERN = re.compile(r"(?:www)\.[a-zA-Z0-9\-_#=./]+")
+_URL_PATTERNS = [_HTTP_PATTERN.pattern, _WWW_PATTERN.pattern]
+_URL_REGEX = re.compile(r"\b(" + "|".join(_URL_PATTERNS) + r")\b")
 
-        dirpath = tempfile.mkdtemp()
-        #print("-- Tmp path: ", dirpath)
-        # Move crx to temp, and add .zip
-        shutil.copyfile(extension_path, dirpath + '/extension.zip')
-        version_path = dirpath + '/extension.zip'
-        try:
-            zip_ref = zipfile.ZipFile(version_path, 'r')
-            zip_ref.extractall(dirpath + '/' + version)
-            zip_ref.close()
-        except Exception as e:
-            pass
-            #print("[+] Error (get_tmp_path) in {}: {}".format(extension_path, 'OK') )
-        finally:
-            path = dirpath + '/' + version
-            return (dirpath, path)
-    return None
 
-def getUrl(data, patterns):
-    pattern = re.compile(r'\b(' + '|'.join(patterns) + r')\b')
-    
-    #print(data.lower())
-    
-    url = re.findall(pattern, data.lower())
-    # Did we find a url?
-    if len(url) > 0:
-        ## Check if valid url
-        return url
-   
-    return 'No url(s) found'
+def _merge_actions(target, source):
+    for action_type, url_map in source.items():
+        if action_type not in target:
+            target[action_type] = url_map
+            continue
 
-def getUrls(data, patterns):
-    # - Try different patterns (Maybe 3 or so)
-    # - Investigate False positives vs False Negatives
-    # - Fix so it detects when link simply starts with "www" and not "http" or "https"
+        for url, entries in url_map.items():
+            if url in target[action_type]:
+                target[action_type][url].extend(entries)
+            else:
+                target[action_type][url] = entries
 
-    #Combination of different patterns, compiled together
-    pattern = re.compile(r'\b(' + '|'.join(patterns) + r')\b')
 
-    #Look for all matches to the pattern in the specified file
-    matches = re.findall(pattern, data.lower())
+def getUrls(data, patterns=_URL_REGEX):
+    """Return the unique URLs found in a string or a sentinel when none are present."""
+    pattern = patterns if isinstance(patterns, re.Pattern) else re.compile(r"\b(" + "|".join(patterns) + r")\b")
+    matches = pattern.findall(data.lower())
+    urls = set(matches)
+    return urls if urls else NO_URLS_FOUND
 
-    #Avoid dupliactes
-    urls = set()
 
-    #Check if any actual matches were found
-    if len(matches) > 0:
-        for link in matches:
-            urls.add(link)
-        return urls
-    else:
-        #No url's were found
-        return 'No url(s) found'
-
-def containsAction(dictionary, action):
-    for actions in dictionary:
-        if actions == action:
-            return True
-    return False
-
-def getActions(data, filePath, urlPattern):
-    #Fix bugs (Check return types from getUrl, see if it messes up the function)
-    # - Bug is that it reads strings as actions, should not do that
-    
-    # Runs per file
-
-    #Mapping actions (see pattern dict below) to a url and the extension file it resides in
+def getActions(data, filePath, urlPattern=_URL_REGEX):
+    """Map actions such as fetch/href/src to nearby URLs and their file context."""
     actionUrlMap = defaultdict(dict)
-    #contextMap   = defaultdict(dict)
+    actions = [(match.start(0), match.end(0)) for match in ACTION_PATTERN.finditer(data)]
 
-    #Actions of interest - To be expanded
-    pattern = ['fetch', 'post', 'get', 'href', 'xhttp','src', 'FETCH', 'POST', 'GET', 'HREF', 'XHTTP', 'SRC']
+    for startIndex, endIndex in actions:
+        # Only scan a short window after the action so nearby URLs are associated cheaply.
+        lookahead = data[endIndex:endIndex + 100]
+        urls = getUrls(lookahead, urlPattern)
+        if urls == NO_URLS_FOUND:
+            continue
 
-    #Compile the pattern(s) (fetch, post, etc are technically individual patterns - need to combine them)
-    regex = re.compile(r'\b(' + '|'.join(pattern) + r')\b')
+        actionType = data[startIndex:endIndex].lower()
 
-    #data = "jibberish deluxedwawaDwadwadwadwadsa das dsad wad aw d sec-fetch-mode"":""cors"",""sec-fetch-site"":""cross-site"",""Referer:https://appsumo.com/"
+        for url in urls:
+            # Ignore matches that start too far away; they usually belong to later markup.
+            if url in data[endIndex + 30:endIndex + 100]:
+                continue
 
-    #Looks up the index of each match of a pattern
-    actions = [(m.start(0), m.end(0)) for m in regex.finditer(data)]
-        
-        #if data[ind.start(0):ind.end(0)].lower() not in pattern:
-            #print(data[ind.start(0):ind.end(0)])
-        #print(data[ind.end(0)])
-    #Loop through each action
-    for action in actions:
-        # Start of supposed action
-        startIndex = action[0]     
-        
-        #End of supposed action
-        endIndex = action[1]
-        
-        #Action runs from indexes action[0] -> action[1]
-        #Check ahead of the action to see if a url can be found after it, using the getUrl() function
-        if str(getUrl(data[endIndex:endIndex+100], urlPattern)) != 'No url(s) found':
-            
-            # E.x href, get, fetch etc
-            actionType = data[startIndex:endIndex].lower()
-            
-            #If a url is found, store it in association with the action
-        
-            # Very much test
-            urls = getUrl(data[endIndex:endIndex+100], urlPattern)
+            try:
+                urlStart = lookahead.lower().index(url) + endIndex
+            except ValueError:
+                continue
 
-            
-            # If beginning of url is matched too far away ahead, it is likely not part of the action
-            # src="/img/list.png"></a> <div class="dropdown-content"> <a target="blank" href="https://www.w3techic.co
-            # The href link will match to the src attribute here which is incorrect
-            # Addtionally, the href link is cut, should be .com
-            
-            # Check that the url begins within the first 30 characters
-            #print(data[startIndex:endIndex])
-            for url in urls:
-                if url in data[endIndex+30:endIndex+100]:
-                    continue
+            context = data[max(0, startIndex - 40):urlStart] or "No context available"
+            urlAndContext = {
+                "filePath": filePath,
+                "context": context,
+            }
 
-                
-                
-                try:
-                    urlStart = data[endIndex:endIndex+100].lower().index(url) + endIndex
-                except Exception as e:     
-                    print(data[endIndex:endIndex+100].lower())
-                    print(url)
-                    print("Error: " + str(e))
-                    print()
-                            
-                
-                # Retrieve context for action
-                # Check if context check is possible
-                if startIndex - 40 >= 0:
-                    context = data[startIndex-40:urlStart]
-                elif startIndex - 30 >= 0:
-                    context = data[startIndex-30:urlStart]
-                elif startIndex - 20 >= 0:
-                    context = data[startIndex-20:urlStart]
-                else:
-                    context = "No context available" 
-                
-
-                ## actionType: E.x {post, fetch, href, src etc}
-                ## url: https://www.google.com or simmilar
-
-                
-                if actionType in actionUrlMap:
-                    # Check if domain has already been added
-                    if url in actionUrlMap[actionType]:
-                        if filePath not in actionUrlMap[actionType][url]:
-
-                            urlAndContext = {
-                                "filePath": filePath,
-                                "context": context
-                            }
-                            actionUrlMap[actionType][url].append(urlAndContext)
-                            
-                    else:
-                        # Action has been added but the url has not
-                        urlAndContext = {
-                            "filePath": filePath,
-                            "context": context
-                        }
-                        actionUrlMap[actionType][url] = [urlAndContext]
-
-                else:
-                    #print("Url: " + url)
-                    urlAndContext = {
-                        "filePath": filePath,
-                        "context": context
-                    }
-                    actionUrlMap[actionType][url] = [urlAndContext]
-                    
-                #print(urlAndContext)
-                    #print(str(actionUrlMap[actionType][url]))
-                    
-                urlAndContext = []
+            if url in actionUrlMap[actionType]:
+                existing_file_paths = {
+                    entry["filePath"] for entry in actionUrlMap[actionType][url]
+                }
+                if filePath not in existing_file_paths:
+                    actionUrlMap[actionType][url].append(urlAndContext)
+            else:
+                actionUrlMap[actionType][url] = [urlAndContext]
 
     return actionUrlMap
 
+
 def analyze_data(path, extensions_path):
-    ## Path: Path to crx file
-    
-    # This is done per extension
-    
-    
-    #print("Analyzing data: " + path)
-
-    #Keeps track of how many times the urls are encountered
+    """Analyze extracted extension files and collect URL, action, and hit metadata."""
     commonUrls = defaultdict(int)
-
-    #Keeps track of all urls and the extension(s) and file(s) they're found in
     urlList = defaultdict(list)
-
-    #print("-- analyze_data(",path,")")
-    actionUrlExtensionList = defaultdict(list)
-    
     actionsList = defaultdict(dict)
-
-
-
-    (regexs, keywords) = ([], ["http"]) 
-    
-
-    # hits are the results
+    regexs = []
+    keywords = ["http", "www"]
     hits = []
-    for dirpath, dirnames, filenames in os.walk(path):
-        unknown_ext = open("unknown-ext.txt", "a+")
-        for filename in filenames:
-            try:
-                extension = filename.split(".")[-1]
-            except:
-                extension = "NONE"
-            if extension in ["js", "html", "json", "ts", "es"]:
-                data = ""
-                with open(dirpath + os.sep + filename, encoding='utf-8', errors='ignore') as dataFile:
-                    data = " ".join(dataFile.read().split())
+    extensionId = os.path.basename(os.path.normpath(extensions_path))
+    last_scanned_path = path
 
-                # TODO: Analyze :)
-                ## Here you can look at the file content (data) for what you want.
-                ## Use strings, REGEX, ML, ...
+    for dirpath, _, filenames in os.walk(path):
+        with open("unknown-ext.txt", "a+", encoding="utf-8") as unknown_ext:
+            for filename in filenames:
+                file_path = os.path.join(dirpath, filename)
+                last_scanned_path = file_path
+                extension = filename.rsplit(".", 1)[-1] if "." in filename else "NONE"
 
-                if regexs:
-                    for regex in regexs:
-                        matches = re.findall(regex, data.lower())
-                        for word in matches:
-                            #print("---- Hit! Found ", word, " in ", dirpath+"/"+filename)
+                if extension in ANALYZE_EXTENSIONS:
+                    with open(file_path, encoding="utf-8", errors="ignore") as dataFile:
+                        data = " ".join(dataFile.read().split())
 
-                            pos = data.lower().find(word.lower())
-                            chunk = data[max(0,pos-100):pos+100]
+                    if regexs:
+                        for regex in regexs:
+                            matches = re.findall(regex, data.lower())
+                            for word in matches:
+                                pos = data.lower().find(word.lower())
+                                chunk = data[max(0, pos - 100):pos + 100]
+                                hits.append([f"{word}\t{chunk}", file_path])
+                        continue
 
-                            hits.append( [word + "\t" + chunk, dirpath + "/" + filename] )
+                    if any(word.lower() in data.lower() for word in keywords):
+                        relative_file_path = os.path.relpath(file_path, path).replace(os.sep, "/")
+                        actions = getActions(data, relative_file_path, _URL_REGEX)
+                        chunk = getUrls(data, _URL_REGEX)
 
-                    continue
-
-                for word in keywords:
-                    if word.lower() in data.lower():
-
-                        #print("---- Hit! Found ", word, " in ", dirpath+"/"+filename)
-
-                        # Bug: Thinks https://... is a url, look into later - E.x, https://a is considered a link (pattern 1)
-                        # Bug: Misses sites whic start with "www" (as far as is known) - Seems to be fixed by combining pattern2 with pattern1
-                        # Otherwise seems to be working just fine.
-                        
-                        # Starting with https or http
-                       
-                        #httpPattern = 'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+(?:[/][A-Za-z0-9-_.?=&]*)*'
-                        
-                        httpPattern = 'https?://(?:www\\.)?[a-zA-Z0-9-_#=./]+' #TMP - TESTING
-                        
-                        # Not starting with http or https (e.x, website.com, www.website.com, pizzabakery.net etc)
-                        # Not detecting anything it seems, potentially due to not being any "www.example.com" only links present, only ones starting with https / http, need to test
-                        #wwwPattern = "^[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$(?:[/][A-Za-z0-9-_.?=]*)*"
-                        
-                        #wwwPattern = '(?:\w+\.)*\w+\.[a-zA-Z0-9./]+' #TMP - TESTING
-                        wwwPattern = '(?:www)\.[a-zA-Z0-9-_#=./]+'
-
-                        patterns = [httpPattern, wwwPattern]
-                        #patterns = [httpPattern]
-                        
-                        # Determine path (I do not like this but I hope it is better performance than doing os.walk or something simmilar again)
-                        split = dirpath.split("/")
-                        extensionId = extensions_path.split("/")[1]
-                        filePath = ""
-                        if len(split) > 0:
-                            for x in range(3):
-                                split.pop(0)
-                            for entry in split:
-                                filePath = filePath + "/" + entry
-                            filePath = filePath + "/"
-                        
-                        # Actions and any associated url's
-
-                        file_path_with_file = filePath + filename
-                                                
-                        actions = getActions(data, file_path_with_file, patterns)
-                        
-                        #print("Dirpath: " + dirpath + "/" + filename)
-
-                        # Retrieves all url's from the current file (data)
-                        # Chunk is old name, perhaps rewrite
-                        chunk = getUrls(data, patterns)
-
-                        # Ensure any actual url's were found
-                        if chunk != 'No url(s) found':
-                            # Loop through each url found
+                        if chunk != NO_URLS_FOUND:
                             for url in chunk:
-                                # Simply demonstrates the amount of times a url is encountered, not other information is stored
                                 commonUrls[url] += 1
+                                urlList[url].append(f"{extensionId}/{relative_file_path}")
 
-                                # Provides information about where the url is found (extension(s) and filenames(s))
-                                urlList[url].append(extensionId + filePath + filename)
-                                
-                        
-                        actionsList = actions
-
-                        ### Legacy, maybe remove, will look into further on
-                        #hits.append( [word + ':  ' + chunk, dirpath + "/" + filename] )
-                        
-
-                        #print("--------------------------------------------------------\n")
-            else:
-                # ignore common files ectension "css png jpg"
-                if extension in ["css", "png", "jpg", "ico", "gif", "svg", "ttf", "woff", "woff2", "eot", "html", "txt", "md", "DS_Store"]:
+                        _merge_actions(actionsList, actions)
+                elif extension in IGNORE_EXTENSIONS or filename == "DS_Store":
                     continue
-                # log in file unknown-ext.txt
-                unknown_ext.write(extension + "\t| " + dirpath + os.sep + filename + "\n")
-        unknown_ext.close()
+                else:
+                    unknown_ext.write(f"{extension}\t| {file_path}\n")
 
-    #print("Return actions: " + str(actions))
-    
-    # Duplicates occur here already!
-    
-    #print("Printing...")
-    #for action in actionsList:
-        #print(str(actionsList[action]))
-    #print("_____________________________________")
-    
-    
-    return hits, commonUrls, actionsList, dirpath + "/" + filename, urlList
+    return hits, commonUrls, actionsList, last_scanned_path, urlList
+
 
 def analyze(extension, isInternal, single_extension=None):
-    #extensions_path = extension
-    #extensions_path = extension.get_crx_path()
-    
-    extensions_path = extension.get_crx_path().split("/")[0] + "/" + extension.get_crx_path().split("/")[1]
-    
-    #print("Analyze: " + str(extensions_path))
-    
-    #print("Analyze function Start:")
+    """Run keyword analysis for an extension and store the result on the extension object."""
+    crx_path = os.path.normpath(extension.get_crx_path() or "")
+    # get_crx_path() normally looks like "<extensions-root>/<extension-id>/<archive>.crx".
+    # Keyword analysis needs the parent "<extensions-root>/<extension-id>" directory; if
+    # that path is unavailable or malformed, fall back to the extracted directory's parent.
+    extensions_path = os.path.dirname(crx_path) if crx_path else os.path.dirname(os.path.normpath(extension.get_extracted_path()))
 
-    #Keeps track of urls, associated action and the file/extension they reside in
-    #UrlList = defaultdict(list)
     commonUrls = defaultdict(int)
-
-    #Keeps track of actions and their associated url
     actionsList = defaultdict(dict)
-
-    #Keeps track of url's and the extension & file they belong to
     urlList = defaultdict(list)
-
-    
-    
-    #extension = os.listdir(str(extensions_path))
-    
-    #print("--- Exists: ---- : " + str(extensions))
-
-        #print("\n\n\nAnalyzing ", extension)
-        
-        # Check if called via keyword search or not
-        
-    if isInternal:
-        extension_path = extensions_path + extension
-    else:
-        extension_path = extensions_path
-            
-        
-        #print("-- Path to extension: ", extension_path)
-        
-        
-    #dirpath, path = get_tmp_path(version, extension_path)
     path = extension.get_extracted_path()
-    #+ "/" + extension.get_crx_path().split("/")[2]
-    #print("Path: " + path)
 
     try:
-        # Do the analysis!
+        hits, urls, actions, _, urlAndExtensions = analyze_data(path, extensions_path)
 
-        #[0] = Hits
-        #[1] = Urls encountered
-        #[2] = actions
-        #[3] = extension
-        #[4] = Url list with extensions they reside in
-    
-        
-        result = analyze_data(path, extensions_path)
-        hits =               result[0] #Hits (?) vad den får ut I guess
-        urls =               result[1] #E.x, {"www.yelp.com" : 1, "www.pizza.com", 2}
-        actions =            result[2]
-        extension_analyzed = result[3] #E.x... tomt
-        urlAndExtensions =   result[4] #
+        for url, count in urls.items():
+            commonUrls[url] += count
 
-        
-        for url in urls:
-            if url in commonUrls:
-                commonUrls[url] += 1
-            else:
-                commonUrls[url] = 1
+        for url, entries in urlAndExtensions.items():
+            urlList[url].extend(entries)
 
-        for url in urlAndExtensions:
-            for entry in urlAndExtensions[url]:
-                urlList[url].append(entry)
-            
-        #print("Returned actions: ")
-        #print(str(actionsList))
-        
-        # TMP REMOVE
-        
-        #print("Holy shit!")
-        
-        ## Right here, the list seems to be intact
-        
-        ## Here we go, may lord have mercy on my soul
-        
-        
-        for action in actions:
-            
-            # Has the action (href, etc) already been added?
-            if action in actionsList:
-                for entry in actions[action]:
-                    # Has the url already been added
-                    if entry in actionsList:
-                        actionsList[action][entry].append(actions[action][entry])
-                    else:
-                        actionsList[action][entry] = actions[action][entry]
-                
-            else:
-                actionsList[action] = actions[action]
+        _merge_actions(actionsList, actions)
 
         if hits:
-            if (PRETTY_OUTPUT):
-                open("hits_"+str(start_time)+".txt", "a+").write( json.dumps({"ext_id": extension, "hits": hits}, indent=4) + "\n" )
-            else:
-                open("hits_"+str(start_time)+".txt", "a+").write( json.dumps({"ext_id": extension, "hits": hits}) + "\n" )
-
-            #Uncomment later   
-            #print(extension, hits)
+            payload = {"ext_id": extension, "hits": hits}
+            with open(f"hits_{start_time}.txt", "a+", encoding="utf-8") as hits_file:
+                if globals.PRETTY_OUTPUT:
+                    hits_file.write(json.dumps(payload, indent=4) + "\n")
+                else:
+                    hits_file.write(json.dumps(payload) + "\n")
 
     except Exception as e:
         print("Error on ", extension, ": ", str(e))
         import traceback
         traceback.print_exc()
-        input("(Paused on error) Enter to continue...")
 
-    #try:
-        #shutil.rmtree(dirpath)
-    #except:
-        #pass
-        #print("Error could not delete tmp dir")
-
-    else:
-        pass
-        #print("[+] Error. No such file or dir: {}".format(extension))
-        
-        
-    # Set extension properties
-    extension.set_keyword_analysis ( {
+    extension.set_keyword_analysis({
         "list_of_common_urls": commonUrls,
-        "list_of_actions":  actionsList,
-        "list_of_urls": urlList
+        "list_of_actions": actionsList,
+        "list_of_urls": urlList,
     })
-    
+
 
 if __name__ == "__main__":
-    #print('------------ Extensions to Analyze: {} ------------')
-
-    ## if -? or -h or --help
-    if len(sys.argv) > 1 and sys.argv[1] in ['-?', '-h', '--help']:
-        #print("Usage: python3 keywords_search.py [path_to_extensions]")
-        #print("Example: python3 keywords_search.py extensions/")
-        exit(0)
-
-    extension = None
-    ## if extension id is given as argument
-    if len(sys.argv) > 1:
-        #print("Running single extension: ", sys.argv[1])
-        extension = sys.argv[1]
-
-
-
-    extensions_path = 'extensions/'
-    analyze(extensions_path, extension, True)
-    
+    raise SystemExit("keywords_search.py is intended to be imported and called with an Extension object.")

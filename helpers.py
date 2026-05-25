@@ -1,44 +1,33 @@
-import sys
-import random
-import time
+"""Shared helper utilities for logging, persistence, domain normalization, and queueing."""
+
 import builtins
-from colorama import Fore, Back, Style
-import globals
-import requests
-import json
-import tldextract
-from datetime import datetime
+import os
 import pickle
+import queue
 import threading
-import punycode
 import traceback
+from datetime import datetime
 
+import punycode
+import requests
+import tldextract
 
-## Bara funktioner
-
-def simulate_work(extension):
-    time.sleep(random.uniform(0.1, 1))
-    print(Style.DIM + ('Analyzed extension %s' % extension) + Style.RESET_ALL)
 
 def print(*args, **kwargs):
     builtins.print(datetime.now(), end=" - ")
     builtins.print(*args, **kwargs)
 
-#  exit with any args
-def exit(*args, **kwargs):
-    builtins.print(Fore.RED + "THIS SHOULD NOT BE CALLED" + Style.RESET_ALL)
-    #raise Exception("exit() should not be called")
-    sys.exit(*args, **kwargs)
 
 def godaddy_get_supported_tlds():
-    
-    API_KEY = "0000000000000000"
-    API_SECRET = "00000000000"
+    API_KEY = os.getenv('GODADDY_API_KEY', '')
+    API_SECRET = os.getenv('GODADDY_API_SECRET', '')
     DOMAIN_API = "https://api.godaddy.com/v1/domains/tlds"
 
-    response = requests.get(DOMAIN_API, headers = {
-        "Authorization": "sso-key " + API_KEY + ":" + API_SECRET
-    })
+    response = requests.get(
+        DOMAIN_API,
+        headers={"Authorization": "sso-key " + API_KEY + ":" + API_SECRET},
+        timeout=10,
+    )
 
     json_response = response.json()
 
@@ -48,11 +37,11 @@ def godaddy_get_supported_tlds():
 
     return tlds
 
-def domainsdb_get_supported_tlds():
 
+def domainsdb_get_supported_tlds():
     DOMAIN_API = "https://api.domainsdb.info/v1/info/tld/"
 
-    response = requests.get(DOMAIN_API)
+    response = requests.get(DOMAIN_API, timeout=10)
 
     json_response = response.json()
 
@@ -62,10 +51,11 @@ def domainsdb_get_supported_tlds():
 
     return tlds
 
+
 def rdap_get_supported_tlds():
     DOMAIN_API = "https://root.rdap.org/domains"
 
-    response = requests.get(DOMAIN_API)
+    response = requests.get(DOMAIN_API, timeout=10)
     data = response.json()
 
     tlds = []
@@ -76,23 +66,27 @@ def rdap_get_supported_tlds():
                 tlds.append(data["domainSearchResults"][i]["ldhName"])
     return tlds
 
-# Pickle save
+
 def save_object(obj, filename):
+    """Serialize an object to disk with pickle."""
     with open(filename, 'wb') as f:
         pickle.dump(obj, f)
 
-# Pickle load
+
 def load_object(filename):
+    """Load a pickled object from disk."""
     with open(filename, 'rb') as f:
         return pickle.load(f)
 
-# Pickle Object
+
 class SaveObject:
     def __init__(self, data):
         self.data = data
 
-# Thread safe Unique Queue
+
 class UniqueQueue:
+    """A thread-safe queue that only stores unique items once."""
+
     def __init__(self):
         self.queue = queue.Queue()
         self.unique_items = set()
@@ -107,10 +101,10 @@ class UniqueQueue:
 
     def load(self, save):
         not_done_items = save.data[0]
-        
+
         for item in not_done_items:
             self.put(item)
-        
+
         # This will replace the unique items with the ones from the save
         self.unique_items = save.data[1]
 
@@ -121,9 +115,7 @@ class UniqueQueue:
                 self.unique_items.add(item)
 
     def get(self, block=True, timeout=None):
-        with self.lock:
-            item = self.queue.get(block, timeout)
-            return item
+        return self.queue.get(block=block, timeout=timeout)
 
     def empty(self):
         with self.lock:
@@ -132,7 +124,7 @@ class UniqueQueue:
     def qsize(self):
         try:
             return self.queue.qsize()
-        except:
+        except Exception:
             print("Could not get qsize")
             return -1
 
@@ -143,34 +135,12 @@ class UniqueQueue:
         self.queue.join()
 
     def __len__(self):
-        with self.lock:
-            return len(self.queue)
+        return self.queue.qsize()
 
 
 def get_valid_domain(url):
-    """
-    Extracts the valid domain from a given URL. If non-ascii characters are present in the URL, they are converted to punycode.
-
-    This function uses the tldextract library to extract the domain and suffix from the URL.
-    It then checks if the domain or suffix is valid according to certain rules.
-    If the domain is 'www', or the suffix is in a list of disallowed suffixes, or either the domain or suffix is empty, the function returns False.
-    Otherwise, it returns the domain and suffix concatenated with a '.'.
-
-    Parameters:
-    url (str): The URL to extract the domain from.
-
-    Returns:
-    str|bool: The valid domain if it exists, otherwise False.
-
-    Example:
-    >>> get_valid_domain("https://www.google.com")
-    'google.com'
-    >>> get_valid_domain("https://www.ads")
-    False
-    """
-
+    """Return a normalized punycode domain and suffix tuple for a URL-like string."""
     try:
-            
         # add support for wildcard tlds, these are not actually valid tlds
         # and should be filtered out, but it is not a bad idea to keep for further analysis
         extract = tldextract.TLDExtract(extra_suffixes=["wildcardtld"])
@@ -181,7 +151,7 @@ def get_valid_domain(url):
 
         # Here we filter out wildcards tlds and other invalid tlds
         disallowed_suffixes = ["google", "wildcardtld"]
-        
+
         if domain == "www" or suffix in disallowed_suffixes or suffix == "" or domain == "":
             return None, None
 
@@ -202,7 +172,8 @@ def get_valid_domain(url):
         print()
         return None, None
 
-import queue
+
+# Run with: python3 helpers.py to test get_valid_domain
 if __name__ == "__main__":
     test1 = "riddle.nu"
     test2 = "https://www.google.com"
@@ -219,9 +190,7 @@ if __name__ == "__main__":
     test10 = "https://www.goo gle.com"
     test11 = "https://www.goo,gle.com"
 
-
     reverse = "xn--80ajaudty.xn--p1ai"
-
 
     print(test1 + " " + str(get_valid_domain(test1)))
     print(test2 + " " + str(get_valid_domain(test2)))

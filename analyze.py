@@ -1,9 +1,15 @@
+"""Per-extension orchestration for the Chrome extension analysis pipeline.
+
+This module extracts an extension, runs manifest, keyword, static, dynamic,
+and DNS/RDAP analysis, then persists the collected results to the database and
+log files.
+"""
+
 import zipfile
 from colorama import Fore, Back, Style
 import json
 import tempfile
 import threading
-import random
 from keywords_search import analyze
 from domain_analysis import dns_analysis, rdap_analysis
 from static_analysis import static_analysis
@@ -15,13 +21,26 @@ import shutil
 import globals
 from globals import DNS_RECORDS
 from helpers import *
-import json
 import db
 import traceback
 
-# Extension class
+# File output and extension handling configuration
+FAILED_LOG_FILE = "failed.txt"
+UNKNOWN_EXT_LOG_FILE = "unknown-ext.txt"
+TIMING_LOG_FILE = "time.txt"
+
+FILE_EXTENSIONS_SKIP = ["JPG", "PNG", "ICO", "GIF", "SVG", "TTF", "WOFF", "WOFF2", "EOT", "MD", "DS_STORE"]
+FILE_EXTENSIONS_TEXT = ["JS", "CSS", "HTML", "JSON", "TXT", "XML", "YML", "TS", "CFG", "CONF"]  # Keep in sync with keywords_search.py's file type list.
+
+# File locks
+unknown_file_ext_lock = threading.Lock()
+failed_lock = threading.Lock()
+time_lock = threading.Lock()
+
 
 class Extension:
+    """Represents one extension version while it moves through the analysis pipeline."""
+
     def __init__(self, crx_path: str) -> None:
         try: 
             self.creation_time = time.time()
@@ -54,14 +73,14 @@ class Extension:
 
         # Safety checks to prevent accidental deletion of important files
         if not self.extracted_path:
-            failed_extension(self.crx_path, "No extracted path to clean up", e)
+            failed_extension(self.crx_path, "No extracted path to clean up")
             return
 
         if not os.path.exists(self.extracted_path):
             raise Exception("Extracted path does not exist")
 
         if not os.path.isdir(self.extracted_path):
-            failed_extension(self.crx_path, "Extracted path is not a directory", e)
+            failed_extension(self.crx_path, "Extracted path is not a directory")
             return
 
         if not self.extracted_path.startswith('/tmp/'):
@@ -102,7 +121,6 @@ class Extension:
         return self.manifest
     
     def get_extracted_path(self) -> str:
-        #print(self.extracted_path)
         return self.extracted_path
 
     def get_keyword_analysis(self) -> dict:
@@ -114,9 +132,6 @@ class Extension:
     def get_dynamic_analysis(self) -> dict:
         return self.dynamic_analysis
 
-    def get_extracted_files(self) -> list:
-        pass
-
     def get_id(self) -> str:
         return self.id
 
@@ -125,26 +140,6 @@ class Extension:
     
     def __str__(self) -> str:
         return self.crx_path
-
-# File locks
-unknown_file_ext_lock = threading.Lock()
-failed_lock = threading.Lock()
-failed_run_lock = threading.Lock()
-domain_found_lock = threading.Lock()
-time_lock = threading.Lock()
-
-FILE_EXTENSIONS_SKIP = ["JPG", "PNG", "ICO", "GIF", "SVG", "TTF", "WOFF", "WOFF2", "EOT", "MD", "DS_STORE"]
-FILE_EXTENSIONS_TEXT = ["JS", "CSS", "HTML", "JSON", "TXT", "XML", "YML", "TS", "CFG", "CONF"]
-
-def domain_found_godaddy(domain: str) -> None:
-    with domain_found_lock:
-        with open('found_domains_godaddy.txt', 'a') as f:
-            f.write(domain + '\n')
-            
-def domain_found_misshosting(domain: str) -> None:
-    with domain_found_lock:
-        with open('found_domains_misshosting.txt', 'a') as f:
-            f.write(domain + '\n')
 
 def failed_extension(crx_path: str, reason: str = "", exception=None) -> None:
     """
@@ -174,7 +169,7 @@ def failed_extension(crx_path: str, reason: str = "", exception=None) -> None:
         >       failed_extension(crx_path, "Invalid extension")
     """
     with failed_lock:
-        with open('failed.txt', 'a') as f:
+        with open(FAILED_LOG_FILE, 'a') as f:
             e = ""
             if exception:
                 e = "\tWith Exception: [" + str(exception) + "]"
@@ -182,15 +177,9 @@ def failed_extension(crx_path: str, reason: str = "", exception=None) -> None:
             f.write(path + ':\t' + reason + e + '\n')
             f.write(traceback.format_exc() + '\n\n')
 
-# TODO: Dynamic analysis stuff
-def failed_run(crx_path: str) -> None:
-    with failed_run_lock:
-        #TODO: write to file
-        print('Failed to run extension %s' % crx_path)
-
 def unknown_file_extension(crx_paths: list) -> None:
     with unknown_file_ext_lock:
-        with open('unknown-ext.txt', 'a') as f:
+        with open(UNKNOWN_EXT_LOG_FILE, 'a') as f:
             for crx_path in crx_paths:
                 ext = crx_path.split('.')[-1] if '.' in crx_path else 'NO_EXT'
                 out = '%s\t%s' % (ext, crx_path)
@@ -227,61 +216,44 @@ def read_manifest(crx_path: str) -> dict:
 
 ## ------------------------------
 
-# This is the main function that is called from search.py
-# It is called with a path to a crx file
-# It shpuld not return anything, but write to files
-# It may throw exceptions indicating that the extension could not be analyzed
 def analyze_extension(thread, extension_path: str) -> None:
-    globals.extension_counter = globals.extension_counter + 1
+    """Run the per-extension pipeline: extract, manifest, keyword, static, dynamic, DNS/RDAP, then persist results to the database."""
+    with globals.extension_counter_lock:
+        globals.extension_counter += 1
+        extension_count = globals.extension_counter
 
-    # print if globals.extension_counter is divisible by 500 to see progress
-    if globals.extension_counter % 500 == 0:
-        print(globals.extension_counter)
+    if extension_count % 500 == 0:
+        print(extension_count)
 
     start_time = time.time()
+    extension = None
 
-    # create obj Extension
     try:
         extension = Extension(extension_path)
-
-        # Extract file
         extension.set_extracted_path(extract_extension(extension_path))
 
-        # --- Keyword search ---
-        # keyword search, find all FILE_EXTENSIONS_TEXT in extracted files
-        # if found, do keyword_analysis()
         if extension.get_extracted_path() is None:
             failed_extension(extension_path, "Extension was not extracted properly")
             return True
     except Exception as e:
-        # if any exception during analysis, do a clean up to prevent disk filling up
         try:
-            extension.clean_up()
-        except:
+            if extension is not None:
+                extension.clean_up()
+        except Exception:
             print(Fore.RED + 'Failed to clean up after failed extension: %s' % extension_path + Style.RESET_ALL)
-            pass
-        #Log to file
         failed_extension(extension_path, "Something went wrong with the file or filesystem", e)
         return True
 
-    # Save time
     extraction_time = time.time() - start_time
 
     try:
-        # --- Read Manifest ---
         manifest_urls = manifest_analysis(extension.get_manifest())
-
         manifest_time = time.time() - start_time
 
-        # --- Keyword analysis ---
-        
-        # Rename analyze
         analyze(extension, False, extension)
 
         urls = extension.get_keyword_analysis()['list_of_urls']
-
         actionsList = extension.get_keyword_analysis()['list_of_actions']
-        #commonUrls = extension.get_keyword_analysis()['list_of_common_urls']
 
         for url in manifest_urls:
             path = extension.get_id() + "/manifest.json"
@@ -293,68 +265,44 @@ def analyze_extension(thread, extension_path: str) -> None:
 
         keyword_time = time.time() - start_time
 
-        # --- Static analysis ---
-           
         if globals.STATIC_ENABLE:
             static_analysis(extension, thread.esprima)
 
         static_time = time.time() - start_time
-
-        # --- Dynamic analysis ---
 
         if globals.DYNAMIC_ENABLE:
             dynamic_analysis(extension)
             print(extension.get_dynamic_analysis())
 
         dynamic_time = time.time() - start_time
-
-        # --- Write to file ---
-        # write keyword search stuff to file
-        # write static analysis stuff to file
-        # write dynamic analysis stuff to file
     except Exception as e:
-        # if any exception during analysis, do a clean up to prevent disk filling up
-        extension.clean_up()
-        #Log to file
+        try:
+            extension.clean_up()
+        except Exception:
+            print(Fore.RED + 'Failed to clean up after failed extension: %s' % extension_path + Style.RESET_ALL)
         failed_extension(extension_path, "Something went wrong when analyzing the extension source code", e)
         return True
 
-    # --- Clean up ---
     extension.clean_up()
-
     cleanup_time = time.time() - start_time
 
     invalidUrls = []
 
     for url, files in urls.items():
-        
-            
-        if globals.TEMINATE:
-            # Will return False to indicate that the thread was terminated before finishing
+        if globals.TERMINATE:
             return False
         if len(url) == 0:
             print(Fore.RED + 'Possible error: Empty URL' + Style.RESET_ALL)
             continue
         try:
-            # domain:   example.com
-            # tld:      com
             domain, tld = get_valid_domain(url)
             dns_status = None
-                    
-            #print("Url: " + str(url))
-            #print("Domain: " + str(domain))
-            #print("_________________")
 
-            # Check if domain is valid
-            if domain == None or tld == None:
-                # If invalid, remove from url list - Debate on wheter we should do this
+            if domain is None or tld is None:
                 invalidUrls.append(url)
                 dns_status = DNS_RECORDS.INVALID
-                #print(Fore.RED + 'Invalid URL:  %s' % url + Style.RESET_ALL)
             else:
-                # Check if domain already tested during current run
                 if globals.DNS_ENABLE:
-
                     do_dns = True
                     with globals.checked_domains_lock:
                         if domain in globals.checked_domains:
@@ -362,39 +310,35 @@ def analyze_extension(thread, extension_path: str) -> None:
                         globals.checked_domains.add(domain)
 
                     if do_dns:
+                        dns_status = dns_analysis(domain)
 
-                        results = dns_analysis(domain)
+                        with globals.dns_records_lock:
+                            globals.dns_records[domain] = dns_status
 
-
-                        dns_status = results.value
-                        
-                            
-                        globals.dns_records[domain] = dns_status
-                        
                         rdap_dump = None
                         expiration_date = None
                         available_date = None
                         deleted_date = None
 
-                        rdap_results = None
-                        if (globals.RDAP_ENABLE):
-                            if (results == globals.DNS_RECORDS.NXDOMAIN):
-                                # i hate this
-                                if tld in globals.RDAP_TLDS:
-                                    rdap_dump, expiration_date, available_date, deleted_date = rdap_analysis(domain)
-                                else:
-                                    # If RDAP is not supported by TLD
-                                    rdap_dump = '{"STATUS": "RDAP_NOT_SUPPORTED"}'
-                        # We only want this to run if we just did dns (and rdap)
-                        db.insertDomainMetaTable(extension, thread.sql, domain, dns_status, expiration_date, available_date, deleted_date, rdap_dump)
+                        if globals.RDAP_ENABLE and dns_status == globals.DNS_RECORDS.NXDOMAIN:
+                            if tld in globals.RDAP_TLDS:
+                                rdap_dump, expiration_date, available_date, deleted_date = rdap_analysis(domain)
+                            else:
+                                rdap_dump = '{"STATUS": "RDAP_NOT_SUPPORTED"}'
 
-                        # We always want to do this even if we skipped dns
-                        # We want a rectord for each file the url is in
-
+                        db.insertDomainMetaTable(
+                            extension,
+                            thread.sql,
+                            domain,
+                            dns_status.value,
+                            expiration_date,
+                            available_date,
+                            deleted_date,
+                            rdap_dump,
+                        )
 
                 for file in files:
                     file_whitout_id = file.split("/", 1)[1]
-                    
                     db.insertDomainTable(extension, thread.sql, domain, extension_path, file_whitout_id)
         except Exception as e:
             failed_extension(extension_path, "Failed to analyze domain", e)
@@ -402,31 +346,22 @@ def analyze_extension(thread, extension_path: str) -> None:
 
     dns_time = time.time() - start_time
 
-    # DB Stuff
-
-    
-    #print(globals.dns_records)
-    #print(invalidUrls)
-
     for action in actionsList:
         for domain in list(actionsList[action]):
             if domain in invalidUrls or domain not in urls:
-                #print(domain)
                 del actionsList[action][domain]
-            
-    #print(url_dns_record["github.com"])    
 
-    db.insertActionTable(extension, thread.sql, actionsList, globals.dns_records)
-    #db.insertUrlTable(thread.sql, commonUrls, url_dns_record)
+    with globals.dns_records_lock:
+        dns_records = dict(globals.dns_records)
+    db.insertActionTable(extension, thread.sql, actionsList, dns_records)
 
     if globals.DYNAMIC_ENABLE:
         db.insertDynamicTable(extension, thread.sql, extension.get_dynamic_analysis())
 
     db_time = time.time() - start_time
 
-    # --- Write time to time file ---
     with time_lock:
-        with open('time.txt', 'a') as f:
+        with open(TIMING_LOG_FILE, 'a') as f:
             fromated = '''Extension: %s
             Start time: %s
             Extraction time: %s

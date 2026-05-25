@@ -24,6 +24,7 @@ def is_display_running(port):
     return False
 
 def dynamic_analysis(extension):
+    """Run the extension in Chrome and collect network requests from performance logs."""
     EXTENSION_PATH = extension.get_crx_path()
 
     driver = None
@@ -52,11 +53,12 @@ def dynamic_analysis(extension):
         #print("Session ID: ", session)
     
     else:
-        # check if display is running on :99
-        if not is_display_running(99):
-            os.system("Xvfb :99 -ac &")
-            os.environ['DISPLAY'] = ":99"
+        # check if display is running on the configured display port
+        if not is_display_running(globals.DISPLAY_PORT):
+            # Xvfb is launched as a background process; errors are silently ignored
+            os.system(f"Xvfb :{globals.DISPLAY_PORT} -ac &")
             print("Display started")
+        os.environ['DISPLAY'] = f":{globals.DISPLAY_PORT}"
 
         chrome_options = webdriver.ChromeOptions()
 
@@ -78,11 +80,8 @@ def dynamic_analysis(extension):
         driver.get("chrome://extensions/")
         #driver.get("https://albinkarlsson.se/")
 
-        WAIT_TIME = 30
-
+        time.sleep(globals.DYNAMIC_WAIT_TIME)
         chrome_logs = driver.get_log('performance')
-
-        time.sleep(WAIT_TIME)
 
         # Filter logs for network entries
         network_logs = [chrome_log for chrome_log in chrome_logs if 'Network.requestWillBeSent' in chrome_log['message']]
@@ -96,11 +95,11 @@ def dynamic_analysis(extension):
             method  = ""
 
             try:
-                chrome_log = (json.loads(entry['message']))
+                chrome_log = json.loads(entry['message'])
                 request = chrome_log['message']['params']['request']
                 url = request['url']
                 method = request['method']
-                time_after_start = start_time - entry['timestamp']/1000
+                time_after_start = entry['timestamp'] / 1000 - start_time
 
                 # Filter favicon.ico
                 if "/favicon.ico" in url:
@@ -123,8 +122,8 @@ def dynamic_analysis(extension):
                     "time_after_start": time_after_start
                 })
 
-            except Exception as e:
-                pass
+            except (KeyError, json.JSONDecodeError) as e:
+                print(f"Warning: failed to parse Chrome log entry: {e}")
 
     except Exception as e:
         print(e)
@@ -144,5 +143,4 @@ def dynamic_analysis(extension):
 
 
 if __name__ == "__main__":
-    dynamic_analysis = dynamic_analysis(1, None)
-    print(dynamic_analysis)
+    raise RuntimeError("Run dynamic_standalone.py to run dynamic analysis.")

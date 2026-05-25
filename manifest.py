@@ -1,8 +1,8 @@
-from colorama import Fore, Back, Style
+"""Extract URLs from Chrome extension manifests for downstream domain analysis."""
+
 import json
-import globals
+
 from helpers import *
-import tldextract
 
 FILTER_PERMISSIONS = [
     "activeTab",
@@ -71,13 +71,15 @@ FILTER_PERMISSIONS = [
     "webRequestBlocking"
 ]
 
+
 # This function will sometimes return a wildcard tld, these are not actually valid tlds
 # and should be filtered out, but it is not a bad idea to keep for further analysis
 def wildcard_to_normal(wildcard):
+    """Normalize Chrome wildcard URL patterns into concrete URL-like strings."""
     if wildcard == "<all_urls>":
         return "https://wildcard.wildcardtld/"
 
-    if not "*" in wildcard:
+    if "*" not in wildcard:
         return wildcard
 
     ret = wildcard
@@ -98,26 +100,24 @@ def wildcard_to_normal(wildcard):
 
     return ret
 
+
 def manifest_analysis(manifest):
+    """Extract URL-like patterns from a Chrome extension manifest."""
     urls = []
 
-    # may be wrong and not needed
-    # ["permissions"]
+    # TODO: handle manifest_version 2 vs 3 differences for permissions URL patterns.
     if 'permissions' in manifest:
         permissions = manifest['permissions']
         for permission in permissions:
             if permission not in FILTER_PERMISSIONS:
                 urls.append(wildcard_to_normal(permission))
-    
-    # may be wrong and not needed
-    # ["optional_permissions"]
+
     if 'optional_permissions' in manifest:
         optional_permissions = manifest['optional_permissions']
         for permission in optional_permissions:
             if permission not in FILTER_PERMISSIONS:
                 urls.append(wildcard_to_normal(permission))
 
-    # ["externally_connectable"]["matches"]
     if 'externally_connectable' in manifest:
         externally_connectable = manifest['externally_connectable']
         if 'matches' in externally_connectable:
@@ -125,27 +125,24 @@ def manifest_analysis(manifest):
             for match in externally_connectable_matches:
                 urls.append(wildcard_to_normal(match))
 
-    # ["update_url"]
     if 'update_url' in manifest:
         update_url = manifest['update_url']
         urls.append(update_url)
 
-    # ["host_permissions"]
+    # TODO: handle manifest_version 2 vs 3 differences for host permissions.
     if 'host_permissions' in manifest:
         host_permissions = manifest['host_permissions']
         for permission in host_permissions:
             urls.append(wildcard_to_normal(permission))
 
-    # ["content_scripts"]["matches"] Should only be V3
     if 'content_scripts' in manifest:
-        content_scripts = manifest['content_scripts'][0]
-        if 'matches' in content_scripts:
-            content_scripts_matches = content_scripts['matches']
-            for match in content_scripts_matches:
-                urls.append(wildcard_to_normal(match))
-    
-    # remove duplicates
+        for script in manifest['content_scripts']:
+            if 'matches' in script:
+                for match in script['matches']:
+                    urls.append(wildcard_to_normal(match))
+
     return list(set(urls))
+
 
 if __name__ == '__main__':
     manifest = '''

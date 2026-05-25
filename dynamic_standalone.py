@@ -1,16 +1,23 @@
 # This file is cursed. It is a standalone file that is used to run dynamic analysis on an extension.
+import argparse
+import builtins
 import os
-import time
+import queue
+import random
 import sqlite3
+import sys
+import threading
+import time
+import traceback
+
+from alive_progress import alive_bar
 from colorama import Fore, Style
-from helpers import *
+
+from analyze import Extension
 from dynamic import dynamic_analysis
+from helpers import *
 import globals
 import db
-import argparse
-import threading
-import traceback
-from alive_progress import alive_bar
 
 # Create a connection to the database
 DATABASE = 'thesis.db'
@@ -26,6 +33,7 @@ count_extensions = 0
 
 # Worker Thread
 class WorkerThread(threading.Thread):
+    """Consume queued extensions, run dynamic analysis, and persist the results."""
     def __init__(self, queue, thread_id, sql):
         threading.Thread.__init__(self)
 
@@ -42,7 +50,7 @@ class WorkerThread(threading.Thread):
 
         # Wait for work to be added to the queue
         while self._queue.empty():
-            if globals.TEMINATE:
+            if globals.TERMINATE:
                 break
             time.sleep(1)
        
@@ -50,10 +58,10 @@ class WorkerThread(threading.Thread):
             # Get the work from the queue, if done, terminate thread
             try:
                 extension_path = self._queue.get(timeout=3)
-            except queue.Empty as e:
+            except queue.Empty:
                 break
             try:
-                if (globals.TEMINATE):
+                if globals.TERMINATE:
                     break
                 self._current_extension = Extension(extension_path)
                 try:
@@ -89,7 +97,7 @@ class WorkerThread(threading.Thread):
                 traceback.print_exc()
                 print(Fore.RED + 'Error in thread %d, cannot continue: %s' % (self._thread_id, e) + Style.RESET_ALL)
                 # signal to all threads to terminate
-                globals.TEMINATE = True
+                globals.TERMINATE = True
                 break
             self._queue.task_done()
         print(Fore.YELLOW + 'Thread %d terminated' % self._thread_id + Style.RESET_ALL)
@@ -105,41 +113,6 @@ class WorkerThread(threading.Thread):
 
     def stop(self):
         self._stop_event.set()
-
-class Extension:
-    def __init__(self, crx_path: str) -> None:
-        try: 
-            self.creation_time = time.time()
-            self.crx_path = crx_path
-            self.id = crx_path.split('/')[-2]
-            self.version = ".".join(crx_path.split('.')[-2].split('_')[-4:])
-      
-            self.dynamic_analysis = []
-        except Exception as e:
-            reason = "Error in 'Extension.__init__'"
-            failed_extension(crx_path, reason, e)
-            raise Exception("Failed to create Extension object")
-
-    def set_dynamic_analysis(self, dynamic_analysis) -> None:
-        self.dynamic_analysis = dynamic_analysis
-    
-    def get_crx_path(self) -> str:
-        return self.crx_path
-
-    def get_version(self) -> str:
-        return self.version
-    
-    def get_dynamic_analysis(self) -> dict:
-        return self.dynamic_analysis
-
-    def get_id(self) -> str:
-        return self.id
-
-    def age(self) -> float:
-        return time.time() - self.creation_time
-    
-    def __str__(self) -> str:
-        return self.crx_path
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
@@ -160,13 +133,6 @@ DISPLAY_PORT: N (default: 99)
     parser.add_argument('-t', '--threads',          type=int,               help="Number of threads to use",            default=globals.NUM_THREADS)
     parser.add_argument('-s', '--stfu',             action='store_true',    help="Disable Progress Bar",                default=globals.STFU_MODE)
     return parser.parse_args()
-
-# CREATE TABLE domain_meta (domain TEXT NOT NULL, status TEXT, expired DATETIME, available DATETIME, remove DATETIME, raw_json TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (timestamp,domain))
-
-# CREATE TABLE domain (domain TEXT NOT NULL, extension TEXT NOT NULL, version TEXT NOT NULL, filepath TEXT NOT NULL, PRIMARY KEY (domain,extension,version,filepath))
-
-# CREATE TABLE dynamic (url TEXT NOT NULL, method TEXT NOT NULL, time_after_start FLOAT NOT NULL, extension TEXT NOT NULL, version TEXT NOT NULL, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (url, method, extension, version))
-
 
 if __name__ == "__main__":
     args = parse_arguments()
@@ -193,14 +159,14 @@ if __name__ == "__main__":
 
     print(Fore.GREEN + 'Found %d extensions' % len(extension_ids) + Style.RESET_ALL)
 
-    root_path = "./extensions/"
+    root_path = globals.DEFAULT_EXTENSIONS_PATH
 
     for extension_id in extension_ids:
         id = extension_id[0]
-        extension_path = root_path + id
+        extension_path = os.path.join(root_path, id)
         for crx in os.listdir(extension_path):
             if crx.endswith(".crx"):
-                extension_paths.append(extension_path + '/' + crx)
+                extension_paths.append(os.path.join(extension_path, crx))
     
     if len(extension_paths) == 0:
         print(Fore.RED + 'No extension path' + Style.RESET_ALL)
@@ -233,8 +199,8 @@ Chalmers University of Technology, Gothenburg, Sweden
     except (Exception, KeyboardInterrupt) as e:
         pass
 
-    def exit(int, exception=None):
-        globals.TEMINATE = True
+    def _shutdown(code, exception=None):
+        globals.TERMINATE = True
         sql_w.close()
         counters = []
         for t in threads:
@@ -253,9 +219,9 @@ Chalmers University of Technology, Gothenburg, Sweden
         print(sum(counters), 'extensions analyzed')
         elapsed = time.time() - start_time
         print('Elapsed time: %s' % time.strftime("%H:%M:%S", time.gmtime(elapsed)))
-        if exception is not None and int != 0:
+        if exception is not None and code != 0:
             raise exception
-        sys.exit(int)
+        sys.exit(code)
     
     try:
         # add extensions to queue
@@ -269,8 +235,8 @@ Chalmers University of Technology, Gothenburg, Sweden
             # progress bar using qsize, using alive_bar
             with alive_bar(count_extensions, bar='blocks', spinner='dots_waves', length=40, title='Analyzing extensions', manual=True) as bar:
                 while not thread_queue.empty():
-                    if (globals.TEMINATE):
-                        exit(0)
+                    if globals.TERMINATE:
+                        _shutdown(0)
                     item_progress = 1 - (thread_queue.qsize() / count_extensions)
                     bar(item_progress)
                     time.sleep(1)
@@ -283,4 +249,4 @@ Chalmers University of Technology, Gothenburg, Sweden
     except KeyboardInterrupt:
         print()
         print('Keyboard interrupt detected - terminating threads')
-    exit(0)
+    _shutdown(0)
